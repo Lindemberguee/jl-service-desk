@@ -23,22 +23,31 @@ export function useRealtimeWorkOrders() {
           filter: `tenant_id=eq.${currentTenantId}`,
         },
         (payload) => {
-          const oldStatus = (payload.old as any)?.status;
-          const newStatus = (payload.new as any)?.status;
-          const code = (payload.new as any)?.code || '';
-          const title = (payload.new as any)?.title || '';
+          const oldRow = payload.old as any;
+          const newRow = payload.new as any;
+          const code = newRow?.code || '';
+          const title = newRow?.title || '';
 
-          // Only notify if status actually changed and not by current user
-          if (oldStatus && newStatus && oldStatus !== newStatus) {
+          // Status change notification
+          if (oldRow?.status && newRow?.status && oldRow.status !== newRow.status) {
             toast({
               title: `${code} — Status alterado`,
-              description: `${title}: ${statusLabels[oldStatus] || oldStatus} → ${statusLabels[newStatus] || newStatus}`,
+              description: `${title}: ${statusLabels[oldRow.status] || oldRow.status} → ${statusLabels[newRow.status] || newRow.status}`,
+            });
+          }
+
+          // Assignment notification — only notify the assigned user
+          if (oldRow?.assigned_to_id !== newRow?.assigned_to_id && newRow?.assigned_to_id === user?.id) {
+            toast({
+              title: `${code} — Atribuída a você`,
+              description: title,
+              variant: 'default',
             });
           }
 
           // Invalidate queries to refresh data
           qc.invalidateQueries({ queryKey: ['work_orders'] });
-          qc.invalidateQueries({ queryKey: ['work_order', (payload.new as any)?.id] });
+          qc.invalidateQueries({ queryKey: ['work_order', newRow?.id] });
         }
       )
       .on(
@@ -50,11 +59,21 @@ export function useRealtimeWorkOrders() {
           filter: `tenant_id=eq.${currentTenantId}`,
         },
         (payload) => {
-          const code = (payload.new as any)?.code || '';
+          const newRow = payload.new as any;
+          const code = newRow?.code || '';
           toast({
             title: 'Nova OS criada',
-            description: `${code} — ${(payload.new as any)?.title || ''}`,
+            description: `${code} — ${newRow?.title || ''}`,
           });
+
+          // If assigned to current user on creation
+          if (newRow?.assigned_to_id === user?.id) {
+            toast({
+              title: `${code} — Atribuída a você`,
+              description: newRow?.title || '',
+            });
+          }
+
           qc.invalidateQueries({ queryKey: ['work_orders'] });
         }
       )
