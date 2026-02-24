@@ -362,6 +362,12 @@ export default function WorkOrderDetail() {
                       {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).phone}</p>}
                       {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).email}</p>}
                     </>
+                  ) : (wo as any).requester_user_id ? (
+                    <>
+                      <p className="font-medium">{getProfileName((wo as any).requester_user_id)}</p>
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).phone}</p>}
+                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">Horário: {(wo.requester_contact as any).preferred_time}</p>}
+                    </>
                   ) : (
                     <p className="text-muted-foreground text-xs">Não informado</p>
                   )}
@@ -538,7 +544,7 @@ export default function WorkOrderDetail() {
         </TabsContent>
 
         <TabsContent value="anexos" className="mt-3">
-          <WorkOrderAttachments workOrderId={wo.id} />
+          <WorkOrderAttachments workOrderId={wo.id} resolvedAt={wo.resolved_at} />
         </TabsContent>
 
         <TabsContent value="custos" className="mt-3">

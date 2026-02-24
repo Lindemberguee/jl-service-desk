@@ -99,7 +99,14 @@ export default function PortalNewRequest() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
+      const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+      const newFiles = Array.from(e.target.files).filter(f => {
+        if (f.size > MAX_SIZE) {
+          toast({ title: 'Arquivo muito grande', description: `${f.name} excede o limite de 10 MB.`, variant: 'destructive' });
+          return false;
+        }
+        return true;
+      });
       setFiles(prev => [...prev, ...newFiles].slice(0, 5));
     }
   };
@@ -125,6 +132,7 @@ export default function PortalNewRequest() {
         unit_id: unitId || null,
         code: '',
         visibility: 'customer',
+        requester_user_id: user?.id || null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
 

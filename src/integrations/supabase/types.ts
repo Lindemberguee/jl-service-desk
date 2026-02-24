@@ -890,6 +890,7 @@ export type Database = {
           priority: Database["public"]["Enums"]["os_priority"]
           requester_contact: Json | null
           requester_id: string | null
+          requester_user_id: string | null
           resolve_due_at: string | null
           resolved_at: string | null
           response_due_at: string | null
@@ -923,6 +924,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["os_priority"]
           requester_contact?: Json | null
           requester_id?: string | null
+          requester_user_id?: string | null
           resolve_due_at?: string | null
           resolved_at?: string | null
           response_due_at?: string | null
@@ -956,6 +958,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["os_priority"]
           requester_contact?: Json | null
           requester_id?: string | null
+          requester_user_id?: string | null
           resolve_due_at?: string | null
           resolved_at?: string | null
           response_due_at?: string | null

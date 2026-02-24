@@ -5,10 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Paperclip, Upload, Loader2, FileText, Image, Download, Trash2 } from 'lucide-react';
+import { Paperclip, Upload, Loader2, FileText, Image, Download, Trash2, AlertTriangle } from 'lucide-react';
 
 interface WorkOrderAttachmentsProps {
   workOrderId: string;
+  resolvedAt?: string | null;
 }
 
 const MIME_ICONS: Record<string, typeof FileText> = {
@@ -20,7 +21,7 @@ function getIcon(mimeType: string | null) {
   return FileText;
 }
 
-export function WorkOrderAttachments({ workOrderId }: WorkOrderAttachmentsProps) {
+export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttachmentsProps) {
   const { currentTenantId, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -39,6 +40,9 @@ export function WorkOrderAttachments({ workOrderId }: WorkOrderAttachmentsProps)
     },
   });
 
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+  const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !currentTenantId || !user) return;
@@ -46,6 +50,15 @@ export function WorkOrderAttachments({ workOrderId }: WorkOrderAttachmentsProps)
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
+        // Validate size for image files
+        if (ALLOWED_IMAGE_TYPES.includes(file.type) && file.size > MAX_SIZE_BYTES) {
+          toast({ title: 'Arquivo muito grande', description: `${file.name} excede o limite de 10 MB para imagens.`, variant: 'destructive' });
+          continue;
+        }
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type) && file.size > MAX_SIZE_BYTES) {
+          toast({ title: 'Arquivo muito grande', description: `${file.name} excede o limite de 10 MB.`, variant: 'destructive' });
+          continue;
+        }
         const ext = file.name.split('.').pop();
         const storagePath = `${currentTenantId}/${workOrderId}/${crypto.randomUUID()}.${ext}`;
 
@@ -131,6 +144,26 @@ export function WorkOrderAttachments({ workOrderId }: WorkOrderAttachmentsProps)
         </label>
       </CardHeader>
       <CardContent>
+        {/* 15-day deletion warning */}
+        {resolvedAt && (() => {
+          const resolvedDate = new Date(resolvedAt);
+          const deleteDate = new Date(resolvedDate.getTime() + 15 * 24 * 60 * 60 * 1000);
+          const daysLeft = Math.max(0, Math.ceil((deleteDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+          if (daysLeft <= 15) {
+            return (
+              <div className="mb-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {daysLeft > 0
+                    ? `Os arquivos desta OS serão removidos automaticamente em ${daysLeft} dia(s) após a conclusão para economia de armazenamento.`
+                    : 'Os arquivos desta OS estão programados para exclusão.'}
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()}
+        <p className="text-[10px] text-muted-foreground mb-3">Limite: 10 MB por arquivo (PNG/JPG)</p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : attachments.length === 0 ? (

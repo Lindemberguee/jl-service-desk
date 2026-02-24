@@ -114,6 +114,7 @@ export default function WorkOrders() {
       return data || [];
     },
   });
+  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
 
   const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
   const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
@@ -287,6 +288,18 @@ export default function WorkOrders() {
     if (!id) return '—';
     const p = profiles.find((p: any) => p.id === id);
     return p?.name || id.slice(0, 8);
+  };
+
+  const getRequesterName = (wo: any) => {
+    if (wo.requester_id) {
+      const c = customers.find((c: any) => c.id === wo.requester_id);
+      return c?.name || '—';
+    }
+    if (wo.requester_user_id) {
+      const p = profiles.find((p: any) => p.id === wo.requester_user_id);
+      return p?.name || '—';
+    }
+    return '—';
   };
 
   return (
@@ -551,8 +564,14 @@ export default function WorkOrders() {
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                    {wo.visibility === 'customer' && (
+                      <Badge variant="outline" className="text-[9px] h-4 bg-info/10 text-info border-info/20">Cliente</Badge>
+                    )}
+                  </div>
                   <p className="text-sm font-medium truncate mt-0.5">{wo.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Solicitante: {getRequesterName(wo)}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
               </div>
@@ -598,8 +617,8 @@ export default function WorkOrders() {
                   <span className="flex items-center">Status <SortIcon field="status" /></span>
                 </TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Responsável</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Solicitante</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">SLA</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[60px]">Vis.</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[95px] cursor-pointer select-none" onClick={() => handleSort('updated_at')}>
                   <span className="flex items-center">Atualizada <SortIcon field="updated_at" /></span>
                 </TableHead>
@@ -629,15 +648,11 @@ export default function WorkOrders() {
                   <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
                     {getAssignedName(wo.assigned_to_id)}
                   </TableCell>
-                  <TableCell onClick={() => navigate(`/os/${wo.id}`)}>
-                    <SlaIndicator workOrder={wo} compact />
+                  <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
+                    {getRequesterName(wo)}
                   </TableCell>
                   <TableCell onClick={() => navigate(`/os/${wo.id}`)}>
-                    {wo.visibility === 'customer' ? (
-                      <Eye className="h-3.5 w-3.5 text-info" />
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">Int.</span>
-                    )}
+                    <SlaIndicator workOrder={wo} compact />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground" onClick={() => navigate(`/os/${wo.id}`)}>
                     {new Date(wo.updated_at).toLocaleDateString('pt-BR')}

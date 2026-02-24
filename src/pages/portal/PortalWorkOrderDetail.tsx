@@ -166,6 +166,11 @@ export default function PortalWorkOrderDetail() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !id) return;
     const file = e.target.files[0];
+    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_SIZE) {
+      toast({ title: 'Arquivo muito grande', description: `Limite de 10 MB. O arquivo tem ${(file.size / 1048576).toFixed(1)} MB.`, variant: 'destructive' });
+      return;
+    }
     const path = `${currentTenantId}/${id}/${Date.now()}_${file.name}`;
     const { error: uploadErr } = await supabase.storage.from('work-order-attachments').upload(path, file);
     if (uploadErr) {
