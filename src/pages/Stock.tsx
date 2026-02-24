@@ -1,74 +1,238 @@
-import { useState } from 'react';
-import { useTenantQuery, useTenantInsert } from '@/hooks/useTenantQuery';
+import { useState, useMemo } from 'react';
+import { useTenantQuery, useTenantInsert, useTenantUpdate } from '@/hooks/useTenantQuery';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Package, Loader2, ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 
 export default function Stock() {
+  const { currentTenantId, user } = useAuth();
   const { data: items = [], isLoading } = useTenantQuery<any>('stock_items', 'stock_items');
-  const { data: movements = [] } = useTenantQuery<any>('stock_movements', 'stock_movements');
+  const { data: movements = [] } = useTenantQuery<any>('stock_movements', 'stock_movements', {
+    select: '*, stock_items(name), work_orders(code, title)',
+  });
+  const { data: workOrders = [] } = useTenantQuery<any>('work_orders_for_stock', 'work_orders', {
+    select: 'id, code, title, status',
+  });
   const insertItem = useTenantInsert('stock_items', ['stock_items']);
+  const updateItem = useTenantUpdate('stock_items', ['stock_items']);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const qc = useQueryClient();
+
+  // States
   const [open, setOpen] = useState(false);
+  const [movOpen, setMovOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<any>(null);
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
+  const [unit, setUnit] = useState('un');
   const [minLevel, setMinLevel] = useState('0');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
 
-  const filteredItems = items.filter((item: any) => {
-    if (!debouncedSearch) return true;
-    const s = debouncedSearch.toLowerCase();
-    return item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s);
-  });
+  // Movement form
+  const [movItemId, setMovItemId] = useState('');
+  const [movType, setMovType] = useState<'in' | 'out' | 'adjust'>('in');
+  const [movQty, setMovQty] = useState('1');
+  const [movRef, setMovRef] = useState('');
+  const [movWoId, setMovWoId] = useState('');
+
+  const lowStockCount = items.filter((i: any) => (i.current_level || 0) <= (i.min_level || 0) && i.min_level > 0).length;
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item: any) => {
+      const s = debouncedSearch.toLowerCase();
+      const matchSearch = !debouncedSearch || item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s);
+      const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
+      const matchStatus = statusFilter === 'all' || (statusFilter === 'low' && isLow) || (statusFilter === 'normal' && !isLow);
+      return matchSearch && matchStatus;
+    });
+  }, [items, debouncedSearch, statusFilter]);
+
+  const itemMovements = useMemo(() => {
+    if (!detailItem) return [];
+    return movements.filter((m: any) => m.stock_item_id === detailItem.id);
+  }, [detailItem, movements]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertItem.mutateAsync({ name, sku, min_level: parseInt(minLevel) || 0 });
+      await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0 });
       toast({ title: 'Item criado!' });
       setOpen(false);
-      setName(''); setSku(''); setMinLevel('0');
+      setName(''); setSku(''); setUnit('un'); setMinLevel('0');
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
   };
 
+  const movementMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentTenantId || !movItemId) throw new Error('Dados incompletos');
+      const qty = parseInt(movQty);
+      if (!qty || qty <= 0) throw new Error('Quantidade inválida');
+
+      // Insert movement
+      const { error: movErr } = await (supabase.from as any)('stock_movements').insert({
+        tenant_id: currentTenantId,
+        stock_item_id: movItemId,
+        type: movType,
+        qty,
+        reference: movRef || null,
+        work_order_id: movWoId || null,
+        created_by: user?.id,
+      });
+      if (movErr) throw movErr;
+
+      // Update stock level
+      const item = items.find((i: any) => i.id === movItemId);
+      const currentLevel = item?.current_level || 0;
+      let newLevel = currentLevel;
+      if (movType === 'in') newLevel = currentLevel + qty;
+      else if (movType === 'out') newLevel = Math.max(0, currentLevel - qty);
+      else newLevel = qty; // adjust sets absolute value
+
+      const { error: upErr } = await (supabase.from as any)('stock_items')
+        .update({ current_level: newLevel })
+        .eq('id', movItemId);
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast({ title: 'Movimentação registrada!' });
+      setMovOpen(false);
+      setMovItemId(''); setMovType('in'); setMovQty('1'); setMovRef(''); setMovWoId('');
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const getMovementItemName = (m: any) => m.stock_items?.name || items.find((i: any) => i.id === m.stock_item_id)?.name || '-';
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Estoque</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{filteredItems.length} item(ns)</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5"><Plus className="h-3.5 w-3.5" />Novo Item</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Novo Item de Estoque</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} required className="h-9" /></div>
-              <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={sku} onChange={e => setSku(e.target.value)} className="h-9" /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
-              <Button type="submit" className="w-full h-8 text-sm" disabled={insertItem.isPending}>
-                {insertItem.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                Salvar
+        <div className="flex gap-2">
+          <Dialog open={movOpen} onOpenChange={setMovOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+                <RotateCcw className="h-3.5 w-3.5" /> Movimentação
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Item *</Label>
+                  <Select value={movItemId} onValueChange={setMovItemId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o item" /></SelectTrigger>
+                    <SelectContent>
+                      {items.map((i: any) => (
+                        <SelectItem key={i.id} value={i.id}>{i.name} {i.sku ? `(${i.sku})` : ''}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tipo *</Label>
+                    <Select value={movType} onValueChange={(v: any) => setMovType(v)}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in">Entrada</SelectItem>
+                        <SelectItem value="out">Saída</SelectItem>
+                        <SelectItem value="adjust">Ajuste</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quantidade *</Label>
+                    <Input type="number" min="1" value={movQty} onChange={e => setMovQty(e.target.value)} className="h-9" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Vincular à OS (opcional)</Label>
+                  <Select value={movWoId} onValueChange={setMovWoId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma</SelectItem>
+                      {workOrders.filter((wo: any) => !['encerrada'].includes(wo.status)).map((wo: any) => (
+                        <SelectItem key={wo.id} value={wo.id}>{wo.code} — {wo.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Referência / Nota</Label>
+                  <Input value={movRef} onChange={e => setMovRef(e.target.value)} className="h-9" placeholder="Ex: NF-12345" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => movementMutation.mutate()} disabled={!movItemId || movementMutation.isPending} className="w-full h-8 text-sm">
+                  {movementMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Registrar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="h-8 gap-1.5 text-xs"><Plus className="h-3.5 w-3.5" />Novo Item</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo Item de Estoque</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} required className="h-9" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={sku} onChange={e => setSku(e.target.value)} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={unit} onChange={e => setUnit(e.target.value)} className="h-9" placeholder="un, pc, m..." /></div>
+                </div>
+                <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
+                <Button type="submit" className="w-full h-8 text-sm" disabled={insertItem.isPending}>
+                  {insertItem.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Salvar
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Low stock alert */}
+      {lowStockCount > 0 && (
+        <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-md p-3">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <p className="text-xs text-destructive font-medium">
+            {lowStockCount} {lowStockCount === 1 ? 'item está' : 'itens estão'} abaixo do nível mínimo!
+          </p>
+          <Button variant="ghost" size="sm" className="ml-auto h-6 text-[11px] text-destructive hover:text-destructive" onClick={() => setStatusFilter('low')}>
+            Ver itens
+          </Button>
+        </div>
+      )}
 
       <Tabs defaultValue="items">
         <TabsList className="bg-card border border-border h-9">
@@ -77,11 +241,23 @@ export default function Stock() {
         </TabsList>
 
         <TabsContent value="items" className="mt-3 space-y-3">
-          <div className="bg-card border border-border rounded-md p-3">
-            <div className="relative">
+          {/* Filters */}
+          <div className="bg-card border border-border rounded-md p-3 flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Buscar item..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+              <Input placeholder="Buscar por nome ou SKU..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-[150px] text-xs">
+                <Filter className="h-3 w-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="low">Estoque Baixo</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoading ? (
@@ -89,14 +265,14 @@ export default function Stock() {
           ) : filteredItems.length === 0 ? (
             <div className="bg-card border border-border rounded-md py-16 text-center text-muted-foreground">
               <Package className="mx-auto h-8 w-8 mb-3 opacity-30" />
-              <p className="text-sm font-medium">Nenhum item de estoque</p>
+              <p className="text-sm font-medium">Nenhum item encontrado</p>
             </div>
           ) : isMobile ? (
             <div className="space-y-2">
               {filteredItems.map((item: any) => {
-                const isLow = (item.current_level || 0) <= (item.min_level || 0);
+                const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
                 return (
-                  <div key={item.id} className="bg-card border border-border rounded-md p-3">
+                  <div key={item.id} className="bg-card border border-border rounded-md p-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setDetailItem(item)}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">{item.name}</p>
@@ -107,7 +283,7 @@ export default function Stock() {
                       </Badge>
                     </div>
                     <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>Atual: <strong className="text-foreground">{item.current_level}</strong></span>
+                      <span>Atual: <strong className="text-foreground">{item.current_level}</strong> {item.unit || 'un'}</span>
                       <span>Mín: {item.min_level}</span>
                     </div>
                   </div>
@@ -120,25 +296,33 @@ export default function Stock() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">SKU</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">SKU</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Unid.</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Atual</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Mín.</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item: any) => {
-                    const isLow = (item.current_level || 0) <= (item.min_level || 0);
+                    const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
                     return (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} className="cursor-pointer" onClick={() => setDetailItem(item)}>
                         <TableCell className="text-sm font-medium">{item.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.sku || '-'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{item.unit || 'un'}</TableCell>
                         <TableCell className="text-sm font-medium">{item.current_level}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.min_level}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`text-[11px] ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}`}>
                             {isLow ? 'Baixo' : 'Normal'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -152,6 +336,7 @@ export default function Stock() {
         <TabsContent value="movements" className="mt-3">
           {movements.length === 0 ? (
             <div className="bg-card border border-border rounded-md py-16 text-center text-muted-foreground">
+              <History className="mx-auto h-8 w-8 mb-3 opacity-30" />
               <p className="text-sm">Nenhuma movimentação registrada.</p>
             </div>
           ) : isMobile ? (
@@ -159,15 +344,17 @@ export default function Stock() {
               {movements.map((m: any) => (
                 <div key={m.id} className="bg-card border border-border rounded-md p-3">
                   <div className="flex items-center justify-between gap-2">
-                    {m.type === 'in' && <Badge variant="outline" className="text-[10px] h-5 bg-green-500/10 text-green-600 gap-1"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
-                    {m.type === 'out' && <Badge variant="outline" className="text-[10px] h-5 bg-destructive/10 text-destructive gap-1"><ArrowUp className="h-3 w-3" />Saída</Badge>}
-                    {m.type === 'adjust' && <Badge variant="outline" className="text-[10px] h-5">Ajuste</Badge>}
-                    <span className="text-sm font-medium">Qtd: {m.qty}</span>
+                    <span className="text-xs font-medium truncate">{getMovementItemName(m)}</span>
+                    {m.type === 'in' && <Badge variant="outline" className="text-[10px] h-5 bg-green-500/10 text-green-600 gap-1 shrink-0"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
+                    {m.type === 'out' && <Badge variant="outline" className="text-[10px] h-5 bg-destructive/10 text-destructive gap-1 shrink-0"><ArrowUp className="h-3 w-3" />Saída</Badge>}
+                    {m.type === 'adjust' && <Badge variant="outline" className="text-[10px] h-5 shrink-0">Ajuste</Badge>}
                   </div>
                   <div className="flex justify-between mt-1.5 text-[11px] text-muted-foreground">
-                    <span>{m.reference || '-'}</span>
+                    <span>Qtd: <strong className="text-foreground">{m.qty}</strong></span>
+                    {m.work_orders?.code && <span className="flex items-center gap-0.5"><Link2 className="h-3 w-3" />{m.work_orders.code}</span>}
                     <span>{new Date(m.created_at).toLocaleString('pt-BR')}</span>
                   </div>
+                  {m.reference && <p className="text-[11px] text-muted-foreground mt-1">{m.reference}</p>}
                 </div>
               ))}
             </div>
@@ -176,15 +363,18 @@ export default function Stock() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">Tipo</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Qtd</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Item</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Tipo</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[70px]">Qtd</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Referência</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[160px]">Data</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px]">OS Vinculada</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[150px]">Data</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {movements.map((m: any) => (
                     <TableRow key={m.id}>
+                      <TableCell className="text-sm font-medium">{getMovementItemName(m)}</TableCell>
                       <TableCell>
                         {m.type === 'in' && <Badge variant="outline" className="text-[11px] bg-green-500/10 text-green-600 gap-1"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
                         {m.type === 'out' && <Badge variant="outline" className="text-[11px] bg-destructive/10 text-destructive gap-1"><ArrowUp className="h-3 w-3" />Saída</Badge>}
@@ -192,6 +382,13 @@ export default function Stock() {
                       </TableCell>
                       <TableCell className="text-sm font-medium">{m.qty}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{m.reference || '-'}</TableCell>
+                      <TableCell>
+                        {m.work_orders?.code ? (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Link2 className="h-3 w-3" />{m.work_orders.code}
+                          </Badge>
+                        ) : '-'}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString('pt-BR')}</TableCell>
                     </TableRow>
                   ))}
@@ -201,6 +398,62 @@ export default function Stock() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Item Detail Dialog */}
+      <Dialog open={!!detailItem} onOpenChange={(v) => { if (!v) setDetailItem(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              {detailItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {detailItem && (
+            <div className="space-y-4">
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-md p-2.5">
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Nível Atual</p>
+                  <p className="text-lg font-bold">{detailItem.current_level} <span className="text-xs font-normal text-muted-foreground">{detailItem.unit || 'un'}</span></p>
+                </div>
+                <div className="bg-muted/50 rounded-md p-2.5">
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Nível Mínimo</p>
+                  <p className="text-lg font-bold">{detailItem.min_level}</p>
+                </div>
+              </div>
+              {detailItem.sku && <p className="text-xs text-muted-foreground">SKU: {detailItem.sku}</p>}
+
+              {/* Movement history */}
+              <div>
+                <p className="text-xs font-semibold mb-2 flex items-center gap-1">
+                  <History className="h-3.5 w-3.5" /> Histórico de Movimentações
+                </p>
+                {itemMovements.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Sem movimentações.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                    {itemMovements.map((m: any) => (
+                      <div key={m.id} className="flex items-center gap-2 bg-muted/30 rounded-md p-2 text-xs">
+                        {m.type === 'in' && <ArrowDown className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                        {m.type === 'out' && <ArrowUp className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                        {m.type === 'adjust' && <RotateCcw className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                        <span className="font-medium">{m.type === 'in' ? '+' : m.type === 'out' ? '-' : '='}{m.qty}</span>
+                        <span className="text-muted-foreground flex-1 truncate">{m.reference || ''}</span>
+                        {m.work_orders?.code && (
+                          <Badge variant="outline" className="text-[9px] gap-0.5 shrink-0">
+                            <Link2 className="h-2.5 w-2.5" />{m.work_orders.code}
+                          </Badge>
+                        )}
+                        <span className="text-muted-foreground shrink-0">{new Date(m.created_at).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
