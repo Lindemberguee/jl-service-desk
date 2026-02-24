@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export default function Dashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { data: workOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
 
   const open = workOrders.filter((wo: any) => wo.status === 'aberta').length;
   const inProgress = workOrders.filter((wo: any) => wo.status === 'em_execucao').length;

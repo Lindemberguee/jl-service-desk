@@ -36,7 +36,8 @@ export default function TechWorkOrders() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: workOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
 
   const [search, setSearch] = useState('');
