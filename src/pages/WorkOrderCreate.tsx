@@ -40,12 +40,13 @@ export default function WorkOrderCreate() {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
-  // Auto-fill email from profile
+  // Auto-fill email from profile (only if no requester selected)
   useEffect(() => {
-    if (profile?.email && !contactEmail) {
+    if (!requesterId && profile?.email && !contactEmail) {
       setContactEmail(profile.email);
     }
   }, [profile?.email]);
+
 
   // Data queries
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
@@ -82,6 +83,19 @@ export default function WorkOrderCreate() {
     },
     enabled: !!currentTenantId,
   });
+  // Auto-fill contact info when a requester (customer) is selected
+  useEffect(() => {
+    if (requesterId) {
+      const customer = customers.find((c: any) => c.id === requesterId);
+      if (customer) {
+        setContactEmail(customer.email || '');
+        setContactPhone(customer.phone || '');
+      }
+    } else {
+      setContactEmail(profile?.email || '');
+      setContactPhone('');
+    }
+  }, [requesterId, customers]);
 
   // Reset location/asset when unit changes
   useEffect(() => {
