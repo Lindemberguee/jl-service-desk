@@ -18,7 +18,7 @@ import { priorityLabels } from '@/lib/permissions';
 type Step = 'form' | 'preview' | 'success';
 
 export default function PortalNewRequest() {
-  const { memberships, user } = useAuth();
+  const { memberships, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -32,6 +32,7 @@ export default function PortalNewRequest() {
   const [categoryId, setCategoryId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [createdCode, setCreatedCode] = useState('');
@@ -49,6 +50,13 @@ export default function PortalNewRequest() {
     setCategoryId('');
     setUnitId('');
   }, [selectedTenantId]);
+
+  // Auto-fill email from profile
+  useEffect(() => {
+    if (profile?.email && !contactEmail) {
+      setContactEmail(profile.email);
+    }
+  }, [profile?.email]);
 
   // Load categories for selected department
   const { data: categories = [] } = useQuery({
@@ -122,6 +130,7 @@ export default function PortalNewRequest() {
     try {
       const requesterContact: Record<string, string> = {};
       if (contactPhone) requesterContact.phone = contactPhone;
+      if (contactEmail) requesterContact.email = contactEmail;
       if (preferredTime) requesterContact.preferred_time = preferredTime;
 
       const result = await insertMutation.mutateAsync({
@@ -187,7 +196,7 @@ export default function PortalNewRequest() {
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
           <Button variant="outline" onClick={() => navigate('/portal')}>Ver Minhas OS</Button>
-          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setFiles([]); setContactPhone(''); setPreferredTime(''); }}>
+          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setFiles([]); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
             Abrir Outra
           </Button>
         </div>
@@ -244,9 +253,15 @@ export default function PortalNewRequest() {
                   <p className="text-sm">{getUnitName(unitId)}</p>
                 </div>
               )}
+              {contactEmail && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">E-mail</p>
+                  <p className="text-sm">{contactEmail}</p>
+                </div>
+              )}
               {contactPhone && (
                 <div>
-                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Contato</p>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Telefone</p>
                   <p className="text-sm">{contactPhone}</p>
                 </div>
               )}
@@ -403,9 +418,19 @@ export default function PortalNewRequest() {
                 </div>
 
                 {/* Contact info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Telefone / Ramal (opcional)</Label>
+                    <Label className="text-xs font-medium">E-mail</Label>
+                    <Input
+                      value={contactEmail}
+                      onChange={e => setContactEmail(e.target.value)}
+                      placeholder="email@exemplo.com"
+                      type="email"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Telefone / Ramal</Label>
                     <Input
                       value={contactPhone}
                       onChange={e => setContactPhone(e.target.value)}
@@ -414,7 +439,7 @@ export default function PortalNewRequest() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Melhor horário para atendimento</Label>
+                    <Label className="text-xs font-medium">Melhor horário</Label>
                     <Input
                       value={preferredTime}
                       onChange={e => setPreferredTime(e.target.value)}

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery, useTenantInsert } from '@/hooks/useTenantQuery';
 import { logAudit } from '@/lib/audit';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,10 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail, Phone } from 'lucide-react';
 
 export default function WorkOrderCreate() {
-  const { currentTenantId } = useAuth();
+  const { currentTenantId, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [title, setTitle] = useState('');
@@ -22,6 +22,15 @@ export default function WorkOrderCreate() {
   const [priority, setPriority] = useState<string>('media');
   const [categoryId, setCategoryId] = useState<string>('');
   const [unitId, setUnitId] = useState<string>('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+
+  // Auto-fill email from profile
+  useEffect(() => {
+    if (profile?.email && !contactEmail) {
+      setContactEmail(profile.email);
+    }
+  }, [profile?.email]);
 
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
@@ -30,6 +39,10 @@ export default function WorkOrderCreate() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const requesterContact: Record<string, string> = {};
+      if (contactPhone) requesterContact.phone = contactPhone;
+      if (contactEmail) requesterContact.email = contactEmail;
+
       const result = await insertMutation.mutateAsync({
         title,
         description,
@@ -37,6 +50,8 @@ export default function WorkOrderCreate() {
         category_id: categoryId || null,
         unit_id: unitId || null,
         code: '',
+        requester_user_id: user?.id || null,
+        requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
       await logAudit({
         entity: 'work_order',
@@ -112,6 +127,38 @@ export default function WorkOrderCreate() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Contact info */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Contato do Solicitante</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Mail className="h-3 w-3" /> E-mail
+                </Label>
+                <Input
+                  value={contactEmail}
+                  onChange={e => setContactEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  type="email"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Phone className="h-3 w-3" /> Telefone / Ramal
+                </Label>
+                <Input
+                  value={contactPhone}
+                  onChange={e => setContactPhone(e.target.value)}
+                  placeholder="Ex: (11) 99999-0000 ou ramal 302"
+                  className="h-9 text-sm"
+                />
               </div>
             </div>
 
