@@ -30,7 +30,7 @@ const SAVED_VIEWS: SavedView[] = [
 ];
 
 export default function PortalHome() {
-  const { memberships } = useAuth();
+  const { memberships, user } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -43,21 +43,63 @@ export default function PortalHome() {
 
   const tenantIds = memberships.map(m => m.tenant_id);
 
-  // Fetch OS from ALL user's departments
-  const { data: workOrders = [], isLoading } = useQuery({
-    queryKey: ['portal_work_orders', tenantIds],
+  // Get customer IDs linked to this user
+  const { data: myCustomerIds = [] } = useQuery({
+    queryKey: ['my_customer_ids', user?.id],
     queryFn: async () => {
-      if (tenantIds.length === 0) return [];
-      const { data, error } = await supabase
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id);
+      return (data || []).map((c: any) => c.id);
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch OS filtered by requester
+  const { data: workOrders = [], isLoading } = useQuery({
+    queryKey: ['portal_work_orders', tenantIds, user?.id, myCustomerIds],
+    queryFn: async () => {
+      if (tenantIds.length === 0 || !user?.id) return [];
+      
+      // Fetch WOs where requester_user_id = me OR requester_id is one of my linked customers
+      let allWOs: any[] = [];
+      
+      // 1) WOs where I'm the requester_user_id
+      const { data: byUser } = await supabase
         .from('work_orders')
         .select('*')
         .in('tenant_id', tenantIds)
+        .eq('requester_user_id', user.id)
         .is('deleted_at', null)
         .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      allWOs = byUser || [];
+
+      // 2) WOs where requester_id is one of my linked customers
+      if (myCustomerIds.length > 0) {
+        const { data: byCustomer } = await supabase
+          .from('work_orders')
+          .select('*')
+          .in('tenant_id', tenantIds)
+          .in('requester_id', myCustomerIds)
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false });
+        
+        // Merge without duplicates
+        const existingIds = new Set(allWOs.map((wo: any) => wo.id));
+        for (const wo of (byCustomer || [])) {
+          if (!existingIds.has(wo.id)) {
+            allWOs.push(wo);
+          }
+        }
+      }
+      
+      // Sort by updated_at desc
+      allWOs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      return allWOs;
     },
-    enabled: tenantIds.length > 0,
+    enabled: tenantIds.length > 0 && !!user?.id,
   });
 
   const getDeptName = (tenantId: string) => memberships.find(m => m.tenant_id === tenantId)?.tenant_name || '—';
