@@ -338,6 +338,12 @@ export default function TechWorkOrderDetail() {
                       {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{(wo.requester_contact as any).phone}</p>}
                       {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{(wo.requester_contact as any).email}</p>}
                     </>
+                  ) : (wo as any).requester_user_id ? (
+                    <>
+                      <p className="font-medium">{getName((wo as any).requester_user_id)}</p>
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{(wo.requester_contact as any).phone}</p>}
+                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Horário: {(wo.requester_contact as any).preferred_time}</p>}
+                    </>
                   ) : <p className="text-muted-foreground text-xs">Não informado</p>}
                 </CardContent>
               </Card>
@@ -450,7 +456,7 @@ export default function TechWorkOrderDetail() {
 
         {/* === ANEXOS === */}
         <TabsContent value="anexos" className="mt-3">
-          <WorkOrderAttachments workOrderId={id!} />
+          <WorkOrderAttachments workOrderId={id!} resolvedAt={wo.resolved_at} />
         </TabsContent>
 
         {/* === CUSTOS === */}
