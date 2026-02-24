@@ -16,11 +16,11 @@ const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'os:read' as const },
   { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read' as const },
   { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create' as const },
-  { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'os:read' as const },
-  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:manage' as const },
-  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:manage' as const },
+  { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' as const },
+  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' as const },
+  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' as const },
   { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' as const },
-  { label: 'Usuários', icon: Users, path: '/usuarios', permission: 'users:manage' as const },
+  { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' as const },
 ];
 
 const adminItems = [

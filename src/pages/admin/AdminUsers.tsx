@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -365,6 +366,7 @@ export default function AdminUsers() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="users">Usuários</TabsTrigger>
+          <TabsTrigger value="departments">Por Departamento</TabsTrigger>
           <TabsTrigger value="audit">Auditoria</TabsTrigger>
         </TabsList>
 
@@ -501,6 +503,79 @@ export default function AdminUsers() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="departments" className="space-y-4 mt-4">
+          {tenants.map(tenant => {
+            const tenantMembers = memberships.filter(m => m.tenant_id === tenant.id);
+            const activeMembers = tenantMembers.filter(m => m.is_active);
+            const roleBreakdown = activeMembers.reduce((acc, m) => {
+              acc[m.role] = (acc[m.role] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+
+            return (
+              <Card key={tenant.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">{tenant.name}</h3>
+                      <Badge variant="outline" className="text-xs">{activeMembers.length} membro(s)</Badge>
+                    </div>
+                  </div>
+
+                  {/* Role breakdown badges */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {Object.entries(roleBreakdown).map(([role, count]) => (
+                      <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs gap-1">
+                        <Shield className="h-2.5 w-2.5" />
+                        {roleLabels[role as keyof typeof roleLabels] || role}: {count}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Members list */}
+                  {activeMembers.length > 0 && (
+                    <div className="border border-border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
+                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Email</TableHead>
+                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[150px]">Papel</TableHead>
+                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tenantMembers.map(m => {
+                            const p = profiles.find(p => p.id === m.user_id);
+                            return (
+                              <TableRow key={m.id} className={!m.is_active ? 'opacity-50' : ''}>
+                                <TableCell className="text-sm font-medium">{p?.name || '—'}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{p?.email || '—'}</TableCell>
+                                <TableCell>
+                                  <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
+                                    <SelectTrigger className="h-7 text-xs w-[140px]"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <Switch checked={m.is_active} onCheckedChange={v => toggleMembershipActive.mutate({ id: m.id, is_active: v })} />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </TabsContent>
 
         <TabsContent value="audit" className="mt-4">
