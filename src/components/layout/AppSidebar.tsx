@@ -8,7 +8,7 @@ import { hasPermission } from '@/lib/permissions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
-  BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2, Gauge,
+  BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2, Gauge, ScrollText, KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -28,6 +28,7 @@ const adminItems = [
   { label: 'Painel Consolidado', icon: Gauge, path: '/admin' },
   { label: 'Departamentos', icon: Building2, path: '/admin/departamentos' },
   { label: 'Usuários & Acessos', icon: ShieldCheck, path: '/admin/usuarios' },
+  { label: 'Auditoria Global', icon: ScrollText, path: '/admin/auditoria' },
   { label: 'Configurações', icon: Settings2, path: '/admin/configuracoes' },
 ];
 
@@ -95,15 +96,19 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-2 mb-2">
+        <button
+          className="flex items-center gap-2 mb-2 w-full hover:bg-muted/30 rounded-md p-1 transition-colors"
+          onClick={() => navigate('/perfil')}
+        >
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
             {profile?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 text-left">
             <span className="text-sm font-medium truncate">{profile?.name || 'Usuário'}</span>
             <span className="text-xs text-muted-foreground truncate">{profile?.email}</span>
           </div>
-        </div>
+          <KeyRound className="h-3 w-3 text-muted-foreground" />
+        </button>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
           <LogOut className="h-4 w-4 mr-2" />
           Sair

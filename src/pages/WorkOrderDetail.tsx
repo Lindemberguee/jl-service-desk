@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
+import { logAudit } from '@/lib/audit';
 import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -76,6 +77,13 @@ export default function WorkOrderDetail() {
         tenant_id: currentTenantId!, work_order_id: id!,
         type: 'status_changed' as any, actor_user_id: user?.id,
         payload: { from: wo?.status, to: status },
+      });
+      await logAudit({
+        entity: 'work_order',
+        entityId: id,
+        action: 'work_order.status_changed',
+        tenantId: currentTenantId,
+        diff: { from: wo?.status, to: status },
       });
     },
     onSuccess: () => {
