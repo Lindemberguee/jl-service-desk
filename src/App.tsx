@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { RequesterLayout } from "@/components/layout/RequesterLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import WorkOrders from "@/pages/WorkOrders";
@@ -22,11 +23,35 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
+import PortalHome from "@/pages/portal/PortalHome";
+import PortalNewRequest from "@/pages/portal/PortalNewRequest";
+import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
+  const { user, loading, currentRole } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Solicitante and leitura roles get the simplified portal
+  if (currentRole === 'solicitante' || currentRole === 'leitura') {
+    return <Navigate to="/portal" replace />;
+  }
+
+  return <AppLayout />;
+}
+
+function ProtectedPortalRoutes() {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -39,11 +64,11 @@ function ProtectedRoutes() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  return <AppLayout />;
+  return <RequesterLayout />;
 }
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, currentRole } = useAuth();
 
   if (loading) {
     return (
@@ -53,7 +78,12 @@ function AuthGate() {
     );
   }
 
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) {
+    if (currentRole === 'solicitante' || currentRole === 'leitura') {
+      return <Navigate to="/portal" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
   return <Login />;
 }
 
@@ -66,6 +96,16 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<AuthGate />} />
+
+            {/* Requester Portal */}
+            <Route path="/portal" element={<ProtectedPortalRoutes />}>
+              <Route index element={<PortalHome />} />
+              <Route path="nova" element={<PortalNewRequest />} />
+              <Route path="os/:id" element={<PortalWorkOrderDetail />} />
+              <Route path="perfil" element={<ProfilePage />} />
+            </Route>
+
+            {/* Admin/Operational Layout */}
             <Route path="/" element={<ProtectedRoutes />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
@@ -85,6 +125,7 @@ const App = () => (
               <Route path="admin/configuracoes" element={<AdminSettings />} />
               <Route path="admin/auditoria" element={<AdminAuditLogs />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
