@@ -53,7 +53,7 @@ export default function TechWorkOrderDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('work_orders')
-        .select('*')
+        .select('*, requester:customers!work_orders_requester_id_fkey(name, phone, email)')
         .eq('id', id!)
         .is('deleted_at', null)
         .maybeSingle();
@@ -61,6 +61,16 @@ export default function TechWorkOrderDetail() {
       return data;
     },
     enabled: !!id,
+  });
+
+  // Fetch requester profile name when requester_user_id is set
+  const { data: requesterProfile } = useQuery({
+    queryKey: ['requester_profile', wo?.requester_user_id],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('name, email').eq('id', wo!.requester_user_id!).single();
+      return data;
+    },
+    enabled: !!wo?.requester_user_id,
   });
 
   const { data: events = [] } = useQuery({
@@ -346,15 +356,15 @@ export default function TechWorkOrderDetail() {
               <Card className="border-border shadow-none">
                 <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">Solicitante</CardTitle></CardHeader>
                 <CardContent className="text-sm space-y-1.5">
-                  {wo.requester_id ? (
+                  {wo.requester_id && (wo as any).requester ? (
                     <>
-                      <p className="font-medium">{getCust(wo.requester_id)}</p>
-                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{(wo.requester_contact as any).phone}</p>}
-                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{(wo.requester_contact as any).email}</p>}
+                      <p className="font-medium">{(wo as any).requester.name}</p>
+                      {((wo as any).requester.phone || (wo.requester_contact as any)?.phone) && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{(wo as any).requester.phone || (wo.requester_contact as any)?.phone}</p>}
+                      {((wo as any).requester.email || (wo.requester_contact as any)?.email) && <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{(wo as any).requester.email || (wo.requester_contact as any)?.email}</p>}
                     </>
-                  ) : (wo as any).requester_user_id ? (
+                  ) : wo.requester_user_id ? (
                     <>
-                      <p className="font-medium">{getName((wo as any).requester_user_id)}</p>
+                      <p className="font-medium">{requesterProfile?.name || getName(wo.requester_user_id)}</p>
                       {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{(wo.requester_contact as any).phone}</p>}
                       {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Horário: {(wo.requester_contact as any).preferred_time}</p>}
                     </>
