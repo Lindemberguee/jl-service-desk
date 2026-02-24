@@ -19,6 +19,8 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -75,11 +77,13 @@ const App = () => (
               <Route path="estoque" element={<Stock />} />
               <Route path="relatorios" element={<Reports />} />
               <Route path="usuarios" element={<UsersPage />} />
+              <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/departamentos" element={<AdminDepartments />} />
               <Route path="admin/usuarios" element={<AdminUsers />} />
               <Route path="admin/configuracoes" element={<AdminSettings />} />
+              <Route path="admin/auditoria" element={<AdminAuditLogs />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
