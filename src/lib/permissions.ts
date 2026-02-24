@@ -1,0 +1,82 @@
+export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'solicitante' | 'leitura';
+
+export type Permission =
+  | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage'
+  | 'assets:manage' | 'stock:manage' | 'users:manage' | 'reports:read' | 'settings:manage'
+  | 'cadastros:manage';
+
+const rolePermissions: Record<AppRole, Permission[]> = {
+  super_admin: [
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
+    'assets:manage', 'stock:manage', 'users:manage', 'reports:read', 'settings:manage', 'cadastros:manage',
+  ],
+  admin: [
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
+    'assets:manage', 'stock:manage', 'users:manage', 'reports:read', 'settings:manage', 'cadastros:manage',
+  ],
+  coordenador: [
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close',
+    'assets:manage', 'stock:manage', 'reports:read', 'cadastros:manage',
+  ],
+  tecnico: ['os:read', 'os:create', 'os:update', 'stock:manage'],
+  solicitante: ['os:read', 'os:create'],
+  leitura: ['os:read'],
+};
+
+export function getPermissionsForRole(role: AppRole): Permission[] {
+  return rolePermissions[role] || [];
+}
+
+export function hasPermission(role: AppRole, permission: Permission, overrides?: string[]): boolean {
+  if (overrides?.includes(permission)) return true;
+  return getPermissionsForRole(role).includes(permission);
+}
+
+export const roleLabels: Record<AppRole, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Administrador',
+  coordenador: 'Coordenador',
+  tecnico: 'Técnico',
+  solicitante: 'Solicitante',
+  leitura: 'Somente Leitura',
+};
+
+export const priorityLabels: Record<string, string> = {
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+  critica: 'Crítica',
+};
+
+export const priorityColors: Record<string, string> = {
+  baixa: 'bg-muted text-muted-foreground',
+  media: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  alta: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  critica: 'bg-destructive/10 text-destructive border-destructive/20',
+};
+
+export const statusLabels: Record<string, string> = {
+  aberta: 'Aberta',
+  triagem: 'Triagem',
+  em_execucao: 'Em Execução',
+  aguardando_peca: 'Aguard. Peça',
+  aguardando_solicitante: 'Aguard. Solicitante',
+  aguardando_terceiro: 'Aguard. Terceiro',
+  concluida: 'Concluída',
+  aprovada: 'Aprovada',
+  encerrada: 'Encerrada',
+  reaberta: 'Reaberta',
+};
+
+export const statusColors: Record<string, string> = {
+  aberta: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  triagem: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  em_execucao: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  aguardando_peca: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  aguardando_solicitante: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  aguardando_terceiro: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  concluida: 'bg-green-500/10 text-green-500 border-green-500/20',
+  aprovada: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  encerrada: 'bg-muted text-muted-foreground',
+  reaberta: 'bg-red-500/10 text-red-500 border-red-500/20',
+};
