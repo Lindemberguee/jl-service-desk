@@ -6,10 +6,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, Sun, Moon } from 'lucide-react';
+import { useDarkMode } from '@/hooks/useDarkMode';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function TopBar() {
   const { memberships, currentTenantId, switchTenant, currentRole } = useAuth();
+  const { isDark, toggle } = useDarkMode();
 
   return (
     <header className="flex h-12 items-center gap-3 border-b border-border px-4 bg-card">
@@ -20,10 +24,10 @@ export function TopBar() {
 
       {memberships.length > 1 && (
         <div className="flex items-center gap-2">
-          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+          <Building2 className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
           <Select value={currentTenantId || ''} onValueChange={switchTenant}>
-            <SelectTrigger className="w-[180px] h-8 text-xs border-border">
-              <SelectValue placeholder="Selecione o departamento" />
+            <SelectTrigger className="w-[140px] sm:w-[180px] h-8 text-xs border-border">
+              <SelectValue placeholder="Departamento" />
             </SelectTrigger>
             <SelectContent>
               {memberships.map(m => (
@@ -37,10 +41,21 @@ export function TopBar() {
       )}
 
       {currentRole && (
-        <Badge variant="outline" className="text-[11px] font-medium h-6 border-primary/20 text-primary bg-primary/5">
+        <Badge variant="outline" className="text-[11px] font-medium h-6 border-primary/20 text-primary bg-primary/5 hidden sm:flex">
           {roleLabels[currentRole] || currentRole}
         </Badge>
       )}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggle}>
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isDark ? 'Tema claro' : 'Tema escuro'}
+        </TooltipContent>
+      </Tooltip>
     </header>
   );
 }
