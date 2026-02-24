@@ -583,9 +583,6 @@ export default function WorkOrders() {
                   {statusLabels[wo.status]}
                 </Badge>
                 <SlaIndicator workOrder={wo} compact />
-                {wo.visibility === 'customer' && (
-                  <Badge variant="outline" className="text-[10px] h-5 bg-info/10 text-info border-info/20">Cliente</Badge>
-                )}
                 <span className="text-[10px] text-muted-foreground ml-auto">
                   {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
                 </span>

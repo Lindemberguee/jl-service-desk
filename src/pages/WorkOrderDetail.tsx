@@ -56,7 +56,7 @@ export default function WorkOrderDetail() {
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work_order', id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('work_orders').select('*').eq('id', id!).single();
+      const { data, error } = await supabase.from('work_orders').select('*').eq('id', id!).is('deleted_at', null).maybeSingle();
       if (error) throw error;
       return data;
     },

@@ -38,7 +38,7 @@ export default function PortalWorkOrderDetail() {
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work_order', id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('work_orders').select('*').eq('id', id!).single();
+      const { data, error } = await supabase.from('work_orders').select('*').eq('id', id!).is('deleted_at', null).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -94,6 +94,26 @@ export default function PortalWorkOrderDetail() {
       return data;
     },
     enabled: !!wo?.unit_id,
+  });
+
+  const { data: location } = useQuery({
+    queryKey: ['location', wo?.location_id],
+    queryFn: async () => {
+      if (!wo?.location_id) return null;
+      const { data } = await supabase.from('locations').select('name').eq('id', wo.location_id).single();
+      return data;
+    },
+    enabled: !!wo?.location_id,
+  });
+
+  const { data: asset } = useQuery({
+    queryKey: ['asset', wo?.asset_id],
+    queryFn: async () => {
+      if (!wo?.asset_id) return null;
+      const { data } = await supabase.from('assets').select('name, patrimony_code').eq('id', wo.asset_id).single();
+      return data;
+    },
+    enabled: !!wo?.asset_id,
   });
 
   const commentMutation = useMutation({
@@ -348,8 +368,20 @@ export default function PortalWorkOrderDetail() {
             )}
             {unit && (
               <div>
-                <span className="text-muted-foreground">Unidade / Local</span>
+                <span className="text-muted-foreground">Unidade</span>
                 <p className="font-medium">{unit.name}</p>
+              </div>
+            )}
+            {location && (
+              <div>
+                <span className="text-muted-foreground">Sala / Espaço</span>
+                <p className="font-medium">{location.name}</p>
+              </div>
+            )}
+            {asset && (
+              <div>
+                <span className="text-muted-foreground">Equipamento</span>
+                <p className="font-medium">{(asset as any).name}{(asset as any).patrimony_code ? ` (${(asset as any).patrimony_code})` : ''}</p>
               </div>
             )}
             {wo.assigned_to_id && (
@@ -362,6 +394,16 @@ export default function PortalWorkOrderDetail() {
               <div>
                 <span className="text-muted-foreground">Resolvida em</span>
                 <p className="font-medium">{new Date(wo.resolved_at).toLocaleString('pt-BR')}</p>
+              </div>
+            )}
+            {wo.tags && wo.tags.length > 0 && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Tags</span>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {wo.tags.map((tag: string) => (
+                    <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
+                  ))}
+                </div>
               </div>
             )}
           </div>
