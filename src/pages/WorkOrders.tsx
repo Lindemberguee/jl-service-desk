@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download } from 'lucide-react';
+import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -30,12 +30,33 @@ type SortDir = 'asc' | 'desc';
 const PRIORITY_ORDER: Record<string, number> = { critica: 0, alta: 1, media: 2, baixa: 3 };
 const PAGE_SIZES = [10, 25, 50, 100];
 
+interface SavedView {
+  id: string;
+  label: string;
+  icon: typeof AlertTriangle;
+  filters: Partial<{
+    status: string; priority: string; assigned: string; sla: string;
+    category: string; unit: string; visibility: string;
+  }>;
+}
+
+const SAVED_VIEWS: SavedView[] = [
+  { id: 'minhas', label: 'Minhas OS', icon: UserCheck, filters: { assigned: 'me' } },
+  { id: 'criticas', label: 'Críticas Atrasadas', icon: AlertTriangle, filters: { priority: 'critica', sla: 'overdue' } },
+  { id: 'aguardando_peca', label: 'Aguard. Peça', icon: Clock, filters: { status: 'aguardando_peca' } },
+  { id: 'em_execucao', label: 'Em Execução', icon: Play, filters: { status: 'em_execucao' } },
+  { id: 'abertas', label: 'Abertas', icon: ClipboardList, filters: { status: 'aberta' } },
+];
+
 export default function WorkOrders() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { currentTenantId, currentRole, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  // Saved view
+  const [activeView, setActiveView] = useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -49,6 +70,26 @@ export default function WorkOrders() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  const applyView = (view: SavedView) => {
+    if (activeView === view.id) {
+      // Deselect view = clear all
+      setActiveView(null);
+      setStatusFilter('all'); setPriorityFilter('all'); setAssignedFilter('all');
+      setSlaFilter('all'); setCategoryFilter('all'); setUnitFilter('all');
+      setVisibilityFilter('all');
+    } else {
+      setActiveView(view.id);
+      setStatusFilter(view.filters.status || 'all');
+      setPriorityFilter(view.filters.priority || 'all');
+      setAssignedFilter(view.filters.assigned || 'all');
+      setSlaFilter(view.filters.sla || 'all');
+      setCategoryFilter(view.filters.category || 'all');
+      setUnitFilter(view.filters.unit || 'all');
+      setVisibilityFilter(view.filters.visibility || 'all');
+    }
+    setPage(1);
+  };
   const debouncedSearch = useDebounce(search, 300);
 
   // Sorting
@@ -270,6 +311,22 @@ export default function WorkOrders() {
             <span className="sm:hidden">Nova</span>
           </Button>
         </div>
+      </div>
+
+      {/* Saved Views */}
+      <div className="flex gap-1.5 flex-wrap">
+        {SAVED_VIEWS.map(view => (
+          <Button
+            key={view.id}
+            variant={activeView === view.id ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => applyView(view)}
+          >
+            <view.icon className="h-3 w-3" />
+            {view.label}
+          </Button>
+        ))}
       </div>
 
       {/* Filters Bar */}

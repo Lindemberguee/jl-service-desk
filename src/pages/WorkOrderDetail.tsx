@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
+import { WorkOrderCosts } from '@/components/WorkOrderCosts';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
@@ -541,22 +542,7 @@ export default function WorkOrderDetail() {
         </TabsContent>
 
         <TabsContent value="custos" className="mt-3">
-          <Card className="border-border shadow-none">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Resumo de Custos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center mb-4">
-                <CostBlock label="Mão de Obra" value={wo.labor_cost} />
-                <CostBlock label="Peças" value={wo.parts_cost} />
-                <CostBlock label="Total" value={wo.total_cost} highlight />
-              </div>
-              <Separator className="my-4" />
-              <p className="text-xs text-muted-foreground text-center">
-                Lançamento detalhado de custos será implementado em breve.
-              </p>
-            </CardContent>
-          </Card>
+          <WorkOrderCosts workOrder={wo} canManage={!!canUpdate} />
         </TabsContent>
       </Tabs>
     </div>
@@ -580,17 +566,6 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
     <div className="flex justify-between">
       <span className="text-muted-foreground">{label}</span>
       <span className={mono ? 'font-mono text-[11px]' : ''}>{value}</span>
-    </div>
-  );
-}
-
-function CostBlock({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className={`text-lg font-semibold ${highlight ? 'text-primary' : ''}`}>
-        R$ {Number(value || 0).toFixed(2)}
-      </p>
     </div>
   );
 }
