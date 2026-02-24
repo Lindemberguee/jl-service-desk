@@ -26,6 +26,7 @@ import NotFound from "@/pages/NotFound";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
+import PortalProfile from "@/pages/portal/PortalProfile";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -102,7 +103,7 @@ const App = () => (
               <Route index element={<PortalHome />} />
               <Route path="nova" element={<PortalNewRequest />} />
               <Route path="os/:id" element={<PortalWorkOrderDetail />} />
-              <Route path="perfil" element={<ProfilePage />} />
+              <Route path="perfil" element={<PortalProfile />} />
             </Route>
 
             {/* Admin/Operational Layout */}

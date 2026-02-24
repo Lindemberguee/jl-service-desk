@@ -7,13 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/lib/permissions';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
-import { ArrowLeft, Send, Loader2, Clock, MessageSquare, CheckSquare, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft, Send, Loader2, Clock, MessageSquare, CheckSquare, AlertTriangle,
+  Paperclip, Download, Star, RefreshCw, ThumbsUp, X, FileText
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 export default function PortalWorkOrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +28,12 @@ export default function PortalWorkOrderDetail() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [showReopen, setShowReopen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work_order', id],
@@ -40,8 +52,18 @@ export default function PortalWorkOrderDetail() {
         .eq('work_order_id', id!)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      // Filter out internal comments for the requester portal
       return (data || []).filter((e: any) => e.type !== 'comment_internal');
+    },
+    enabled: !!id,
+  });
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ['work_order_attachments', id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('work_order_attachments').select('*')
+        .eq('work_order_id', id!).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!id,
   });
@@ -52,6 +74,26 @@ export default function PortalWorkOrderDetail() {
       const { data } = await supabase.from('profiles').select('id, name');
       return data || [];
     },
+  });
+
+  const { data: category } = useQuery({
+    queryKey: ['category', wo?.category_id],
+    queryFn: async () => {
+      if (!wo?.category_id) return null;
+      const { data } = await supabase.from('categories').select('name').eq('id', wo.category_id).single();
+      return data;
+    },
+    enabled: !!wo?.category_id,
+  });
+
+  const { data: unit } = useQuery({
+    queryKey: ['unit', wo?.unit_id],
+    queryFn: async () => {
+      if (!wo?.unit_id) return null;
+      const { data } = await supabase.from('units').select('name').eq('id', wo.unit_id).single();
+      return data;
+    },
+    enabled: !!wo?.unit_id,
   });
 
   const commentMutation = useMutation({
@@ -67,9 +109,87 @@ export default function PortalWorkOrderDetail() {
     onSuccess: () => {
       setComment('');
       qc.invalidateQueries({ queryKey: ['work_order_events', id] });
-      toast({ title: 'Comentário enviado!' });
+      toast({ title: 'Mensagem enviada!' });
     },
   });
+
+  const approveAndCloseMutation = useMutation({
+    mutationFn: async () => {
+      // Add rating event
+      if (rating > 0) {
+        await supabase.from('work_order_events').insert({
+          tenant_id: currentTenantId!,
+          work_order_id: id!,
+          type: 'closed' as any,
+          actor_user_id: user?.id,
+          payload: { rating, comment: ratingComment, action: 'approved_by_requester' },
+        });
+      }
+      // Update status to encerrada
+      await supabase.from('work_orders').update({
+        status: 'encerrada' as any,
+        closed_at: new Date().toISOString(),
+      }).eq('id', id!);
+    },
+    onSuccess: () => {
+      setShowRating(false);
+      qc.invalidateQueries({ queryKey: ['work_order', id] });
+      qc.invalidateQueries({ queryKey: ['work_order_events', id] });
+      toast({ title: 'Solicitação encerrada com sucesso!' });
+    },
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: async () => {
+      await supabase.from('work_order_events').insert({
+        tenant_id: currentTenantId!,
+        work_order_id: id!,
+        type: 'reopened' as any,
+        actor_user_id: user?.id,
+        payload: { reason: reopenReason },
+      });
+      await supabase.from('work_orders').update({
+        status: 'reaberta' as any,
+        closed_at: null,
+        resolved_at: null,
+      }).eq('id', id!);
+    },
+    onSuccess: () => {
+      setShowReopen(false);
+      setReopenReason('');
+      qc.invalidateQueries({ queryKey: ['work_order', id] });
+      qc.invalidateQueries({ queryKey: ['work_order_events', id] });
+      toast({ title: 'Solicitação reaberta.' });
+    },
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length || !id) return;
+    const file = e.target.files[0];
+    const path = `${currentTenantId}/${id}/${Date.now()}_${file.name}`;
+    const { error: uploadErr } = await supabase.storage.from('work-order-attachments').upload(path, file);
+    if (uploadErr) {
+      toast({ title: 'Erro no upload', description: uploadErr.message, variant: 'destructive' });
+      return;
+    }
+    await supabase.from('work_order_attachments').insert({
+      tenant_id: currentTenantId!,
+      work_order_id: id,
+      file_name: file.name,
+      storage_key: path,
+      mime_type: file.type,
+      size: file.size,
+      uploaded_by: user?.id,
+    });
+    qc.invalidateQueries({ queryKey: ['work_order_attachments', id] });
+    toast({ title: 'Anexo enviado!' });
+  };
+
+  const downloadAttachment = async (att: any) => {
+    if (!att.storage_key) return;
+    const { data } = await supabase.storage.from('work-order-attachments').createSignedUrl(att.storage_key, 300);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
 
   const getProfileName = (userId: string | null) => {
     if (!userId) return null;
@@ -95,19 +215,28 @@ export default function PortalWorkOrderDetail() {
   }
 
   const sla = calculateSlaStatus(wo);
-  const isClosed = ['concluida', 'aprovada', 'encerrada'].includes(wo.status);
+  const isConcluida = wo.status === 'concluida';
+  const isClosed = ['aprovada', 'encerrada'].includes(wo.status);
+  const canApprove = isConcluida;
+  const canReopen = isConcluida || isClosed;
+  const canInteract = !isClosed;
+  const showCosts = (wo.total_cost || 0) > 0;
 
   const eventIcons: Record<string, any> = {
     created: Clock, status_changed: Clock, comment_public: MessageSquare,
-    resolved: CheckSquare, closed: CheckSquare, reopened: Clock,
-    assigned: Clock, attachment_added: Clock,
-    time_started: Clock, time_paused: Clock, time_resumed: Clock,
+    resolved: CheckSquare, closed: CheckSquare, reopened: RefreshCw,
+    assigned: Clock, attachment_added: Paperclip,
   };
   const eventLabels: Record<string, string> = {
     created: 'Solicitação criada', status_changed: 'Status atualizado',
-    comment_public: 'Comentário', resolved: 'Resolvida',
+    comment_public: 'Mensagem', resolved: 'Resolvida',
     closed: 'Encerrada', reopened: 'Reaberta', assigned: 'Atribuída',
+    attachment_added: 'Anexo adicionado',
   };
+
+  // Progress bar steps
+  const progressSteps = ['aberta', 'em_execucao', 'concluida', 'encerrada'];
+  const currentStepIndex = progressSteps.indexOf(wo.status);
 
   return (
     <div className="space-y-4">
@@ -135,15 +264,15 @@ export default function PortalWorkOrderDetail() {
       <Card className="border-border shadow-none">
         <CardContent className="p-4">
           <div className="flex items-center gap-1 overflow-x-auto pb-1">
-            {['aberta', 'em_execucao', 'concluida', 'encerrada'].map((step, idx, arr) => {
-              const stepOrder = arr.indexOf(wo.status);
-              const thisOrder = idx;
+            {progressSteps.map((step, idx, arr) => {
               const isActive = wo.status === step;
-              const isDone = stepOrder > thisOrder || isClosed;
+              const isDone = currentStepIndex > idx || isClosed;
+              // Handle intermediate statuses
+              const isIntermediate = !progressSteps.includes(wo.status) && idx === 0;
               return (
                 <div key={step} className="flex items-center gap-1 shrink-0">
                   <div className={`h-7 px-3 rounded-full text-[11px] font-medium flex items-center ${
-                    isActive ? 'bg-primary text-primary-foreground' :
+                    isActive || isIntermediate ? 'bg-primary text-primary-foreground' :
                     isDone ? 'bg-primary/10 text-primary' :
                     'bg-muted text-muted-foreground'
                   }`}>
@@ -154,52 +283,49 @@ export default function PortalWorkOrderDetail() {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Description */}
-      <Card className="border-border shadow-none">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Descrição</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {wo.description ? (
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{wo.description}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">Sem descrição.</p>
+          {/* Show actual status if intermediate */}
+          {!progressSteps.includes(wo.status) && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Status atual: <Badge variant="outline" className={`text-[10px] ${statusColors[wo.status]}`}>{statusLabels[wo.status]}</Badge>
+            </p>
           )}
         </CardContent>
       </Card>
 
-      {/* SLA info if available */}
-      {(wo.response_due_at || wo.resolve_due_at) && (
+      {/* Action bar */}
+      {(canApprove || canReopen) && (
+        <div className="flex gap-2 flex-wrap">
+          {canApprove && (
+            <Button size="sm" className="gap-1.5" onClick={() => setShowRating(true)}>
+              <ThumbsUp className="h-3.5 w-3.5" /> Aprovar e Encerrar
+            </Button>
+          )}
+          {canReopen && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowReopen(true)}>
+              <RefreshCw className="h-3.5 w-3.5" /> Reabrir
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Description */}
+      {wo.description && (
         <Card className="border-border shadow-none">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> Prazo
-            </CardTitle>
+            <CardTitle className="text-sm font-semibold">Descrição</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {wo.resolve_due_at && (
-                <div>
-                  <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Previsão de solução</p>
-                  <p className="text-sm font-medium">{new Date(wo.resolve_due_at).toLocaleString('pt-BR')}</p>
-                  {sla.resolveRemainingMs !== null && !isClosed && (
-                    <p className={`text-xs mt-0.5 ${sla.resolveOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
-                      {sla.resolveOverdue ? '⚠ Atrasada' : `Restante: ${formatRemainingTime(sla.resolveRemainingMs)}`}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{wo.description}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Info */}
+      {/* Info grid */}
       <Card className="border-border shadow-none">
-        <CardContent className="pt-5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Informações</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <span className="text-muted-foreground">Criada em</span>
@@ -209,6 +335,24 @@ export default function PortalWorkOrderDetail() {
               <span className="text-muted-foreground">Última atualização</span>
               <p className="font-medium">{new Date(wo.updated_at).toLocaleString('pt-BR')}</p>
             </div>
+            {category && (
+              <div>
+                <span className="text-muted-foreground">Categoria</span>
+                <p className="font-medium">{category.name}</p>
+              </div>
+            )}
+            {unit && (
+              <div>
+                <span className="text-muted-foreground">Unidade / Local</span>
+                <p className="font-medium">{unit.name}</p>
+              </div>
+            )}
+            {wo.assigned_to_id && (
+              <div>
+                <span className="text-muted-foreground">Responsável</span>
+                <p className="font-medium">{getProfileName(wo.assigned_to_id) || 'Atribuído'}</p>
+              </div>
+            )}
             {wo.resolved_at && (
               <div>
                 <span className="text-muted-foreground">Resolvida em</span>
@@ -219,6 +363,101 @@ export default function PortalWorkOrderDetail() {
         </CardContent>
       </Card>
 
+      {/* SLA */}
+      {(wo.response_due_at || wo.resolve_due_at) && (
+        <Card className="border-border shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Prazos (SLA)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              {wo.response_due_at && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Resposta até</p>
+                  <p className="text-sm font-medium">{new Date(wo.response_due_at).toLocaleString('pt-BR')}</p>
+                  {sla.responseRemainingMs !== null && !isClosed && (
+                    <p className={`text-xs mt-0.5 ${sla.responseOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                      {sla.responseOverdue ? '⚠ Atrasada' : formatRemainingTime(sla.responseRemainingMs)}
+                    </p>
+                  )}
+                </div>
+              )}
+              {wo.resolve_due_at && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Solução até</p>
+                  <p className="text-sm font-medium">{new Date(wo.resolve_due_at).toLocaleString('pt-BR')}</p>
+                  {sla.resolveRemainingMs !== null && !isClosed && (
+                    <p className={`text-xs mt-0.5 ${sla.resolveOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                      {sla.resolveOverdue ? '⚠ Atrasada' : formatRemainingTime(sla.resolveRemainingMs)}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Costs (if enabled) */}
+      {showCosts && (
+        <Card className="border-border shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Custos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3 text-xs text-center">
+              <div>
+                <p className="text-muted-foreground">Mão de obra</p>
+                <p className="text-sm font-bold">R$ {Number(wo.labor_cost || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Materiais</p>
+                <p className="text-sm font-bold">R$ {Number(wo.parts_cost || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Total</p>
+                <p className="text-sm font-bold text-primary">R$ {Number(wo.total_cost || 0).toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Attachments */}
+      <Card className="border-border shadow-none">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Anexos ({attachments.length})</CardTitle>
+          {canInteract && (
+            <>
+              <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" onChange={handleFileUpload} />
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => fileInputRef.current?.click()}>
+                <Paperclip className="h-3 w-3" /> Anexar
+              </Button>
+            </>
+          )}
+        </CardHeader>
+        <CardContent>
+          {attachments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum anexo.</p>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((att: any) => (
+                <div key={att.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-xs">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate flex-1">{att.file_name}</span>
+                  <span className="text-muted-foreground shrink-0">{att.size ? `${(att.size / 1024).toFixed(0)}KB` : ''}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => downloadAttachment(att)}>
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Timeline / Comments */}
       <Card className="border-border shadow-none">
         <CardHeader className="pb-3">
@@ -226,7 +465,7 @@ export default function PortalWorkOrderDetail() {
         </CardHeader>
         <CardContent>
           {/* Comment input */}
-          {!isClosed && (
+          {canInteract && (
             <div className="mb-4 pb-4 border-b border-border">
               <div className="flex gap-2">
                 <Textarea
@@ -283,15 +522,22 @@ export default function PortalWorkOrderDetail() {
                         <p className="text-sm mt-1 bg-muted/50 rounded-md p-2">{payload.text}</p>
                       )}
                       {payload?.from && payload?.to && (
-                        <p className="text-[11px] text-muted-foreground mt-1">
-                          <Badge variant="outline" className={`text-[10px] mr-1 ${statusColors[payload.from] || ''}`}>
+                        <div className="flex items-center gap-1 mt-1 text-[11px]">
+                          <Badge variant="outline" className={`text-[10px] ${statusColors[payload.from] || ''}`}>
                             {statusLabels[payload.from] || payload.from}
                           </Badge>
-                          →
-                          <Badge variant="outline" className={`text-[10px] ml-1 ${statusColors[payload.to] || ''}`}>
+                          <span>→</span>
+                          <Badge variant="outline" className={`text-[10px] ${statusColors[payload.to] || ''}`}>
                             {statusLabels[payload.to] || payload.to}
                           </Badge>
-                        </p>
+                        </div>
+                      )}
+                      {payload?.rating && (
+                        <div className="flex items-center gap-1 mt-1">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <Star key={s} className={`h-3.5 w-3.5 ${s <= payload.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -301,6 +547,70 @@ export default function PortalWorkOrderDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Rating Dialog */}
+      <Dialog open={showRating} onOpenChange={setShowRating}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Avaliar e Encerrar</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs font-medium mb-2 block">Como foi o atendimento?</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setRating(s)} className="p-1">
+                    <Star className={`h-7 w-7 transition-colors ${s <= rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium">Comentário (opcional)</Label>
+              <Textarea
+                value={ratingComment}
+                onChange={e => setRatingComment(e.target.value)}
+                placeholder="Conte como foi a experiência..."
+                rows={3}
+                className="text-sm mt-1.5"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowRating(false)}>Cancelar</Button>
+            <Button size="sm" onClick={() => approveAndCloseMutation.mutate()} disabled={approveAndCloseMutation.isPending}>
+              {approveAndCloseMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Encerrar OS
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reopen Dialog */}
+      <Dialog open={showReopen} onOpenChange={setShowReopen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reabrir Solicitação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label className="text-xs font-medium">Motivo da reabertura *</Label>
+            <Textarea
+              value={reopenReason}
+              onChange={e => setReopenReason(e.target.value)}
+              placeholder="Explique por que o problema não foi resolvido..."
+              rows={3}
+              className="text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowReopen(false)}>Cancelar</Button>
+            <Button size="sm" disabled={!reopenReason.trim() || reopenMutation.isPending} onClick={() => reopenMutation.mutate()}>
+              {reopenMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Reabrir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
