@@ -13,12 +13,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList } from 'lucide-react';
+import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
 import { useToast } from '@/hooks/use-toast';
 import { calculateSlaStatus } from '@/lib/sla';
 import { format } from 'date-fns';
@@ -67,6 +68,7 @@ export default function WorkOrders() {
   const [assignedFilter, setAssignedFilter] = useState<string>('all');
   const [slaFilter, setSlaFilter] = useState<string>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -103,10 +105,11 @@ export default function WorkOrders() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Data
-  const { data: workOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
-  const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
-  const { data: units = [] } = useTenantQuery<any>('units', 'units');
+  // Data — fetch work orders from ALL tenants
+  const { memberships } = useAuth();
+  const { data: workOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
+  const { data: categories = [] } = useAllTenantsQuery<any>('categories_all', 'categories');
+  const { data: units = [] } = useAllTenantsQuery<any>('units_all', 'units');
   const { data: profiles = [] } = useQuery({
     queryKey: ['profiles_list'],
     queryFn: async () => {
@@ -114,7 +117,9 @@ export default function WorkOrders() {
       return data || [];
     },
   });
-  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
+  const { data: customers = [] } = useAllTenantsQuery<any>('customers_all', 'customers');
+
+  const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
   const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
@@ -122,6 +127,7 @@ export default function WorkOrders() {
   // Filter + Sort + Paginate
   const filtered = useMemo(() => {
     let result = workOrders.filter((wo: any) => wo.deleted_at === null || wo.deleted_at === undefined).filter((wo: any) => {
+      if (deptFilter !== 'all' && wo.tenant_id !== deptFilter) return false;
       if (statusFilter !== 'all' && wo.status !== statusFilter) return false;
       if (priorityFilter !== 'all' && wo.priority !== priorityFilter) return false;
       if (categoryFilter !== 'all' && wo.category_id !== categoryFilter) return false;
@@ -170,7 +176,7 @@ export default function WorkOrders() {
     });
 
     return result;
-  }, [workOrders, statusFilter, priorityFilter, categoryFilter, unitFilter, visibilityFilter, assignedFilter, slaFilter, dateFrom, dateTo, debouncedSearch, sortField, sortDir, user?.id]);
+  }, [workOrders, deptFilter, statusFilter, priorityFilter, categoryFilter, unitFilter, visibilityFilter, assignedFilter, slaFilter, dateFrom, dateTo, debouncedSearch, sortField, sortDir, user?.id]);
 
   const totalCount = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -220,6 +226,7 @@ export default function WorkOrders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work_orders'] });
+      qc.invalidateQueries({ queryKey: ['work_orders_all'] });
       toast({ title: 'Status atualizado' });
     },
   });
@@ -233,6 +240,7 @@ export default function WorkOrders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work_orders'] });
+      qc.invalidateQueries({ queryKey: ['work_orders_all'] });
       setSelectedIds(new Set());
       toast({ title: 'OS atribuída(s) com sucesso' });
     },
@@ -247,6 +255,7 @@ export default function WorkOrders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work_orders'] });
+      qc.invalidateQueries({ queryKey: ['work_orders_all'] });
       setSelectedIds(new Set());
       toast({ title: 'Status atualizado em lote' });
     },
@@ -273,6 +282,7 @@ export default function WorkOrders() {
 
   // Active filters
   const activeFilters = [
+    deptFilter !== 'all' && { key: 'dept', label: `Depto: ${tenantMap[deptFilter] || ''}`, clear: () => { setDeptFilter('all'); resetPage(); } },
     statusFilter !== 'all' && { key: 'status', label: `Status: ${statusLabels[statusFilter]}`, clear: () => { setStatusFilter('all'); resetPage(); } },
     priorityFilter !== 'all' && { key: 'priority', label: `Prioridade: ${priorityLabels[priorityFilter]}`, clear: () => { setPriorityFilter('all'); resetPage(); } },
     categoryFilter !== 'all' && { key: 'category', label: `Categoria: ${categories.find((c: any) => c.id === categoryFilter)?.name || ''}`, clear: () => { setCategoryFilter('all'); resetPage(); } },
@@ -372,6 +382,20 @@ export default function WorkOrders() {
 
         {/* Basic filters - always visible */}
         <div className="flex gap-2 flex-wrap">
+          {memberships.length > 1 && (
+            <Select value={deptFilter} onValueChange={v => { setDeptFilter(v); resetPage(); }}>
+              <SelectTrigger className="w-[160px] h-8 text-xs">
+                <Building2 className="h-3 w-3 mr-1 shrink-0" />
+                <SelectValue placeholder="Departamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Deptos</SelectItem>
+                {memberships.map(m => (
+                  <SelectItem key={m.tenant_id} value={m.tenant_id}>{m.tenant_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); resetPage(); }}>
             <SelectTrigger className="w-[140px] h-8 text-xs">
               <SelectValue placeholder="Status" />
@@ -490,7 +514,7 @@ export default function WorkOrders() {
           <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => {
             setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all');
             setUnitFilter('all'); setAssignedFilter('all'); setSlaFilter('all');
-            setVisibilityFilter('all'); setDateFrom(undefined); setDateTo(undefined);
+            setVisibilityFilter('all'); setDeptFilter('all'); setDateFrom(undefined); setDateTo(undefined);
             setSearch(''); resetPage();
           }}>
             Limpar todos
@@ -564,8 +588,13 @@ export default function WorkOrders() {
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                    {memberships.length > 1 && (
+                      <Badge variant="secondary" className="text-[9px] h-4">
+                        <Building2 className="h-2.5 w-2.5 mr-0.5" />{tenantMap[wo.tenant_id] || ''}
+                      </Badge>
+                    )}
                     {wo.visibility === 'customer' && (
                       <Badge variant="outline" className="text-[9px] h-4 bg-info/10 text-info border-info/20">Cliente</Badge>
                     )}
@@ -613,6 +642,9 @@ export default function WorkOrders() {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px] cursor-pointer select-none" onClick={() => handleSort('status')}>
                   <span className="flex items-center">Status <SortIcon field="status" /></span>
                 </TableHead>
+                {memberships.length > 1 && (
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Depto</TableHead>
+                )}
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Responsável</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Solicitante</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">SLA</TableHead>
@@ -642,6 +674,11 @@ export default function WorkOrders() {
                       {statusLabels[wo.status]}
                     </Badge>
                   </TableCell>
+                  {memberships.length > 1 && (
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
+                      {tenantMap[wo.tenant_id] || '—'}
+                    </TableCell>
+                  )}
                   <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
                     {canAssign ? (
                       <DropdownMenu>
