@@ -11,9 +11,11 @@ import { Search, Plus, X, Filter, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -43,18 +45,19 @@ export default function WorkOrders() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Ordens de Serviço</h1>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Ordens de Serviço</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{filtered.length} registro(s)</p>
         </div>
         <Button size="sm" onClick={() => navigate('/os/nova')} className="h-8 gap-1.5">
           <Plus className="h-3.5 w-3.5" />
-          Nova OS
+          <span className="hidden sm:inline">Nova OS</span>
+          <span className="sm:hidden">Nova</span>
         </Button>
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col sm:flex-row gap-2 bg-card border border-border rounded-md p-3">
-        <div className="relative flex-1">
+      <div className="bg-card border border-border rounded-md p-3 space-y-2">
+        <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar por código ou título..."
@@ -63,28 +66,30 @@ export default function WorkOrders() {
             className="pl-8 h-8 text-sm"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px] h-8 text-xs">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Status</SelectItem>
-            {Object.entries(statusLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[160px] h-8 text-xs">
-            <SelectValue placeholder="Prioridade" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas Prioridades</SelectItem>
-            {Object.entries(priorityLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="flex-1 h-8 text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Status</SelectItem>
+              {Object.entries(statusLabels).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="flex-1 h-8 text-xs">
+              <SelectValue placeholder="Prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Prioridades</SelectItem>
+              {Object.entries(priorityLabels).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {activeFilters.length > 0 && (
@@ -98,10 +103,10 @@ export default function WorkOrders() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Content */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full rounded-md" />)}
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-card border border-border rounded-md py-16 text-center text-muted-foreground">
@@ -109,7 +114,39 @@ export default function WorkOrders() {
           <p className="text-sm font-medium">Nenhuma OS encontrada</p>
           <p className="text-xs mt-1">Ajuste os filtros ou crie uma nova OS.</p>
         </div>
+      ) : isMobile ? (
+        /* Mobile: Card list */
+        <div className="space-y-2">
+          {filtered.map((wo: any) => (
+            <div
+              key={wo.id}
+              className="bg-card border border-border rounded-md p-3 cursor-pointer active:bg-muted/50 transition-colors"
+              onClick={() => navigate(`/os/${wo.id}`)}
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                  <p className="text-sm font-medium truncate mt-0.5">{wo.title}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
+                  {priorityLabels[wo.priority]}
+                </Badge>
+                <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                  {statusLabels[wo.status]}
+                </Badge>
+                <SlaIndicator workOrder={wo} compact />
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {new Date(wo.created_at).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
+        /* Desktop: Table */
         <div className="bg-card border border-border rounded-md overflow-hidden">
           <Table>
             <TableHeader>
