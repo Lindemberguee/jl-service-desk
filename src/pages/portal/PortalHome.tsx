@@ -14,7 +14,7 @@ import { calculateSlaStatus } from '@/lib/sla';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Search, Plus, ChevronRight, ClipboardList, Clock, CheckCircle2,
-  AlertTriangle, Hourglass, Bell, Filter, X
+  AlertTriangle, Hourglass, Bell, Filter, X, Building2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,31 +30,37 @@ const SAVED_VIEWS: SavedView[] = [
 ];
 
 export default function PortalHome() {
-  const { currentTenantId } = useAuth();
+  const { memberships } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState('all');
   const [slaOnlyFilter, setSlaOnlyFilter] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
 
+  const tenantIds = memberships.map(m => m.tenant_id);
+
+  // Fetch OS from ALL user's departments
   const { data: workOrders = [], isLoading } = useQuery({
-    queryKey: ['portal_work_orders', currentTenantId],
+    queryKey: ['portal_work_orders', tenantIds],
     queryFn: async () => {
-      if (!currentTenantId) return [];
+      if (tenantIds.length === 0) return [];
       const { data, error } = await supabase
         .from('work_orders')
         .select('*')
-        .eq('tenant_id', currentTenantId)
+        .in('tenant_id', tenantIds)
         .is('deleted_at', null)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!currentTenantId,
+    enabled: tenantIds.length > 0,
   });
+
+  const getDeptName = (tenantId: string) => memberships.find(m => m.tenant_id === tenantId)?.tenant_name || '—';
 
   const applyView = (view: SavedView) => {
     setStatusFilter(view.status);
@@ -68,22 +74,23 @@ export default function PortalHome() {
     setStatusFilter('all');
     setPriorityFilter('all');
     setPeriodFilter('all');
+    setDeptFilter('all');
     setSlaOnlyFilter(false);
     setSearch('');
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || periodFilter !== 'all' || slaOnlyFilter;
+  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || periodFilter !== 'all' || deptFilter !== 'all' || slaOnlyFilter;
 
   const filtered = useMemo(() => {
     return workOrders.filter((wo: any) => {
+      // Dept filter
+      if (deptFilter !== 'all' && wo.tenant_id !== deptFilter) return false;
       // Status filter
       if (statusFilter === 'open' && !OPEN_STATUSES.includes(wo.status)) return false;
       if (statusFilter === 'closed' && !CLOSED_STATUSES.includes(wo.status)) return false;
       if (statusFilter !== 'all' && statusFilter !== 'open' && statusFilter !== 'closed' && wo.status !== statusFilter) return false;
-
       // Priority filter
       if (priorityFilter !== 'all' && wo.priority !== priorityFilter) return false;
-
       // Period filter
       if (periodFilter !== 'all') {
         const days = parseInt(periodFilter);
@@ -91,13 +98,11 @@ export default function PortalHome() {
         cutoff.setDate(cutoff.getDate() - days);
         if (new Date(wo.created_at) < cutoff) return false;
       }
-
       // SLA overdue only
       if (slaOnlyFilter) {
         const sla = calculateSlaStatus(wo);
         if (!sla.responseOverdue && !sla.resolveOverdue) return false;
       }
-
       // Search
       if (debouncedSearch) {
         const s = debouncedSearch.toLowerCase();
@@ -105,7 +110,7 @@ export default function PortalHome() {
       }
       return true;
     });
-  }, [workOrders, statusFilter, priorityFilter, periodFilter, slaOnlyFilter, debouncedSearch]);
+  }, [workOrders, statusFilter, priorityFilter, periodFilter, deptFilter, slaOnlyFilter, debouncedSearch]);
 
   const openCount = workOrders.filter((wo: any) => OPEN_STATUSES.includes(wo.status)).length;
   const closedCount = workOrders.filter((wo: any) => CLOSED_STATUSES.includes(wo.status)).length;
@@ -220,7 +225,19 @@ export default function PortalHome() {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 animate-fade-in">
+            {/* Department filter */}
+            {memberships.length > 1 && (
+              <Select value={deptFilter} onValueChange={setDeptFilter}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Departamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos departamentos</SelectItem>
+                  {memberships.map(m => (
+                    <SelectItem key={m.tenant_id} value={m.tenant_id}>{m.tenant_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
@@ -285,6 +302,12 @@ export default function PortalHome() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                      {memberships.length > 1 && (
+                        <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                          <Building2 className="h-2.5 w-2.5" />
+                          {getDeptName(wo.tenant_id)}
+                        </Badge>
+                      )}
                       <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
                         {priorityLabels[wo.priority]}
                       </Badge>
