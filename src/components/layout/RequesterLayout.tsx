@@ -10,6 +10,7 @@ import { Building2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeWorkOrders } from '@/hooks/useRealtimeWorkOrders';
 
 const navItems = [
   { label: 'Minhas OS', icon: ClipboardList, path: '/portal' },
@@ -23,6 +24,7 @@ export function RequesterLayout() {
   const location = useLocation();
   const { isDark, toggle } = useDarkMode();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
+  useRealtimeWorkOrders();
 
   // Load tenant branding
   const { data: tenant } = useQuery({
