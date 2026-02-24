@@ -8,6 +8,7 @@ import { Building2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeWorkOrders } from '@/hooks/useRealtimeWorkOrders';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/tech' },
@@ -20,6 +21,7 @@ export function TechLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, toggle } = useDarkMode();
+  useRealtimeWorkOrders();
 
   const { data: tenant } = useQuery({
     queryKey: ['tenant_branding', currentTenantId],
