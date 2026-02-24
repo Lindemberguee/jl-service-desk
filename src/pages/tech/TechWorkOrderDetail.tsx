@@ -22,7 +22,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Play, Pause, CheckSquare, RotateCcw, Send, Lock, Unlock,
   Clock, MessageSquare, AlertTriangle, UserCheck, MapPin, Building, Package,
-  FolderOpen, Phone, Mail, Timer, Eye, EyeOff, Tag
+  FolderOpen, Phone, Mail, Timer, Eye, EyeOff, Tag, Star
 } from 'lucide-react';
 
 const eventLabels: Record<string, string> = {
@@ -437,6 +437,14 @@ export default function TechWorkOrderDetail() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {statusLabels[(ev.payload as any)?.from] || (ev.payload as any)?.from} → {statusLabels[(ev.payload as any)?.to] || (ev.payload as any)?.to}
                       </p>
+                    )}
+                    {(ev.payload as any)?.rating && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= (ev.payload as any).rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                        ))}
+                        {(ev.payload as any)?.comment && <span className="text-xs text-muted-foreground ml-2">"{(ev.payload as any).comment}"</span>}
+                      </div>
                     )}
                   </div>
                 );
