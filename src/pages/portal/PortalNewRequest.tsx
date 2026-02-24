@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTenantQuery, useTenantInsert } from '@/hooks/useTenantQuery';
 import { logAudit } from '@/lib/audit';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,18 +11,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Loader2, Send, Paperclip, X, Eye, ChevronLeft, CheckCircle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Loader2, Send, Paperclip, X, Eye, ChevronLeft, CheckCircle, Building2 } from 'lucide-react';
 import { priorityLabels } from '@/lib/permissions';
 
 type Step = 'form' | 'preview' | 'success';
 
 export default function PortalNewRequest() {
-  const { currentTenantId, user } = useAuth();
+  const { memberships, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('form');
+  const [selectedTenantId, setSelectedTenantId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('media');
@@ -35,9 +37,65 @@ export default function PortalNewRequest() {
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
-  const { data: units = [] } = useTenantQuery<any>('units', 'units');
-  const insertMutation = useTenantInsert('work_orders', ['work_orders', 'portal_work_orders']);
+  // Auto-select if only one membership
+  useEffect(() => {
+    if (memberships.length === 1 && !selectedTenantId) {
+      setSelectedTenantId(memberships[0].tenant_id);
+    }
+  }, [memberships, selectedTenantId]);
+
+  // Reset category/unit when department changes
+  useEffect(() => {
+    setCategoryId('');
+    setUnitId('');
+  }, [selectedTenantId]);
+
+  // Load categories for selected department
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', selectedTenantId],
+    queryFn: async () => {
+      if (!selectedTenantId) return [];
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('tenant_id', selectedTenantId)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedTenantId,
+  });
+
+  // Load units for selected department
+  const { data: units = [] } = useQuery({
+    queryKey: ['units', selectedTenantId],
+    queryFn: async () => {
+      if (!selectedTenantId) return [];
+      const { data, error } = await supabase
+        .from('units')
+        .select('*')
+        .eq('tenant_id', selectedTenantId)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedTenantId,
+  });
+
+  const insertMutation = useMutation({
+    mutationFn: async (values: Record<string, any>) => {
+      const { data, error } = await (supabase.from as any)('work_orders')
+        .insert({ ...values, tenant_id: selectedTenantId })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['portal_work_orders'] });
+      qc.invalidateQueries({ queryKey: ['work_orders'] });
+    },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -50,6 +108,7 @@ export default function PortalNewRequest() {
 
   const getCategoryName = (id: string) => categories.find((c: any) => c.id === id)?.name || '';
   const getUnitName = (id: string) => units.find((u: any) => u.id === id)?.name || '';
+  const getDeptName = (id: string) => memberships.find(m => m.tenant_id === id)?.tenant_name || '';
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -72,13 +131,13 @@ export default function PortalNewRequest() {
       // Upload attachments
       if (files.length > 0 && result?.id) {
         for (const file of files) {
-          const path = `${currentTenantId}/${result.id}/${Date.now()}_${file.name}`;
+          const path = `${selectedTenantId}/${result.id}/${Date.now()}_${file.name}`;
           const { error: uploadErr } = await supabase.storage
             .from('work-order-attachments')
             .upload(path, file);
           if (!uploadErr) {
             await supabase.from('work_order_attachments').insert({
-              tenant_id: currentTenantId!,
+              tenant_id: selectedTenantId,
               work_order_id: result.id,
               file_name: file.name,
               storage_key: path,
@@ -94,8 +153,8 @@ export default function PortalNewRequest() {
         entity: 'work_order',
         entityId: result?.id,
         action: 'work_order.created',
-        tenantId: currentTenantId,
-        diff: { title, priority, source: 'portal' },
+        tenantId: selectedTenantId,
+        diff: { title, priority, department: getDeptName(selectedTenantId), source: 'portal' },
       });
 
       setCreatedCode(result?.code || '');
@@ -115,7 +174,7 @@ export default function PortalNewRequest() {
         </div>
         <h2 className="text-xl font-semibold">Solicitação Criada!</h2>
         <p className="text-sm text-muted-foreground">
-          Sua solicitação <span className="font-mono font-semibold text-foreground">{createdCode}</span> foi registrada com sucesso.
+          Sua solicitação <span className="font-mono font-semibold text-foreground">{createdCode}</span> foi enviada para <span className="font-semibold text-foreground">{getDeptName(selectedTenantId)}</span>.
         </p>
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
@@ -143,6 +202,13 @@ export default function PortalNewRequest() {
 
         <Card className="border-border shadow-none">
           <CardContent className="pt-5 space-y-3">
+            <div>
+              <p className="text-[11px] uppercase font-medium text-muted-foreground">Departamento</p>
+              <Badge variant="outline" className="text-xs gap-1.5">
+                <Building2 className="h-3 w-3" />
+                {getDeptName(selectedTenantId)}
+              </Badge>
+            </div>
             <div>
               <p className="text-[11px] uppercase font-medium text-muted-foreground">Título</p>
               <p className="text-sm font-medium">{title}</p>
@@ -220,138 +286,183 @@ export default function PortalNewRequest() {
       <Card className="border-border shadow-none">
         <CardContent className="pt-5">
           <div className="space-y-4">
-            {/* Title */}
+            {/* Department selector - FIRST and PROMINENT */}
             <div className="space-y-1.5">
-              <Label htmlFor="title" className="text-xs font-medium">O que precisa ser feito? *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Ex: Ar-condicionado não liga na sala 302"
-                className="h-10"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="description" className="text-xs font-medium">Detalhes adicionais</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={4}
-                placeholder="Informe mais detalhes: quando começou, local exato, urgência..."
-                className="text-sm"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                💡 Quanto mais detalhes, mais rápido o atendimento.
-              </p>
-            </div>
-
-            {/* Priority + Category + Unit */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Urgência</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5" />
+                Para qual departamento? *
+              </Label>
+              {memberships.length === 1 ? (
+                <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/50 border border-border">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{memberships[0].tenant_name}</span>
+                </div>
+              ) : (
+                <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue placeholder="Selecione o departamento..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="baixa">Baixa — Pode esperar</SelectItem>
-                    <SelectItem value="media">Média — Normal</SelectItem>
-                    <SelectItem value="alta">Alta — Urgente</SelectItem>
-                    <SelectItem value="critica">Crítica — Emergência</SelectItem>
+                    {memberships.map(m => (
+                      <SelectItem key={m.tenant_id} value={m.tenant_id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5" />
+                          {m.tenant_name}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              </div>
-              {categories.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Tipo de serviço</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               )}
-              {units.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Unidade / Local</Label>
-                  <Select value={unitId} onValueChange={setUnitId}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      {units.map((u: any) => (
-                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {memberships.length > 1 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Escolha o setor responsável: TI, Manutenção, etc.
+                </p>
               )}
             </div>
 
-            {/* Contact info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Telefone / Ramal (opcional)</Label>
-                <Input
-                  value={contactPhone}
-                  onChange={e => setContactPhone(e.target.value)}
-                  placeholder="Ex: (11) 99999-0000 ou ramal 302"
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Melhor horário para atendimento</Label>
-                <Input
-                  value={preferredTime}
-                  onChange={e => setPreferredTime(e.target.value)}
-                  placeholder="Ex: Manhã, 8h-12h"
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
+            {/* Only show rest of form after department is selected */}
+            {selectedTenantId ? (
+              <>
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="title" className="text-xs font-medium">O que precisa ser feito? *</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    placeholder="Ex: Ar-condicionado não liga na sala 302"
+                    className="h-10"
+                  />
+                </div>
 
-            {/* Attachments */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Anexos (fotos, prints — até 5)</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.doc,.docx"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <div className="flex flex-wrap gap-2">
-                {files.map((f, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1">
-                    <span className="text-xs truncate max-w-[120px]">{f.name}</span>
-                    <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-xs font-medium">Detalhes adicionais</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    rows={4}
+                    placeholder="Informe mais detalhes: quando começou, local exato, urgência..."
+                    className="text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    💡 Quanto mais detalhes, mais rápido o atendimento.
+                  </p>
+                </div>
+
+                {/* Priority + Category + Unit */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Urgência</Label>
+                    <Select value={priority} onValueChange={setPriority}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="baixa">Baixa — Pode esperar</SelectItem>
+                        <SelectItem value="media">Média — Normal</SelectItem>
+                        <SelectItem value="alta">Alta — Urgente</SelectItem>
+                        <SelectItem value="critica">Crítica — Emergência</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
-                {files.length < 5 && (
-                  <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="h-3 w-3" /> Anexar
-                  </Button>
-                )}
-              </div>
-            </div>
+                  {categories.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Tipo de serviço</Label>
+                      <Select value={categoryId} onValueChange={setCategoryId}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {units.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Unidade / Local</Label>
+                      <Select value={unitId} onValueChange={setUnitId}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {units.map((u: any) => (
+                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => navigate('/portal')}>Cancelar</Button>
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={!title.trim()}
-                onClick={() => setStep('preview')}
-              >
-                <Eye className="h-3.5 w-3.5" /> Revisar
-              </Button>
-            </div>
+                {/* Contact info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Telefone / Ramal (opcional)</Label>
+                    <Input
+                      value={contactPhone}
+                      onChange={e => setContactPhone(e.target.value)}
+                      placeholder="Ex: (11) 99999-0000 ou ramal 302"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Melhor horário para atendimento</Label>
+                    <Input
+                      value={preferredTime}
+                      onChange={e => setPreferredTime(e.target.value)}
+                      placeholder="Ex: Manhã, 8h-12h"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Attachments */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Anexos (fotos, prints — até 5)</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {files.map((f, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1">
+                        <span className="text-xs truncate max-w-[120px]">{f.name}</span>
+                        <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {files.length < 5 && (
+                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => fileInputRef.current?.click()}>
+                        <Paperclip className="h-3 w-3" /> Anexar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => navigate('/portal')}>Cancelar</Button>
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={!title.trim()}
+                    onClick={() => setStep('preview')}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Revisar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                <p className="text-sm">Selecione o departamento para continuar.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
