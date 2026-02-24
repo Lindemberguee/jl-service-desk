@@ -143,10 +143,10 @@ export default function WorkOrderCreate() {
                 </Label>
                 <Input
                   value={contactEmail}
-                  onChange={e => setContactEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
+                  readOnly
+                  disabled
                   type="email"
-                  className="h-9 text-sm"
+                  className="h-9 text-sm bg-muted text-muted-foreground cursor-not-allowed"
                 />
               </div>
               <div className="space-y-1.5">
