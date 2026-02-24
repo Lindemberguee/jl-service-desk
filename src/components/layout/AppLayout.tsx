@@ -2,8 +2,10 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { TopBar } from './TopBar';
 import { Outlet } from 'react-router-dom';
+import { useRealtimeWorkOrders } from '@/hooks/useRealtimeWorkOrders';
 
 export function AppLayout() {
+  useRealtimeWorkOrders();
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
