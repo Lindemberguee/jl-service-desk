@@ -40,28 +40,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify caller is super_admin or admin
-    const { data: callerRole } = await createClient(supabaseUrl, serviceRoleKey)
-      .rpc("is_super_admin", { _user_id: caller.id });
+    // Verify caller is super_admin, admin, or coordenador
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    
+    const { data: callerMemberships } = await adminClient
+      .from("user_memberships")
+      .select("role, tenant_id")
+      .eq("user_id", caller.id)
+      .eq("is_active", true);
 
-    if (!callerRole) {
-      // Check if admin in any tenant
-      const { data: memberships } = await createClient(supabaseUrl, serviceRoleKey)
-        .from("user_memberships")
-        .select("role")
-        .eq("user_id", caller.id)
-        .eq("is_active", true)
-        .in("role", ["super_admin", "admin"]);
+    const callerRoles = (callerMemberships || []).map((m: any) => m.role);
+    const isSuperAdmin = callerRoles.includes("super_admin");
+    const isAdmin = callerRoles.includes("admin");
+    const isCoordenador = callerRoles.includes("coordenador");
 
-      if (!memberships || memberships.length === 0) {
-        return new Response(JSON.stringify({ error: "Sem permissão" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    if (!isSuperAdmin && !isAdmin && !isCoordenador) {
+      return new Response(JSON.stringify({ error: "Sem permissão" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const body = await req.json();
     const { action } = body;
 
@@ -87,6 +86,27 @@ Deno.serve(async (req) => {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        // Coordenador can only create solicitante role
+        if (isCoordenador && !isSuperAdmin && !isAdmin && role !== "solicitante") {
+          return new Response(JSON.stringify({ error: "Coordenadores só podem cadastrar solicitantes" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Coordenador can only create in their own tenant
+        if (isCoordenador && !isSuperAdmin && !isAdmin) {
+          const coordTenantIds = (callerMemberships || [])
+            .filter((m: any) => m.role === "coordenador")
+            .map((m: any) => m.tenant_id);
+          if (tenant_id && !coordTenantIds.includes(tenant_id)) {
+            return new Response(JSON.stringify({ error: "Sem permissão neste departamento" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
 
         // Create auth user

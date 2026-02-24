@@ -51,7 +51,22 @@ export default function WorkOrderCreate() {
   // Data queries
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
-  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
+  // Solicitantes (user accounts with solicitante role)
+  const { data: solicitantes = [] } = useQuery({
+    queryKey: ['solicitantes', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select('user_id, role, profiles!user_memberships_user_id_profiles_fkey(name, email)')
+        .eq('tenant_id', currentTenantId)
+        .eq('is_active', true)
+        .eq('role', 'solicitante');
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!currentTenantId,
+  });
   const { data: assets = [] } = useTenantQuery<any>('assets', 'assets');
 
   // Locations filtered by selected unit
@@ -83,19 +98,19 @@ export default function WorkOrderCreate() {
     },
     enabled: !!currentTenantId,
   });
-  // Auto-fill contact info when a requester (customer) is selected
+  // Auto-fill contact info when a requester (solicitante user) is selected
   useEffect(() => {
     if (requesterId) {
-      const customer = customers.find((c: any) => c.id === requesterId);
-      if (customer) {
-        setContactEmail(customer.email || '');
-        setContactPhone(customer.phone || '');
+      const solicitante = solicitantes.find((s: any) => s.user_id === requesterId);
+      if (solicitante) {
+        setContactEmail(solicitante.profiles?.email || '');
+        setContactPhone('');
       }
     } else {
       setContactEmail(profile?.email || '');
       setContactPhone('');
     }
-  }, [requesterId, customers]);
+  }, [requesterId, solicitantes]);
 
   // Reset location/asset when unit changes
   useEffect(() => {
@@ -124,9 +139,8 @@ export default function WorkOrderCreate() {
       if (contactPhone) requesterContact.phone = contactPhone;
       if (contactEmail) requesterContact.email = contactEmail;
 
-      // If the selected customer has a linked user_id, use it as requester_user_id
-      const selectedCustomer = requesterId ? customers.find((c: any) => c.id === requesterId) : null;
-      const effectiveRequesterUserId = selectedCustomer?.user_id || user?.id || null;
+      // requesterId now holds the user_id of the solicitante
+      const effectiveRequesterUserId = requesterId || user?.id || null;
 
       const result = await insertMutation.mutateAsync({
         title,
@@ -137,7 +151,7 @@ export default function WorkOrderCreate() {
         location_id: locationId || null,
         asset_id: assetId || null,
         assigned_to_id: assignedToId || null,
-        requester_id: requesterId || null,
+        requester_id: null,
         requester_user_id: effectiveRequesterUserId,
         visibility,
         tags: tags.length > 0 ? tags : null,
@@ -342,12 +356,14 @@ export default function WorkOrderCreate() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Solicitante (Cliente)</Label>
+                <Label className="text-xs font-medium">Solicitante</Label>
                 <Select value={requesterId} onValueChange={setRequesterId}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Nenhum" /></SelectTrigger>
                   <SelectContent>
-                    {customers.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    {solicitantes.map((s: any) => (
+                      <SelectItem key={s.user_id} value={s.user_id}>
+                        {s.profiles?.name || s.profiles?.email}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
