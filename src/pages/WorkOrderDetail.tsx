@@ -217,7 +217,11 @@ export default function WorkOrderDetail() {
   const getCategoryName = (catId: string | null) => categories.find((c: any) => c.id === catId)?.name;
   const getUnitName = (unitId: string | null) => units.find((u: any) => u.id === unitId)?.name;
   const getLocationName = (locId: string | null) => locations.find((l: any) => l.id === locId)?.name;
-  const getAssetName = (assetId: string | null) => assets.find((a: any) => a.id === assetId)?.name;
+  const getAssetDisplay = (assetId: string | null) => {
+    const a = assets.find((a: any) => a.id === assetId);
+    if (!a) return undefined;
+    return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`;
+  };
   const getCustomerName = (custId: string | null) => customers.find((c: any) => c.id === custId)?.name;
 
   return (
@@ -353,9 +357,9 @@ export default function WorkOrderDetail() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
-                    <InfoField icon={Building} label="Unidade" value={getUnitName(wo.unit_id)} />
-                    <InfoField icon={MapPin} label="Local" value={getLocationName(wo.location_id)} />
-                    <InfoField icon={Package} label="Ativo" value={getAssetName(wo.asset_id)} />
+                    <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
+                    <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
+                    <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
                   </div>
                 </CardContent>
               </Card>

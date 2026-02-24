@@ -368,7 +368,7 @@ export default function PortalWorkOrderDetail() {
             )}
             {unit && (
               <div>
-                <span className="text-muted-foreground">Unidade</span>
+                <span className="text-muted-foreground">Unidade (Prédio / Campus)</span>
                 <p className="font-medium">{unit.name}</p>
               </div>
             )}
@@ -380,8 +380,8 @@ export default function PortalWorkOrderDetail() {
             )}
             {asset && (
               <div>
-                <span className="text-muted-foreground">Equipamento</span>
-                <p className="font-medium">{(asset as any).name}{(asset as any).patrimony_code ? ` (${(asset as any).patrimony_code})` : ''}</p>
+                <span className="text-muted-foreground">Equipamento / Ativo</span>
+                <p className="font-medium">{(asset as any).name}{(asset as any).patrimony_code ? ` — Pat. ${(asset as any).patrimony_code}` : ''}</p>
               </div>
             )}
             {wo.assigned_to_id && (
