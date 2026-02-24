@@ -5,25 +5,26 @@ export type Permission =
   | 'assets:read' | 'assets:manage' | 'stock:read' | 'stock:manage'
   | 'users:read' | 'users:manage'
   | 'reports:read' | 'settings:manage'
-  | 'cadastros:read' | 'cadastros:manage';
+  | 'cadastros:read' | 'cadastros:manage'
+  | 'tools:read';
 
 const rolePermissions: Record<AppRole, Permission[]> = {
   super_admin: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
-    'cadastros:read', 'cadastros:manage',
+    'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   admin: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
-    'cadastros:read', 'cadastros:manage',
+    'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   coordenador: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
-    'reports:read', 'cadastros:read', 'users:read',
+    'reports:read', 'cadastros:read', 'users:read', 'tools:read',
   ],
   tecnico: ['os:read', 'os:create', 'os:update', 'stock:read', 'stock:manage'],
   solicitante: ['os:read', 'os:create'],

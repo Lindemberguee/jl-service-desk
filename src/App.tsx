@@ -16,6 +16,7 @@ import Assets from "@/pages/Assets";
 import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
+import Ferramentas from "@/pages/Ferramentas";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -155,6 +156,7 @@ const App = () => (
               <Route path="estoque" element={<Stock />} />
               <Route path="relatorios" element={<Reports />} />
               <Route path="usuarios" element={<UsersPage />} />
+              <Route path="ferramentas" element={<Ferramentas />} />
               <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
               <Route path="admin" element={<AdminDashboard />} />
