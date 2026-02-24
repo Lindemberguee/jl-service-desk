@@ -48,6 +48,7 @@ export default function Stock() {
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
   const [minLevel, setMinLevel] = useState('0');
+  const [initialQty, setInitialQty] = useState('0');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
@@ -79,10 +80,11 @@ export default function Stock() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0 });
+      const qty = parseInt(initialQty) || 0;
+      await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty });
       toast({ title: 'Item criado!' });
       setOpen(false);
-      setName(''); setSku(''); setUnit('un'); setMinLevel('0');
+      setName(''); setSku(''); setUnit('un'); setMinLevel('0'); setInitialQty('0');
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -217,7 +219,10 @@ export default function Stock() {
                   <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={sku} onChange={e => setSku(e.target.value)} className="h-9" /></div>
                   <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={unit} onChange={e => setUnit(e.target.value)} className="h-9" placeholder="un, pc, m..." /></div>
                 </div>
-                <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label className="text-xs">Quantidade inicial</Label><Input type="number" min="0" value={initialQty} onChange={e => setInitialQty(e.target.value)} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" min="0" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
+                </div>
                 <Button type="submit" className="w-full h-8 text-sm" disabled={insertItem.isPending}>
                   {insertItem.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   Salvar
