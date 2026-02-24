@@ -24,7 +24,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
   coordenador: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
-    'reports:read', 'cadastros:read', 'users:read', 'tools:read',
+    'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
   ],
   tecnico: ['os:read', 'os:create', 'os:update', 'stock:read', 'stock:manage'],
   solicitante: ['os:read', 'os:create'],
