@@ -753,6 +753,124 @@ export type Database = {
           },
         ]
       }
+      work_order_labor_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          hours: number
+          id: string
+          observation: string | null
+          rate_per_hour: number
+          tenant_id: string
+          total: number | null
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          hours?: number
+          id?: string
+          observation?: string | null
+          rate_per_hour?: number
+          tenant_id: string
+          total?: number | null
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          hours?: number
+          id?: string
+          observation?: string | null
+          rate_per_hour?: number
+          tenant_id?: string
+          total?: number | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_labor_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_labor_items_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_order_part_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          observation: string | null
+          qty: number
+          stock_item_id: string | null
+          tenant_id: string
+          total: number | null
+          unit_price: number
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          observation?: string | null
+          qty?: number
+          stock_item_id?: string | null
+          tenant_id: string
+          total?: number | null
+          unit_price?: number
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          observation?: string | null
+          qty?: number
+          stock_item_id?: string | null
+          tenant_id?: string
+          total?: number | null
+          unit_price?: number
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_part_items_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_part_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_part_items_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
           asset_id: string | null
