@@ -16,7 +16,7 @@ import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 import { WorkOrderCosts } from '@/components/WorkOrderCosts';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+// Lookup data fetched based on WO's tenant_id
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -98,11 +98,33 @@ export default function TechWorkOrderDetail() {
     enabled: !!id,
   });
 
-  const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
-  const { data: units = [] } = useTenantQuery<any>('units', 'units');
-  const { data: locations = [] } = useTenantQuery<any>('locations', 'locations');
-  const { data: assets = [] } = useTenantQuery<any>('assets', 'assets');
-  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
+  const woTenantId = wo?.tenant_id;
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', woTenantId],
+    queryFn: async () => { const { data } = await supabase.from('categories').select('*').eq('tenant_id', woTenantId!); return data || []; },
+    enabled: !!woTenantId,
+  });
+  const { data: units = [] } = useQuery({
+    queryKey: ['units', woTenantId],
+    queryFn: async () => { const { data } = await supabase.from('units').select('*').eq('tenant_id', woTenantId!); return data || []; },
+    enabled: !!woTenantId,
+  });
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations', woTenantId],
+    queryFn: async () => { const { data } = await supabase.from('locations').select('*').eq('tenant_id', woTenantId!); return data || []; },
+    enabled: !!woTenantId,
+  });
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets', woTenantId],
+    queryFn: async () => { const { data } = await supabase.from('assets').select('*').eq('tenant_id', woTenantId!); return data || []; },
+    enabled: !!woTenantId,
+  });
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers', woTenantId],
+    queryFn: async () => { const { data } = await supabase.from('customers').select('*').eq('tenant_id', woTenantId!); return data || []; },
+    enabled: !!woTenantId,
+  });
 
   // Timer logic
   useEffect(() => {

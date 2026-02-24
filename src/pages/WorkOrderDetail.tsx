@@ -23,7 +23,7 @@ import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 import { WorkOrderCosts } from '@/components/WorkOrderCosts';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+// Lookup data fetched based on WO's tenant_id, not currentTenantId
 
 const eventIcons: Record<string, any> = {
   created: Clock, status_changed: Clock, comment_internal: Lock,
@@ -63,6 +63,8 @@ export default function WorkOrderDetail() {
     enabled: !!id,
   });
 
+  const woTenantId = wo?.tenant_id;
+
   const { data: events = [] } = useQuery({
     queryKey: ['work_order_events', id],
     queryFn: async () => {
@@ -82,11 +84,47 @@ export default function WorkOrderDetail() {
     },
   });
 
-  const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
-  const { data: units = [] } = useTenantQuery<any>('units', 'units');
-  const { data: locations = [] } = useTenantQuery<any>('locations', 'locations');
-  const { data: assets = [] } = useTenantQuery<any>('assets', 'assets');
-  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
+  // Fetch lookup data based on the WO's tenant, not the current tenant
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('categories').select('*').eq('tenant_id', woTenantId!);
+      return data || [];
+    },
+    enabled: !!woTenantId,
+  });
+  const { data: units = [] } = useQuery({
+    queryKey: ['units', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('units').select('*').eq('tenant_id', woTenantId!);
+      return data || [];
+    },
+    enabled: !!woTenantId,
+  });
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('locations').select('*').eq('tenant_id', woTenantId!);
+      return data || [];
+    },
+    enabled: !!woTenantId,
+  });
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('assets').select('*').eq('tenant_id', woTenantId!);
+      return data || [];
+    },
+    enabled: !!woTenantId,
+  });
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('customers').select('*').eq('tenant_id', woTenantId!);
+      return data || [];
+    },
+    enabled: !!woTenantId,
+  });
 
   // Mutations
   const invalidateAll = () => {
