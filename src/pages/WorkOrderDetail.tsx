@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission, roleLabels } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin, Play, Pause, RotateCcw, Lock, Unlock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin, Play, Pause, RotateCcw, Lock, Unlock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -162,6 +163,32 @@ export default function WorkOrderDetail() {
   const isActive = wo?.status === 'em_execucao';
   const isClosed = ['concluida', 'aprovada', 'encerrada'].includes(wo?.status || '');
 
+  const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
+  const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
+  const canClose = currentRole && hasPermission(currentRole, 'os:close');
+  const canManage = currentRole && hasPermission(currentRole, 'os:manage');
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('work_orders')
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq('id', id!);
+      if (error) throw error;
+      await logAudit({
+        entity: 'work_order', entityId: id,
+        action: 'work_order.deleted', tenantId: currentTenantId,
+        diff: { title: wo?.title, code: wo?.code },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: 'OS excluída com sucesso' });
+      navigate('/os');
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao excluir OS', description: err.message, variant: 'destructive' });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-4 max-w-5xl mx-auto">
@@ -180,9 +207,6 @@ export default function WorkOrderDetail() {
     );
   }
 
-  const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
-  const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
-  const canClose = currentRole && hasPermission(currentRole, 'os:close');
   const sla = calculateSlaStatus(wo);
 
   const getProfileName = (userId: string | null) => {
@@ -221,6 +245,33 @@ export default function WorkOrderDetail() {
           </div>
           <h1 className="text-lg font-semibold">{wo.title}</h1>
         </div>
+        {canManage && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteMutation.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Quick workflow buttons */}
