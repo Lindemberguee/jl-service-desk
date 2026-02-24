@@ -246,13 +246,16 @@ export default function WorkOrderCreate() {
               <MapPin className="h-4 w-4 text-primary" />
               Localização & Ativo
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Selecione a unidade (prédio/campus) e depois o espaço específico onde o serviço será realizado.
+            </p>
           </CardHeader>
-          <CardContent className="px-5 pb-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Unidade</Label>
+                <Label className="text-xs font-medium">Unidade (Prédio / Campus)</Label>
                 <Select value={unitId} onValueChange={setUnitId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Ex: Bloco A, Sede, Filial Centro" /></SelectTrigger>
                   <SelectContent>
                     {units.map((u: any) => (
                       <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
@@ -261,29 +264,36 @@ export default function WorkOrderCreate() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Local</Label>
-                <Select value={locationId} onValueChange={setLocationId} disabled={filteredLocations.length === 0}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={unitId ? 'Selecione' : 'Selecione a unidade'} /></SelectTrigger>
+                <Label className="text-xs font-medium">Sala / Espaço</Label>
+                <Select value={locationId} onValueChange={setLocationId} disabled={!unitId || filteredLocations.length === 0}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder={!unitId ? 'Selecione a unidade primeiro' : filteredLocations.length === 0 ? 'Nenhum local cadastrado' : 'Ex: Sala 101, Pátio, Recepção'} />
+                  </SelectTrigger>
                   <SelectContent>
                     {filteredLocations.map((l: any) => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Ativo</Label>
-                <Select value={assetId} onValueChange={setAssetId} disabled={filteredAssets.length === 0}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {filteredAssets.map((a: any) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}{a.patrimony_code ? ` (${a.patrimony_code})` : ''}
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.name}{l.description ? ` — ${l.description}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Equipamento / Ativo vinculado</Label>
+              <Select value={assetId} onValueChange={setAssetId} disabled={filteredAssets.length === 0}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder={filteredAssets.length === 0 ? (unitId ? 'Nenhum ativo nesta unidade' : 'Selecione a unidade primeiro') : 'Ex: Ar-condicionado Sala 201, Impressora HP'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredAssets.map((a: any) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Opcional. Vincule um equipamento para rastrear manutenções por ativo.</p>
             </div>
           </CardContent>
         </Card>
