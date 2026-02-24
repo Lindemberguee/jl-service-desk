@@ -359,14 +359,15 @@ export default function WorkOrderDetail() {
                   {wo.requester_id ? (
                     <>
                       <p className="font-medium">{getCustomerName(wo.requester_id)}</p>
-                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).phone}</p>}
-                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).email}</p>}
+                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1">✉ {(wo.requester_contact as any).email}</p>}
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1">📞 {(wo.requester_contact as any).phone}</p>}
                     </>
                   ) : (wo as any).requester_user_id ? (
                     <>
                       <p className="font-medium">{getProfileName((wo as any).requester_user_id)}</p>
-                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground">{(wo.requester_contact as any).phone}</p>}
-                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">Horário: {(wo.requester_contact as any).preferred_time}</p>}
+                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1">✉ {(wo.requester_contact as any).email}</p>}
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1">📞 {(wo.requester_contact as any).phone}</p>}
+                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">🕐 Horário: {(wo.requester_contact as any).preferred_time}</p>}
                     </>
                   ) : (
                     <p className="text-muted-foreground text-xs">Não informado</p>
