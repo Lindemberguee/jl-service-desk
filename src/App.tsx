@@ -27,6 +27,11 @@ import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
 import PortalProfile from "@/pages/portal/PortalProfile";
+import { TechLayout } from "@/components/layout/TechLayout";
+import TechDashboard from "@/pages/tech/TechDashboard";
+import TechWorkOrders from "@/pages/tech/TechWorkOrders";
+import TechWorkOrderDetail from "@/pages/tech/TechWorkOrderDetail";
+import TechProfile from "@/pages/tech/TechProfile";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -49,6 +54,11 @@ function ProtectedRoutes() {
     return <Navigate to="/portal" replace />;
   }
 
+  // Technician gets the tech panel
+  if (currentRole === 'tecnico') {
+    return <Navigate to="/tech" replace />;
+  }
+
   return <AppLayout />;
 }
 
@@ -68,6 +78,22 @@ function ProtectedPortalRoutes() {
   return <RequesterLayout />;
 }
 
+function ProtectedTechRoutes() {
+  const { user, loading, currentRole } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  return <TechLayout />;
+}
+
 function AuthGate() {
   const { user, loading, currentRole } = useAuth();
 
@@ -82,6 +108,9 @@ function AuthGate() {
   if (user) {
     if (currentRole === 'solicitante' || currentRole === 'leitura') {
       return <Navigate to="/portal" replace />;
+    }
+    if (currentRole === 'tecnico') {
+      return <Navigate to="/tech" replace />;
     }
     return <Navigate to="/dashboard" replace />;
   }
@@ -104,6 +133,14 @@ const App = () => (
               <Route path="nova" element={<PortalNewRequest />} />
               <Route path="os/:id" element={<PortalWorkOrderDetail />} />
               <Route path="perfil" element={<PortalProfile />} />
+            </Route>
+
+            {/* Technician Panel */}
+            <Route path="/tech" element={<ProtectedTechRoutes />}>
+              <Route index element={<TechDashboard />} />
+              <Route path="os" element={<TechWorkOrders />} />
+              <Route path="os/:id" element={<TechWorkOrderDetail />} />
+              <Route path="perfil" element={<TechProfile />} />
             </Route>
 
             {/* Admin/Operational Layout */}
