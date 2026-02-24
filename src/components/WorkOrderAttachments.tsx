@@ -5,16 +5,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Paperclip, Upload, Loader2, FileText, Image, Download, Trash2, AlertTriangle } from 'lucide-react';
+import { Paperclip, Upload, Loader2, FileText, Image, Download, Trash2, AlertTriangle, X, Eye } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogTitle,
+} from '@/components/ui/dialog';
 
 interface WorkOrderAttachmentsProps {
   workOrderId: string;
   resolvedAt?: string | null;
 }
-
-const MIME_ICONS: Record<string, typeof FileText> = {
-  image: Image,
-};
 
 function getIcon(mimeType: string | null) {
   if (mimeType?.startsWith('image')) return Image;
@@ -26,6 +29,8 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
   const { toast } = useToast();
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState('');
 
   const { data: attachments = [], isLoading } = useQuery({
     queryKey: ['work_order_attachments', workOrderId],
@@ -109,7 +114,40 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
       .from('work-order-attachments')
       .createSignedUrl(attachment.storage_key, 300);
     if (data?.signedUrl) {
-      window.open(data.signedUrl, '_blank');
+      const a = document.createElement('a');
+      a.href = data.signedUrl;
+      a.download = attachment.file_name;
+      a.target = '_blank';
+      a.click();
+    }
+  };
+
+  const handlePreview = async (attachment: any) => {
+    if (!attachment.storage_key) return;
+    const { data } = await supabase.storage
+      .from('work-order-attachments')
+      .createSignedUrl(attachment.storage_key, 300);
+    if (data?.signedUrl) {
+      if (attachment.mime_type?.startsWith('image')) {
+        setPreviewName(attachment.file_name);
+        setPreviewUrl(data.signedUrl);
+      } else {
+        window.open(data.signedUrl, '_blank');
+      }
+    }
+  };
+
+  const handleDelete = async (attachment: any) => {
+    try {
+      if (attachment.storage_key) {
+        await supabase.storage.from('work-order-attachments').remove([attachment.storage_key]);
+      }
+      const { error } = await supabase.from('work_order_attachments').delete().eq('id', attachment.id);
+      if (error) throw error;
+      toast({ title: 'Anexo removido com sucesso!' });
+      qc.invalidateQueries({ queryKey: ['work_order_attachments', workOrderId] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao remover anexo', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -172,14 +210,17 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
           <div className="space-y-2">
             {attachments.map((att: any) => {
               const Icon = getIcon(att.mime_type);
+              const isImage = att.mime_type?.startsWith('image');
               return (
                 <div
                   key={att.id}
-                  className="flex items-center gap-3 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-3 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => handlePreview(att)}
+                  title="Clique para visualizar"
                 >
                   <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{att.file_name}</p>
+                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{att.file_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatSize(att.size)} • {new Date(att.created_at).toLocaleDateString('pt-BR')}
                     </p>
@@ -187,17 +228,54 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleDownload(att)}
+                    onClick={(e) => { e.stopPropagation(); handleDownload(att); }}
                     title="Baixar"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir anexo?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          O arquivo "{att.file_name}" será removido permanentemente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(att)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               );
             })}
           </div>
         )}
       </CardContent>
+
+      {/* Image preview dialog */}
+      <Dialog open={!!previewUrl} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
+        <DialogContent className="max-w-3xl p-2">
+          <DialogTitle className="sr-only">{previewName}</DialogTitle>
+          {previewUrl && (
+            <img src={previewUrl} alt={previewName} className="w-full h-auto max-h-[80vh] object-contain rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
