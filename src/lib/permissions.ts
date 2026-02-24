@@ -2,23 +2,30 @@ export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'sol
 
 export type Permission =
   | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage'
-  | 'assets:manage' | 'stock:manage' | 'users:manage' | 'reports:read' | 'settings:manage'
-  | 'cadastros:manage';
+  | 'assets:read' | 'assets:manage' | 'stock:read' | 'stock:manage'
+  | 'users:read' | 'users:manage'
+  | 'reports:read' | 'settings:manage'
+  | 'cadastros:read' | 'cadastros:manage';
 
 const rolePermissions: Record<AppRole, Permission[]> = {
   super_admin: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
-    'assets:manage', 'stock:manage', 'users:manage', 'reports:read', 'settings:manage', 'cadastros:manage',
+    'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'users:read', 'users:manage', 'reports:read', 'settings:manage',
+    'cadastros:read', 'cadastros:manage',
   ],
   admin: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
-    'assets:manage', 'stock:manage', 'users:manage', 'reports:read', 'settings:manage', 'cadastros:manage',
+    'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'users:read', 'users:manage', 'reports:read', 'settings:manage',
+    'cadastros:read', 'cadastros:manage',
   ],
   coordenador: [
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close',
-    'assets:manage', 'stock:manage', 'reports:read', 'cadastros:manage',
+    'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'reports:read', 'cadastros:read', 'users:read',
   ],
-  tecnico: ['os:read', 'os:create', 'os:update', 'stock:manage'],
+  tecnico: ['os:read', 'os:create', 'os:update', 'stock:read', 'stock:manage'],
   solicitante: ['os:read', 'os:create'],
   leitura: ['os:read'],
 };
