@@ -9,12 +9,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
-  Gauge, ScrollText, KeyRound, Hammer, ChevronRight,
+  Gauge, ScrollText, Hammer, ChevronRight, CircleDot,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { roleLabels } from '@/lib/permissions';
 import type { Permission } from '@/lib/permissions';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface MenuItem {
   label: string;
@@ -58,6 +60,51 @@ function isPathActive(current: string, itemPath: string): boolean {
   return current === itemPath || (current.startsWith(itemPath) && !current.startsWith('/admin'));
 }
 
+function MenuItemButton({ item, isActive, onClick }: { item: { label: string; icon: React.ElementType; path: string; badge?: string }; isActive: boolean; onClick: () => void }) {
+  const Icon = item.icon;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={isActive}
+        onClick={onClick}
+        tooltip={item.label}
+        className={cn(
+          "relative transition-all duration-200 group/btn",
+          isActive && "bg-sidebar-primary/15 text-sidebar-primary font-medium shadow-[inset_0_0_0_1px_hsl(var(--sidebar-primary)/0.15)]",
+          !isActive && "hover:translate-x-0.5"
+        )}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="sidebar-active-pill"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+        <Icon className={cn(
+          "h-4 w-4 transition-colors duration-200",
+          isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50 group-hover/btn:text-sidebar-foreground/80"
+        )} />
+        <span className="text-[13px] flex-1">{item.label}</span>
+        {item.badge && (
+          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal bg-sidebar-primary/10 text-sidebar-primary/70 border-0">
+            {item.badge}
+          </Badge>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/30 font-semibold px-3 mb-0.5">
+      {children}
+    </SidebarGroupLabel>
+  );
+}
+
 export function AppSidebar() {
   const { currentRole, profile, signOut, memberships, currentTenantId } = useAuth();
   const navigate = useNavigate();
@@ -71,17 +118,12 @@ export function AppSidebar() {
         if (currentRole && !hasPermission(currentRole, item.permission)) return null;
         const isActive = isPathActive(location.pathname, item.path);
         return (
-          <SidebarMenuItem key={item.path}>
-            <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
-              <item.icon className="h-4 w-4" />
-              <span className="text-[13px] flex-1">{item.label}</span>
-              {item.badge && (
-                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal bg-muted text-muted-foreground">
-                  {item.badge}
-                </Badge>
-              )}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <MenuItemButton
+            key={item.path}
+            item={item}
+            isActive={isActive}
+            onClick={() => navigate(item.path)}
+          />
         );
       })}
     </SidebarMenu>
@@ -89,89 +131,99 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-sm">
+      {/* Header with subtle gradient accent */}
+      <SidebarHeader className="p-4 border-b border-sidebar-border/50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent pointer-events-none" />
+        <div className="flex items-center gap-3 relative">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 flex items-center justify-center shadow-lg shadow-sidebar-primary/20">
             <Wrench className="h-4 w-4 text-sidebar-primary-foreground" />
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold tracking-tight text-sidebar-foreground">ServiceOS</span>
-            <span className="text-[11px] text-sidebar-foreground/50 truncate max-w-[140px]">
-              {currentTenant?.tenant_name || 'Sem departamento'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <CircleDot className="h-2 w-2 text-emerald-400" />
+              <span className="text-[11px] text-sidebar-foreground/40 truncate max-w-[120px]">
+                {currentTenant?.tenant_name || 'Sem departamento'}
+              </span>
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="py-2">
+      <SidebarContent className="py-3 px-1">
         {/* Operacional */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3">
-            Operacional
-          </SidebarGroupLabel>
+        <SidebarGroup className="py-1">
+          <SectionLabel>Operacional</SectionLabel>
           {renderMenuGroup(operationalItems)}
         </SidebarGroup>
 
+        <div className="mx-4 my-1">
+          <Separator className="bg-sidebar-border/30" />
+        </div>
+
         {/* Gestão */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3">
-            Gestão
-          </SidebarGroupLabel>
+        <SidebarGroup className="py-1">
+          <SectionLabel>Gestão</SectionLabel>
           {renderMenuGroup(managementItems)}
         </SidebarGroup>
 
         {/* Ferramentas */}
         {currentRole && hasPermission(currentRole, 'tools:read') && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3">
-              Avançado
-            </SidebarGroupLabel>
-            {renderMenuGroup(toolsItems)}
-          </SidebarGroup>
+          <>
+            <div className="mx-4 my-1">
+              <Separator className="bg-sidebar-border/30" />
+            </div>
+            <SidebarGroup className="py-1">
+              <SectionLabel>Avançado</SectionLabel>
+              {renderMenuGroup(toolsItems)}
+            </SidebarGroup>
+          </>
         )}
 
         {/* Administração */}
         {isSuperAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3">
-              Administração
-            </SidebarGroupLabel>
-            <SidebarMenu>
-              {adminItems.map(item => {
-                const isActive = isPathActive(location.pathname, item.path);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="text-[13px]">{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
+          <>
+            <div className="mx-4 my-1">
+              <Separator className="bg-sidebar-border/30" />
+            </div>
+            <SidebarGroup className="py-1">
+              <SectionLabel>Administração</SectionLabel>
+              <SidebarMenu>
+                {adminItems.map(item => {
+                  const isActive = isPathActive(location.pathname, item.path);
+                  return (
+                    <MenuItemButton
+                      key={item.path}
+                      item={item}
+                      isActive={isActive}
+                      onClick={() => navigate(item.path)}
+                    />
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          </>
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
+      <SidebarFooter className="p-3 border-t border-sidebar-border/50">
         <button
-          className="flex items-center gap-2 w-full rounded-md p-2 transition-colors hover:bg-sidebar-accent group"
+          className="flex items-center gap-2.5 w-full rounded-xl p-2.5 transition-all duration-200 hover:bg-sidebar-accent group"
           onClick={() => navigate('/perfil')}
         >
-          <div className="h-8 w-8 rounded-full bg-sidebar-primary/10 flex items-center justify-center text-xs font-semibold text-sidebar-primary">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sidebar-primary/20 to-sidebar-primary/5 flex items-center justify-center text-xs font-bold text-sidebar-primary ring-1 ring-sidebar-primary/10">
             {profile?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="flex flex-col flex-1 min-w-0 text-left">
             <span className="text-[13px] font-medium truncate text-sidebar-foreground">{profile?.name || 'Usuário'}</span>
-            <span className="text-[10px] text-sidebar-foreground/40 truncate">
+            <span className="text-[10px] text-sidebar-foreground/35 truncate">
               {currentRole ? roleLabels[currentRole] : ''}
             </span>
           </div>
-          <ChevronRight className="h-3 w-3 text-sidebar-foreground/30 group-hover:text-sidebar-foreground/60 transition-colors" />
+          <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground/20 group-hover:text-sidebar-foreground/50 group-hover:translate-x-0.5 transition-all duration-200" />
         </button>
-        <Separator className="my-1 bg-sidebar-border" />
         <button
-          className="flex items-center gap-2 w-full rounded-md p-2 text-[13px] transition-colors hover:bg-destructive/10 text-sidebar-foreground/50 hover:text-destructive"
+          className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 hover:bg-destructive/10 text-sidebar-foreground/40 hover:text-destructive"
           onClick={signOut}
         >
           <LogOut className="h-4 w-4" />
