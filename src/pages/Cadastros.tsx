@@ -463,6 +463,7 @@ export default function Cadastros() {
               { key: 'name', label: 'Nome', placeholder: 'Nome completo', required: true },
               { key: 'email', label: 'E-mail', placeholder: 'email@exemplo.com' },
               { key: 'phone', label: 'Telefone / Ramal', placeholder: '(11) 99999-0000 ou ramal 302' },
+              { key: 'document', label: 'Documento (CPF/CNPJ)', placeholder: '000.000.000-00' },
             ]}
           />
         </TabsContent>

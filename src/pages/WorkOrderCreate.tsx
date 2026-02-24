@@ -124,6 +124,10 @@ export default function WorkOrderCreate() {
       if (contactPhone) requesterContact.phone = contactPhone;
       if (contactEmail) requesterContact.email = contactEmail;
 
+      // If the selected customer has a linked user_id, use it as requester_user_id
+      const selectedCustomer = requesterId ? customers.find((c: any) => c.id === requesterId) : null;
+      const effectiveRequesterUserId = selectedCustomer?.user_id || user?.id || null;
+
       const result = await insertMutation.mutateAsync({
         title,
         description,
@@ -134,7 +138,7 @@ export default function WorkOrderCreate() {
         asset_id: assetId || null,
         assigned_to_id: assignedToId || null,
         requester_id: requesterId || null,
-        requester_user_id: user?.id || null,
+        requester_user_id: effectiveRequesterUserId,
         visibility,
         tags: tags.length > 0 ? tags : null,
         code: '',
