@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTenantQuery, useTenantInsert, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
@@ -8,18 +8,28 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Plus, Trash2, Building2, Tag, Users as UsersIcon, Loader2, Lock } from 'lucide-react';
+import { Plus, Trash2, Building2, Tag, Users as UsersIcon, MapPin, Loader2, Lock } from 'lucide-react';
 
-function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly }: {
+type FieldDef = {
+  key: string;
+  label: string;
+  required?: boolean;
+  type?: 'text' | 'select';
+  options?: { value: string; label: string }[];
+};
+
+function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly, renderCell }: {
   title: string;
   icon: any;
   queryKey: string;
   table: string;
-  fields: { key: string; label: string; required?: boolean }[];
+  fields: FieldDef[];
   readOnly?: boolean;
+  renderCell?: (field: FieldDef, item: any) => React.ReactNode;
 }) {
   const { data = [], isLoading } = useTenantQuery<any>(queryKey, table);
   const insertMutation = useTenantInsert(table, [queryKey]);
@@ -41,6 +51,14 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly }: {
     }
   };
 
+  const getCellValue = (field: FieldDef, item: any) => {
+    if (renderCell) {
+      const custom = renderCell(field, item);
+      if (custom !== undefined) return custom;
+    }
+    return item[field.key] || '-';
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -60,12 +78,23 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly }: {
                 {fields.map(f => (
                   <div key={f.key} className="space-y-1.5">
                     <Label className="text-xs">{f.label}</Label>
-                    <Input
-                      value={form[f.key] || ''}
-                      onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                      required={f.required}
-                      className="h-9"
-                    />
+                    {f.type === 'select' && f.options ? (
+                      <Select value={form[f.key] || ''} onValueChange={v => setForm(p => ({ ...p, [f.key]: v }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {f.options.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={form[f.key] || ''}
+                        onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                        required={f.required}
+                        className="h-9"
+                      />
+                    )}
                   </div>
                 ))}
                 <Button type="submit" className="w-full h-8 text-sm" disabled={insertMutation.isPending}>
@@ -91,7 +120,7 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly }: {
               <div className="min-w-0 flex-1">
                 {fields.map((f, i) => (
                   <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
-                    {i > 0 && `${f.label}: `}{item[f.key] || '-'}
+                    {i > 0 && `${f.label}: `}{getCellValue(f, item)}
                   </p>
                 ))}
               </div>
@@ -117,7 +146,7 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields, readOnly }: {
                 <TableRow key={item.id}>
                   {fields.map((f, i) => (
                     <TableCell key={f.key} className={i === 0 ? 'text-sm font-medium' : 'text-xs text-muted-foreground'}>
-                      {item[f.key] || '-'}
+                      {getCellValue(f, item)}
                     </TableCell>
                   ))}
                   <TableCell>
@@ -141,14 +170,32 @@ export default function Cadastros() {
   const { currentRole } = useAuth();
   const readOnly = !currentRole || !hasPermission(currentRole, 'cadastros:manage');
 
+  // Load units to use as options for locations
+  const { data: units = [] } = useTenantQuery<any>('units', 'units');
+  const unitOptions = useMemo(
+    () => units.map((u: any) => ({ value: u.id, label: u.name })),
+    [units]
+  );
+  const unitMap = useMemo(
+    () => Object.fromEntries(units.map((u: any) => [u.id, u.name])),
+    [units]
+  );
+
+  const locationRenderCell = (field: FieldDef, item: any) => {
+    if (field.key === 'unit_id') {
+      return unitMap[item.unit_id] || '-';
+    }
+    return undefined;
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Cadastros</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {readOnly
-            ? 'Visualize unidades, categorias e solicitantes do departamento.'
-            : 'Gerencie unidades, categorias e solicitantes.'}
+            ? 'Visualize unidades, locais, categorias e solicitantes do departamento.'
+            : 'Gerencie unidades, locais (salas/espaços), categorias e solicitantes.'}
         </p>
       </div>
 
@@ -162,6 +209,7 @@ export default function Cadastros() {
       <Tabs defaultValue="units">
         <TabsList className="bg-card border border-border h-9">
           <TabsTrigger value="units" className="text-xs h-7">Unidades</TabsTrigger>
+          <TabsTrigger value="locations" className="text-xs h-7">Locais</TabsTrigger>
           <TabsTrigger value="categories" className="text-xs h-7">Categorias</TabsTrigger>
           <TabsTrigger value="customers" className="text-xs h-7">Solicitantes</TabsTrigger>
         </TabsList>
@@ -177,6 +225,21 @@ export default function Cadastros() {
               { key: 'address', label: 'Endereço' },
               { key: 'city', label: 'Cidade' },
               { key: 'state', label: 'Estado' },
+            ]}
+          />
+        </TabsContent>
+        <TabsContent value="locations" className="mt-3">
+          <CrudSection
+            title="Local (Sala / Espaço)"
+            icon={MapPin}
+            queryKey="locations"
+            table="locations"
+            readOnly={readOnly}
+            renderCell={locationRenderCell}
+            fields={[
+              { key: 'name', label: 'Nome (ex: Sala 101, Pátio)', required: true },
+              { key: 'description', label: 'Descrição (ex: 2º andar, ala norte)' },
+              { key: 'unit_id', label: 'Unidade vinculada', required: true, type: 'select', options: unitOptions },
             ]}
           />
         </TabsContent>
