@@ -8,9 +8,10 @@ import { hasPermission } from '@/lib/permissions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
-  BarChart3, Users, Settings, LogOut, Wrench,
+  BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2, Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'os:read' as const },
@@ -23,11 +24,19 @@ const menuItems = [
   { label: 'Usuários', icon: Users, path: '/usuarios', permission: 'users:manage' as const },
 ];
 
+const adminItems = [
+  { label: 'Painel Consolidado', icon: Gauge, path: '/admin' },
+  { label: 'Departamentos', icon: Building2, path: '/admin/departamentos' },
+  { label: 'Usuários & Acessos', icon: ShieldCheck, path: '/admin/usuarios' },
+  { label: 'Configurações', icon: Settings2, path: '/admin/configuracoes' },
+];
+
 export function AppSidebar() {
   const { currentRole, profile, signOut, memberships, currentTenantId } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
+  const isSuperAdmin = currentRole === 'super_admin';
 
   return (
     <Sidebar>
@@ -39,7 +48,7 @@ export function AppSidebar() {
           <div className="flex flex-col">
             <span className="text-sm font-bold tracking-tight">ServiceOS</span>
             <span className="text-xs text-muted-foreground truncate max-w-[140px]">
-              {currentTenant?.tenant_name || 'Sem tenant'}
+              {currentTenant?.tenant_name || 'Sem departamento'}
             </span>
           </div>
         </div>
@@ -52,14 +61,10 @@ export function AppSidebar() {
             {menuItems.map(item => {
               if (currentRole && !hasPermission(currentRole, item.permission)) return null;
               const isActive = location.pathname === item.path ||
-                (item.path !== '/os/nova' && item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+                (item.path !== '/os/nova' && item.path !== '/dashboard' && location.pathname.startsWith(item.path) && !location.pathname.startsWith('/admin'));
               return (
                 <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    isActive={isActive}
-                    onClick={() => navigate(item.path)}
-                    tooltip={item.label}
-                  >
+                  <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
@@ -68,6 +73,25 @@ export function AppSidebar() {
             })}
           </SidebarMenu>
         </SidebarGroup>
+
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarMenu>
+              {adminItems.map(item => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
