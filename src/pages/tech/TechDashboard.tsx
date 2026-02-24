@@ -18,7 +18,8 @@ export default function TechDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: workOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
 
   const myOs = workOrders.filter((wo: any) => wo.assigned_to_id === user?.id);
   const open = myOs.filter((wo: any) => ['aberta', 'reaberta'].includes(wo.status)).length;

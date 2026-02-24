@@ -121,7 +121,7 @@ export default function WorkOrders() {
 
   // Filter + Sort + Paginate
   const filtered = useMemo(() => {
-    let result = workOrders.filter((wo: any) => {
+    let result = workOrders.filter((wo: any) => wo.deleted_at === null || wo.deleted_at === undefined).filter((wo: any) => {
       if (statusFilter !== 'all' && wo.status !== statusFilter) return false;
       if (priorityFilter !== 'all' && wo.priority !== priorityFilter) return false;
       if (categoryFilter !== 'all' && wo.category_id !== categoryFilter) return false;
