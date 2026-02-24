@@ -9,12 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 
@@ -60,7 +60,6 @@ export default function WorkOrderDetail() {
       if (status === 'em_execucao' && !wo?.started_at) updates.started_at = new Date().toISOString();
       if (status === 'concluida') updates.resolved_at = new Date().toISOString();
       if (status === 'encerrada') updates.closed_at = new Date().toISOString();
-      // SLA pause tracking
       const PAUSE_STATUSES = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'];
       if (PAUSE_STATUSES.includes(status) && !wo?.paused_at) {
         updates.paused_at = new Date().toISOString();
@@ -70,7 +69,6 @@ export default function WorkOrderDetail() {
         updates.total_paused_ms = (wo.total_paused_ms || 0) + pausedMs;
         updates.paused_at = null;
       }
-
       const { error } = await supabase.from('work_orders').update(updates).eq('id', id!);
       if (error) throw error;
       await supabase.from('work_order_events').insert({
@@ -79,10 +77,8 @@ export default function WorkOrderDetail() {
         payload: { from: wo?.status, to: status },
       });
       await logAudit({
-        entity: 'work_order',
-        entityId: id,
-        action: 'work_order.status_changed',
-        tenantId: currentTenantId,
+        entity: 'work_order', entityId: id,
+        action: 'work_order.status_changed', tenantId: currentTenantId,
         diff: { from: wo?.status, to: status },
       });
     },
@@ -110,7 +106,7 @@ export default function WorkOrderDetail() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 max-w-4xl mx-auto">
+      <div className="space-y-4 max-w-5xl mx-auto">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -129,113 +125,165 @@ export default function WorkOrderDetail() {
   const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/os')}>
+    <div className="max-w-5xl mx-auto space-y-4">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5" onClick={() => navigate('/os')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-sm font-mono text-muted-foreground">{wo.code}</span>
-            <Badge variant="outline" className={priorityColors[wo.priority]}>{priorityLabels[wo.priority]}</Badge>
-            <Badge variant="outline" className={statusColors[wo.status]}>{statusLabels[wo.status]}</Badge>
+            <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
+              {priorityLabels[wo.priority]}
+            </Badge>
+            <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
+              {statusLabels[wo.status]}
+            </Badge>
             <SlaIndicator workOrder={wo} compact />
           </div>
-          <h1 className="text-xl font-bold truncate">{wo.title}</h1>
+          <h1 className="text-lg font-semibold">{wo.title}</h1>
         </div>
       </div>
 
+      {/* Content */}
       <Tabs defaultValue="resumo">
-        <TabsList>
-          <TabsTrigger value="resumo">Resumo</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="anexos">Anexos</TabsTrigger>
-          <TabsTrigger value="custos">Custos</TabsTrigger>
+        <TabsList className="bg-card border border-border h-9">
+          <TabsTrigger value="resumo" className="text-xs h-7">Resumo</TabsTrigger>
+          <TabsTrigger value="timeline" className="text-xs h-7">Timeline</TabsTrigger>
+          <TabsTrigger value="anexos" className="text-xs h-7">Anexos</TabsTrigger>
+          <TabsTrigger value="custos" className="text-xs h-7">Custos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="resumo">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Detalhes</CardTitle></CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Criada em</span><span>{new Date(wo.created_at).toLocaleString('pt-BR')}</span></div>
-                {wo.started_at && <div className="flex justify-between"><span className="text-muted-foreground">Iniciada em</span><span>{new Date(wo.started_at).toLocaleString('pt-BR')}</span></div>}
-                {wo.resolved_at && <div className="flex justify-between"><span className="text-muted-foreground">Resolvida em</span><span>{new Date(wo.resolved_at).toLocaleString('pt-BR')}</span></div>}
-                {(wo.response_due_at || wo.resolve_due_at) && (
-                  <div className="pt-2 border-t">
-                    <span className="text-muted-foreground block mb-2">SLA</span>
-                    <SlaIndicator workOrder={wo} />
-                  </div>
-                )}
-                {wo.description && (
-                  <div className="pt-2 border-t">
-                    <span className="text-muted-foreground block mb-1">Descrição</span>
-                    <p className="whitespace-pre-wrap">{wo.description}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        <TabsContent value="resumo" className="mt-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Details - 2 cols */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card className="border-border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Detalhes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <DetailRow icon={CalendarDays} label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
+                  {wo.started_at && <DetailRow icon={Clock} label="Iniciada em" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
+                  {wo.resolved_at && <DetailRow icon={CheckSquare} label="Resolvida em" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
 
-            {canUpdate && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Ações</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Alterar Status</label>
-                    <div className="flex gap-2">
+                  {(wo.response_due_at || wo.resolve_due_at) && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SLA</span>
+                        <div className="mt-2"><SlaIndicator workOrder={wo} /></div>
+                      </div>
+                    </>
+                  )}
+
+                  {wo.description && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descrição</span>
+                        <p className="mt-1.5 whitespace-pre-wrap text-foreground leading-relaxed">{wo.description}</p>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Actions sidebar */}
+            <div className="space-y-4">
+              {canUpdate && (
+                <Card className="border-border shadow-none">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold">Ações</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Alterar Status</label>
                       <Select value={newStatus} onValueChange={setNewStatus}>
-                        <SelectTrigger className="flex-1"><SelectValue placeholder="Novo status" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Novo status" />
+                        </SelectTrigger>
                         <SelectContent>
                           {Object.entries(statusLabels).map(([k, v]) => (
                             <SelectItem key={k} value={k}>{v}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
-                        {statusMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                      <Button size="sm" className="w-full h-8 text-xs mt-1" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
+                        {statusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="border-border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Informações</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">ID</span>
+                    <span className="font-mono text-[11px]">{wo.id.slice(0, 8)}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Visibilidade</span>
+                    <span>{wo.visibility === 'internal' ? 'Interna' : 'Cliente'}</span>
+                  </div>
+                  {wo.tags && wo.tags.length > 0 && (
+                    <div className="flex items-start gap-1.5 pt-1">
+                      <Tag className="h-3 w-3 mt-0.5 text-muted-foreground" />
+                      <div className="flex gap-1 flex-wrap">
+                        {wo.tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
+            </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="timeline">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+        <TabsContent value="timeline" className="mt-3">
+          <Card className="border-border shadow-none">
+            <CardContent className="pt-5">
+              <div className="space-y-3">
                 {events.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Nenhum evento registrado.</p>
+                  <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento registrado.</p>
                 ) : (
-                  events.map((ev: any, i: number) => {
+                  events.map((ev: any) => {
                     const Icon = eventIcons[ev.type] || Clock;
                     const payload = ev.payload as any;
                     return (
-                      <motion.div key={ev.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="flex gap-3 items-start">
-                        <div className="mt-1 h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div key={ev.id} className="flex gap-3 items-start py-2 border-b border-border last:border-0">
+                        <div className="mt-0.5 h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium capitalize">{ev.type.replace(/_/g, ' ')}</span>
-                            <span className="text-xs text-muted-foreground">{new Date(ev.created_at).toLocaleString('pt-BR')}</span>
+                            <span className="text-xs font-medium capitalize">{ev.type.replace(/_/g, ' ')}</span>
+                            <span className="text-[11px] text-muted-foreground">{new Date(ev.created_at).toLocaleString('pt-BR')}</span>
                           </div>
-                          {payload?.text && <p className="text-sm mt-1 text-muted-foreground">{payload.text}</p>}
+                          {payload?.text && <p className="text-xs mt-0.5 text-muted-foreground">{payload.text}</p>}
                           {payload?.from && payload?.to && (
-                            <p className="text-xs text-muted-foreground mt-1">{statusLabels[payload.from] || payload.from} → {statusLabels[payload.to] || payload.to}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {statusLabels[payload.from] || payload.from} → {statusLabels[payload.to] || payload.to}
+                            </p>
                           )}
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })
                 )}
-                <div className="border-t pt-4 mt-4">
+                <div className="pt-3 mt-2">
                   <div className="flex gap-2">
-                    <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Adicionar comentário..." rows={2} className="flex-1" />
-                    <Button size="icon" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
-                      {commentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Adicionar comentário..." rows={2} className="flex-1 text-sm" />
+                    <Button size="icon" className="h-[68px] w-9" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
+                      {commentMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
                 </div>
@@ -244,22 +292,45 @@ export default function WorkOrderDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="anexos">
+        <TabsContent value="anexos" className="mt-3">
           <WorkOrderAttachments workOrderId={wo.id} />
         </TabsContent>
 
-        <TabsContent value="custos">
-          <Card>
-            <CardContent className="pt-6">
+        <TabsContent value="custos" className="mt-3">
+          <Card className="border-border shadow-none">
+            <CardContent className="pt-5">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div><p className="text-sm text-muted-foreground">Mão de Obra</p><p className="text-xl font-bold">R$ {Number(wo.labor_cost || 0).toFixed(2)}</p></div>
-                <div><p className="text-sm text-muted-foreground">Peças</p><p className="text-xl font-bold">R$ {Number(wo.parts_cost || 0).toFixed(2)}</p></div>
-                <div><p className="text-sm text-muted-foreground">Total</p><p className="text-xl font-bold text-primary">R$ {Number(wo.total_cost || 0).toFixed(2)}</p></div>
+                <CostBlock label="Mão de Obra" value={wo.labor_cost} />
+                <CostBlock label="Peças" value={wo.parts_cost} />
+                <CostBlock label="Total" value={wo.total_cost} highlight />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-xs">{label}</span>
+      </div>
+      <span className="text-xs font-medium">{value}</span>
+    </div>
+  );
+}
+
+function CostBlock({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`text-lg font-semibold ${highlight ? 'text-primary' : ''}`}>
+        R$ {Number(value || 0).toFixed(2)}
+      </p>
     </div>
   );
 }

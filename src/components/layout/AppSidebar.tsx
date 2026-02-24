@@ -10,7 +10,6 @@ import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2, Gauge, ScrollText, KeyRound,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const menuItems = [
@@ -42,13 +41,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Wrench className="h-4 w-4 text-primary-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-sm">
+            <Wrench className="h-4 w-4 text-sidebar-primary-foreground" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-tight">ServiceOS</span>
-            <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">ServiceOS</span>
+            <span className="text-[11px] text-[hsl(var(--sidebar-muted-foreground))] truncate max-w-[140px]">
               {currentTenant?.tenant_name || 'Sem departamento'}
             </span>
           </div>
@@ -57,7 +56,9 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[11px] uppercase tracking-wider text-[hsl(var(--sidebar-muted-foreground))] font-semibold px-3">
+            Menu Principal
+          </SidebarGroupLabel>
           <SidebarMenu>
             {menuItems.map(item => {
               if (currentRole && !hasPermission(currentRole, item.permission)) return null;
@@ -67,7 +68,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
                     <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <span className="text-[13px]">{item.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );
@@ -77,7 +78,9 @@ export function AppSidebar() {
 
         {isSuperAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-[11px] uppercase tracking-wider text-[hsl(var(--sidebar-muted-foreground))] font-semibold px-3">
+              Administração
+            </SidebarGroupLabel>
             <SidebarMenu>
               {adminItems.map(item => {
                 const isActive = location.pathname === item.path;
@@ -85,7 +88,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton isActive={isActive} onClick={() => navigate(item.path)} tooltip={item.label}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span className="text-[13px]">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -95,24 +98,28 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
         <button
-          className="flex items-center gap-2 mb-2 w-full hover:bg-muted/30 rounded-md p-1 transition-colors"
+          className="flex items-center gap-2 w-full rounded-md p-2 transition-colors hover:bg-sidebar-accent"
           onClick={() => navigate('/perfil')}
         >
-          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-foreground">
             {profile?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="flex flex-col flex-1 min-w-0 text-left">
-            <span className="text-sm font-medium truncate">{profile?.name || 'Usuário'}</span>
-            <span className="text-xs text-muted-foreground truncate">{profile?.email}</span>
+            <span className="text-[13px] font-medium truncate text-sidebar-foreground">{profile?.name || 'Usuário'}</span>
+            <span className="text-[11px] text-[hsl(var(--sidebar-muted-foreground))] truncate">{profile?.email}</span>
           </div>
-          <KeyRound className="h-3 w-3 text-muted-foreground" />
+          <KeyRound className="h-3 w-3 text-[hsl(var(--sidebar-muted-foreground))]" />
         </button>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Sair
-        </Button>
+        <Separator className="my-1 bg-sidebar-border" />
+        <button
+          className="flex items-center gap-2 w-full rounded-md p-2 text-[13px] transition-colors hover:bg-sidebar-accent text-[hsl(var(--sidebar-muted-foreground))]"
+          onClick={signOut}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sair</span>
+        </button>
       </SidebarFooter>
     </Sidebar>
   );

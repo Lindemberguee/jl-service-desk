@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/lib/permissions';
-import { ClipboardList, AlertTriangle, Clock, Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ClipboardList, AlertTriangle, Clock, Zap, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SlaIndicator } from '@/components/SlaIndicator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -20,84 +20,96 @@ export default function Dashboard() {
   const overdue = workOrders.filter((wo: any) => wo.resolve_due_at && new Date(wo.resolve_due_at) < new Date() && !['encerrada', 'concluida', 'aprovada'].includes(wo.status)).length;
 
   const stats = [
-    { label: 'Abertas', value: open, icon: ClipboardList, color: 'text-blue-500' },
-    { label: 'Em Execução', value: inProgress, icon: Clock, color: 'text-amber-500' },
+    { label: 'Abertas', value: open, icon: ClipboardList, color: 'text-primary' },
+    { label: 'Em Execução', value: inProgress, icon: Clock, color: 'text-amber-600' },
     { label: 'Críticas', value: critical, icon: Zap, color: 'text-destructive' },
-    { label: 'SLA Atrasadas', value: overdue, icon: AlertTriangle, color: 'text-orange-500' },
+    { label: 'SLA Atrasadas', value: overdue, icon: AlertTriangle, color: 'text-orange-600' },
   ];
 
-  const recentOrders = workOrders.slice(0, 8);
+  const recentOrders = workOrders.slice(0, 10);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Olá, {profile?.name || 'Usuário'}. Aqui está o resumo das suas ordens de serviço.</p>
+        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Olá, {profile?.name || 'Usuário'}. Resumo das suas ordens de serviço.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map((stat) => (
+          <Card key={stat.label} className="border-border shadow-none">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground">{stat.label}</span>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12" />
+              ) : (
+                <div className="text-2xl font-bold">{stat.value}</div>
+              )}
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Ordens Recentes</CardTitle>
+      {/* Recent Work Orders Table */}
+      <Card className="border-border shadow-none">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Ordens Recentes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+            <div className="space-y-2 p-4">
+              {[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           ) : recentOrders.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <ClipboardList className="mx-auto h-10 w-10 mb-2 opacity-50" />
-              <p>Nenhuma ordem de serviço encontrada.</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <ClipboardList className="mx-auto h-8 w-8 mb-2 opacity-30" />
+              <p className="text-sm">Nenhuma ordem de serviço encontrada.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {recentOrders.map((wo: any) => (
-                <div
-                  key={wo.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/os/${wo.id}`)}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs font-mono text-muted-foreground">{wo.code}</span>
-                    <span className="text-sm font-medium truncate">{wo.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <SlaIndicator workOrder={wo} compact />
-                    <Badge variant="outline" className={priorityColors[wo.priority]}>
-                      {priorityLabels[wo.priority]}
-                    </Badge>
-                    <Badge variant="outline" className={statusColors[wo.status]}>
-                      {statusLabels[wo.status]}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px]">Código</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Título</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">Prioridade</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Status</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">SLA</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentOrders.map((wo: any) => (
+                  <TableRow
+                    key={wo.id}
+                    className="cursor-pointer group"
+                    onClick={() => navigate(`/os/${wo.id}`)}
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground">{wo.code}</TableCell>
+                    <TableCell className="text-sm font-medium truncate max-w-[250px]">{wo.title}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
+                        {priorityLabels[wo.priority]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
+                        {statusLabels[wo.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <SlaIndicator workOrder={wo} compact />
+                    </TableCell>
+                    <TableCell>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
