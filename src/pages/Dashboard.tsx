@@ -1,19 +1,20 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/lib/permissions';
-import { ClipboardList, AlertTriangle, Clock, Zap, ChevronRight } from 'lucide-react';
+import { ClipboardList, AlertTriangle, Clock, Zap, ChevronRight, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, memberships } = useAuth();
   const navigate = useNavigate();
-  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
+  const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const open = workOrders.filter((wo: any) => wo.status === 'aberta').length;
   const inProgress = workOrders.filter((wo: any) => wo.status === 'em_execucao').length;
@@ -76,6 +77,9 @@ export default function Dashboard() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px]">Código</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Título</TableHead>
+                  {memberships.length > 1 && (
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Depto</TableHead>
+                  )}
                   <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">Prioridade</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Status</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">SLA</TableHead>
@@ -96,6 +100,11 @@ export default function Dashboard() {
                         {priorityLabels[wo.priority]}
                       </Badge>
                     </TableCell>
+                    {memberships.length > 1 && (
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]">
+                        {tenantMap[wo.tenant_id] || '—'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
                         {statusLabels[wo.status]}

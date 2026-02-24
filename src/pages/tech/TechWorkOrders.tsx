@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { SlaIndicator } from '@/components/SlaIndicator';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Play, Pause, CheckSquare, ChevronRight, AlertTriangle, Clock, ClipboardList, UserCheck, Package, Filter } from 'lucide-react';
+import { Search, Play, Pause, CheckSquare, ChevronRight, AlertTriangle, Clock, ClipboardList, UserCheck, Package, Filter, Building2 } from 'lucide-react';
 
 const PRIORITY_ORDER: Record<string, number> = { critica: 0, alta: 1, media: 2, baixa: 3 };
 
@@ -33,12 +34,13 @@ const VIEWS: SavedView[] = [
 
 export default function TechWorkOrders() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, memberships } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
-  const { data: units = [] } = useTenantQuery<any>('units', 'units');
+  const { data: units = [] } = useAllTenantsQuery<any>('units_all', 'units');
+  const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -103,7 +105,7 @@ export default function TechWorkOrders() {
       const { error } = await supabase.from('work_orders').update(updates as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work_orders'] }); toast({ title: 'Status atualizado!' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work_orders'] }); qc.invalidateQueries({ queryKey: ['work_orders_all'] }); toast({ title: 'Status atualizado!' }); },
   });
 
   const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '—';
@@ -194,6 +196,11 @@ export default function TechWorkOrders() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="text-xs font-mono text-muted-foreground">{wo.code}</span>
+                        {memberships.length > 1 && (
+                          <Badge variant="secondary" className="text-[9px] h-4">
+                            <Building2 className="h-2.5 w-2.5 mr-0.5" />{tenantMap[wo.tenant_id] || ''}
+                          </Badge>
+                        )}
                         <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
                           {priorityLabels[wo.priority]}
                         </Badge>

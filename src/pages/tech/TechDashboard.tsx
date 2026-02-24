@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,19 @@ import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/li
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Play, Pause, Package, UserCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Zap } from 'lucide-react';
+import { ClipboardList, Play, Pause, Package, UserCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Zap, Building2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export default function TechDashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, memberships } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: rawWorkOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
+  const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const myOs = workOrders.filter((wo: any) => wo.assigned_to_id === user?.id);
   const open = myOs.filter((wo: any) => ['aberta', 'reaberta'].includes(wo.status)).length;
@@ -76,7 +77,7 @@ export default function TechDashboard() {
       const { error } = await supabase.from('work_orders').update(updates as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work_orders'] }); toast({ title: 'Status atualizado!' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work_orders'] }); qc.invalidateQueries({ queryKey: ['work_orders_all'] }); toast({ title: 'Status atualizado!' }); },
   });
 
   return (
@@ -142,6 +143,11 @@ export default function TechDashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-mono text-muted-foreground">{wo.code}</span>
+                        {memberships.length > 1 && (
+                          <Badge variant="secondary" className="text-[9px] h-4">
+                            <Building2 className="h-2.5 w-2.5 mr-0.5" />{tenantMap[wo.tenant_id] || ''}
+                          </Badge>
+                        )}
                         <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
                           {priorityLabels[wo.priority]}
                         </Badge>

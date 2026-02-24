@@ -52,6 +52,7 @@ export function useRealtimeWorkOrders() {
 
             // Invalidate all relevant queries
             qc.invalidateQueries({ queryKey: ['work_orders'] });
+            qc.invalidateQueries({ queryKey: ['work_orders_all'] });
             qc.invalidateQueries({ queryKey: ['work_order', newRow?.id] });
             qc.invalidateQueries({ queryKey: ['portal_work_orders'] });
           }
@@ -81,6 +82,7 @@ export function useRealtimeWorkOrders() {
             }
 
             qc.invalidateQueries({ queryKey: ['work_orders'] });
+            qc.invalidateQueries({ queryKey: ['work_orders_all'] });
             qc.invalidateQueries({ queryKey: ['portal_work_orders'] });
           }
         )
