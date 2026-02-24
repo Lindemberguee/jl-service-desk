@@ -79,23 +79,6 @@ export function RequesterLayout() {
 
         <div className="flex-1" />
 
-        {memberships.length > 1 && (
-          <div className="flex items-center gap-1.5">
-            <Building2 className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
-            <Select value={currentTenantId || ''} onValueChange={switchTenant}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Departamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {memberships.map(m => (
-                  <SelectItem key={m.tenant_id} value={m.tenant_id}>
-                    {m.tenant_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[120px]">
           {profile?.name}
