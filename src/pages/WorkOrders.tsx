@@ -12,6 +12,7 @@ import { Search, Plus, X, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SlaIndicator } from '@/components/SlaIndicator';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
@@ -142,6 +143,7 @@ export default function WorkOrders() {
                           {new Date(wo.created_at).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
+                      <SlaIndicator workOrder={wo} compact />
                       <Badge variant="outline" className={statusColors[wo.status]}>
                         {statusLabels[wo.status]}
                       </Badge>
