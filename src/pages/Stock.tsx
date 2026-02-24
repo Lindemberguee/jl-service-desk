@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useTenantQuery, useTenantInsert, useTenantUpdate } from '@/hooks/useTenantQuery';
+import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw } from 'lucide-react';
+import { Plus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw, Pencil, Trash2, Save } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 
 export default function Stock() {
@@ -29,6 +30,7 @@ export default function Stock() {
   });
   const insertItem = useTenantInsert('stock_items', ['stock_items']);
   const updateItem = useTenantUpdate('stock_items', ['stock_items']);
+  const deleteItem = useTenantDelete('stock_items', ['stock_items', 'stock_movements']);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const qc = useQueryClient();
@@ -37,6 +39,11 @@ export default function Stock() {
   const [open, setOpen] = useState(false);
   const [movOpen, setMovOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<any>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSku, setEditSku] = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [editMinLevel, setEditMinLevel] = useState('');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
@@ -400,15 +407,15 @@ export default function Stock() {
       </Tabs>
 
       {/* Item Detail Dialog */}
-      <Dialog open={!!detailItem} onOpenChange={(v) => { if (!v) setDetailItem(null); }}>
+      <Dialog open={!!detailItem} onOpenChange={(v) => { if (!v) { setDetailItem(null); setEditMode(false); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              {detailItem?.name}
+              {editMode ? 'Editar Item' : detailItem?.name}
             </DialogTitle>
           </DialogHeader>
-          {detailItem && (
+          {detailItem && !editMode && (
             <div className="space-y-4">
               {/* Info */}
               <div className="grid grid-cols-2 gap-3">
@@ -422,6 +429,48 @@ export default function Stock() {
                 </div>
               </div>
               {detailItem.sku && <p className="text-xs text-muted-foreground">SKU: {detailItem.sku}</p>}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => {
+                  setEditName(detailItem.name);
+                  setEditSku(detailItem.sku || '');
+                  setEditUnit(detailItem.unit || 'un');
+                  setEditMinLevel(String(detailItem.min_level || 0));
+                  setEditMode(true);
+                }}>
+                  <Pencil className="h-3 w-3" /> Editar
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive">
+                      <Trash2 className="h-3 w-3" /> Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir item?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        O item "{detailItem.name}" será excluído permanentemente. Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+                        try {
+                          await deleteItem.mutateAsync(detailItem.id);
+                          toast({ title: 'Item excluído!' });
+                          setDetailItem(null);
+                        } catch (err: any) {
+                          toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+                        }
+                      }}>
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
 
               {/* Movement history */}
               <div>
@@ -451,6 +500,41 @@ export default function Stock() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Edit mode */}
+          {detailItem && editMode && (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await updateItem.mutateAsync({
+                  id: detailItem.id,
+                  name: editName,
+                  sku: editSku || null,
+                  unit: editUnit || 'un',
+                  min_level: parseInt(editMinLevel) || 0,
+                });
+                toast({ title: 'Item atualizado!' });
+                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0 });
+                setEditMode(false);
+              } catch (err: any) {
+                toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+              }
+            }} className="space-y-3">
+              <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={editName} onChange={e => setEditName(e.target.value)} required className="h-9" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={editSku} onChange={e => setEditSku(e.target.value)} className="h-9" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={editUnit} onChange={e => setEditUnit(e.target.value)} className="h-9" /></div>
+              </div>
+              <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" value={editMinLevel} onChange={e => setEditMinLevel(e.target.value)} className="h-9" /></div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1 h-8 text-sm" onClick={() => setEditMode(false)}>Cancelar</Button>
+                <Button type="submit" className="flex-1 h-8 text-sm gap-1.5" disabled={updateItem.isPending}>
+                  {updateItem.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <Save className="h-3.5 w-3.5" /> Salvar
+                </Button>
+              </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
