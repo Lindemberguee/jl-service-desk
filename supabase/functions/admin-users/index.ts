@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,15 +30,33 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const {
-      data: { user: caller },
-    } = await callerClient.auth.getUser();
-    if (!caller) {
+    // Use getClaims for signing-keys compatibility, fallback to getUser
+    const token = authHeader.replace("Bearer ", "");
+    let callerId: string | null = null;
+    
+    if (typeof callerClient.auth.getClaims === "function") {
+      const { data: claimsData, error: claimsError } = await callerClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims?.sub) {
+        // Fallback to getUser
+        const { data: { user: fallbackUser } } = await callerClient.auth.getUser();
+        callerId = fallbackUser?.id || null;
+      } else {
+        callerId = claimsData.claims.sub as string;
+      }
+    } else {
+      const { data: { user: fallbackUser } } = await callerClient.auth.getUser();
+      callerId = fallbackUser?.id || null;
+    }
+
+    if (!callerId) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    // Create a minimal caller object for compatibility
+    const caller = { id: callerId };
 
     // Verify caller is super_admin, admin, or coordenador
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -70,7 +88,7 @@ Deno.serve(async (req) => {
         entity,
         entity_id: entityId,
         action: actionName,
-        actor_user_id: caller!.id,
+        actor_user_id: caller.id,
         tenant_id: tenantId || null,
         diff,
         ip: req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || null,
@@ -166,7 +184,7 @@ Deno.serve(async (req) => {
         }
 
         await logAudit("user", user_id, "user.password_changed", {
-          changed_by: caller!.id,
+          changed_by: caller.id,
         });
 
         return new Response(JSON.stringify({ success: true }), {
