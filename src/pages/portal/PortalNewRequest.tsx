@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { logAudit } from '@/lib/audit';
@@ -31,6 +31,7 @@ export default function PortalNewRequest() {
   const [priority, setPriority] = useState('media');
   const [categoryId, setCategoryId] = useState('');
   const [unitId, setUnitId] = useState('');
+  const [locationId, setLocationId] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
@@ -45,11 +46,17 @@ export default function PortalNewRequest() {
     }
   }, [memberships, selectedTenantId]);
 
-  // Reset category/unit when department changes
+  // Reset category/unit/location when department changes
   useEffect(() => {
     setCategoryId('');
     setUnitId('');
+    setLocationId('');
   }, [selectedTenantId]);
+
+  // Reset location when unit changes
+  useEffect(() => {
+    setLocationId('');
+  }, [unitId]);
 
   // Auto-fill email from profile
   useEffect(() => {
@@ -89,6 +96,26 @@ export default function PortalNewRequest() {
     },
     enabled: !!selectedTenantId,
   });
+  // Load locations for selected department
+  const { data: allLocations = [] } = useQuery({
+    queryKey: ['locations', selectedTenantId],
+    queryFn: async () => {
+      if (!selectedTenantId) return [];
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('tenant_id', selectedTenantId)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedTenantId,
+  });
+
+  const filteredLocations = useMemo(
+    () => unitId ? allLocations.filter((l: any) => l.unit_id === unitId) : allLocations,
+    [allLocations, unitId]
+  );
 
   const insertMutation = useMutation({
     mutationFn: async (values: Record<string, any>) => {
@@ -123,6 +150,11 @@ export default function PortalNewRequest() {
 
   const getCategoryName = (id: string) => categories.find((c: any) => c.id === id)?.name || '';
   const getUnitName = (id: string) => units.find((u: any) => u.id === id)?.name || '';
+  const getLocationName = (id: string) => {
+    const l = allLocations.find((loc: any) => loc.id === id);
+    if (!l) return '';
+    return `${l.name}${l.description ? ` — ${l.description}` : ''}`;
+  };
   const getDeptName = (id: string) => memberships.find(m => m.tenant_id === id)?.tenant_name || '';
 
   const handleSubmit = async () => {
@@ -139,6 +171,7 @@ export default function PortalNewRequest() {
         priority,
         category_id: categoryId || null,
         unit_id: unitId || null,
+        location_id: locationId || null,
         code: '',
         visibility: 'customer',
         requester_user_id: user?.id || null,
@@ -196,7 +229,7 @@ export default function PortalNewRequest() {
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
           <Button variant="outline" onClick={() => navigate('/portal')}>Ver Minhas OS</Button>
-          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setFiles([]); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
+          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setFiles([]); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
             Abrir Outra
           </Button>
         </div>
@@ -249,8 +282,14 @@ export default function PortalNewRequest() {
               )}
               {unitId && (
                 <div>
-                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Unidade</p>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Unidade (Prédio / Campus)</p>
                   <p className="text-sm">{getUnitName(unitId)}</p>
+                </div>
+              )}
+              {locationId && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Sala / Espaço</p>
+                  <p className="text-sm">{getLocationName(locationId)}</p>
                 </div>
               )}
               {contactEmail && (
@@ -404,7 +443,7 @@ export default function PortalNewRequest() {
                   )}
                   {units.length > 0 && (
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Unidade / Local</Label>
+                      <Label className="text-xs font-medium">Unidade (Prédio / Campus)</Label>
                       <Select value={unitId} onValueChange={setUnitId}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent>
@@ -416,6 +455,23 @@ export default function PortalNewRequest() {
                     </div>
                   )}
                 </div>
+
+                {/* Location (Sala / Espaço) - shown after unit selected */}
+                {unitId && filteredLocations.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Sala / Espaço</Label>
+                    <Select value={locationId} onValueChange={setLocationId}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Ex: Sala 101, Pátio, Recepção" /></SelectTrigger>
+                      <SelectContent>
+                        {filteredLocations.map((l: any) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.name}{l.description ? ` — ${l.description}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Contact info */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
