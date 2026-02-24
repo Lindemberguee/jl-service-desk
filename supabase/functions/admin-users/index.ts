@@ -149,6 +149,22 @@ Deno.serve(async (req) => {
             tenant_id,
             role: role || "tecnico",
           });
+
+          // Auto-create customer record for solicitante users
+          if ((role || "tecnico") === "solicitante") {
+            await adminClient.from("customers").insert({
+              name,
+              email,
+              phone: body.phone || null,
+              document: body.document || null,
+              position: body.position || null,
+              sector: body.sector || null,
+              notes: body.notes || null,
+              tenant_id,
+              user_id: newUser.user.id,
+              type: "internal",
+            });
+          }
         }
 
         await logAudit("user", newUser.user?.id || null, "user.created", {

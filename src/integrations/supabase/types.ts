@@ -223,7 +223,10 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          notes: string | null
           phone: string | null
+          position: string | null
+          sector: string | null
           tenant_id: string
           type: Database["public"]["Enums"]["customer_type"]
           updated_at: string
@@ -235,7 +238,10 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
+          notes?: string | null
           phone?: string | null
+          position?: string | null
+          sector?: string | null
           tenant_id: string
           type?: Database["public"]["Enums"]["customer_type"]
           updated_at?: string
@@ -247,7 +253,10 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          notes?: string | null
           phone?: string | null
+          position?: string | null
+          sector?: string | null
           tenant_id?: string
           type?: Database["public"]["Enums"]["customer_type"]
           updated_at?: string
