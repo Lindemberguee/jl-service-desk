@@ -10,20 +10,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { ArrowLeft, MessageSquare, Clock, Paperclip, CheckSquare, DollarSign, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { SlaIndicator } from '@/components/SlaIndicator';
+import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 
 const eventIcons: Record<string, any> = {
-  created: Clock,
-  status_changed: Clock,
-  comment_internal: MessageSquare,
-  comment_public: MessageSquare,
-  assigned: Clock,
-  resolved: CheckSquare,
-  closed: CheckSquare,
-  reopened: Clock,
+  created: Clock, status_changed: Clock, comment_internal: MessageSquare,
+  comment_public: MessageSquare, assigned: Clock, resolved: CheckSquare,
+  closed: CheckSquare, reopened: Clock,
 };
 
 export default function WorkOrderDetail() {
@@ -38,11 +35,7 @@ export default function WorkOrderDetail() {
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work_order', id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('work_orders')
-        .select('*')
-        .eq('id', id!)
-        .single();
+      const { data, error } = await supabase.from('work_orders').select('*').eq('id', id!).single();
       if (error) throw error;
       return data;
     },
@@ -52,11 +45,8 @@ export default function WorkOrderDetail() {
   const { data: events = [] } = useQuery({
     queryKey: ['work_order_events', id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('work_order_events')
-        .select('*')
-        .eq('work_order_id', id!)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.from('work_order_events').select('*')
+        .eq('work_order_id', id!).order('created_at', { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -69,15 +59,22 @@ export default function WorkOrderDetail() {
       if (status === 'em_execucao' && !wo?.started_at) updates.started_at = new Date().toISOString();
       if (status === 'concluida') updates.resolved_at = new Date().toISOString();
       if (status === 'encerrada') updates.closed_at = new Date().toISOString();
+      // SLA pause tracking
+      const PAUSE_STATUSES = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'];
+      if (PAUSE_STATUSES.includes(status) && !wo?.paused_at) {
+        updates.paused_at = new Date().toISOString();
+      }
+      if (!PAUSE_STATUSES.includes(status) && wo?.paused_at) {
+        const pausedMs = Date.now() - new Date(wo.paused_at).getTime();
+        updates.total_paused_ms = (wo.total_paused_ms || 0) + pausedMs;
+        updates.paused_at = null;
+      }
 
       const { error } = await supabase.from('work_orders').update(updates).eq('id', id!);
       if (error) throw error;
-
       await supabase.from('work_order_events').insert({
-        tenant_id: currentTenantId!,
-        work_order_id: id!,
-        type: 'status_changed' as any,
-        actor_user_id: user?.id,
+        tenant_id: currentTenantId!, work_order_id: id!,
+        type: 'status_changed' as any, actor_user_id: user?.id,
         payload: { from: wo?.status, to: status },
       });
     },
@@ -91,10 +88,8 @@ export default function WorkOrderDetail() {
   const commentMutation = useMutation({
     mutationFn: async () => {
       await supabase.from('work_order_events').insert({
-        tenant_id: currentTenantId!,
-        work_order_id: id!,
-        type: 'comment_internal' as any,
-        actor_user_id: user?.id,
+        tenant_id: currentTenantId!, work_order_id: id!,
+        type: 'comment_internal' as any, actor_user_id: user?.id,
         payload: { text: comment },
       });
     },
@@ -132,14 +127,11 @@ export default function WorkOrderDetail() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-mono text-muted-foreground">{wo.code}</span>
-            <Badge variant="outline" className={priorityColors[wo.priority]}>
-              {priorityLabels[wo.priority]}
-            </Badge>
-            <Badge variant="outline" className={statusColors[wo.status]}>
-              {statusLabels[wo.status]}
-            </Badge>
+            <Badge variant="outline" className={priorityColors[wo.priority]}>{priorityLabels[wo.priority]}</Badge>
+            <Badge variant="outline" className={statusColors[wo.status]}>{statusLabels[wo.status]}</Badge>
+            <SlaIndicator workOrder={wo} compact />
           </div>
           <h1 className="text-xl font-bold truncate">{wo.title}</h1>
         </div>
@@ -149,6 +141,7 @@ export default function WorkOrderDetail() {
         <TabsList>
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="anexos">Anexos</TabsTrigger>
           <TabsTrigger value="custos">Custos</TabsTrigger>
         </TabsList>
 
@@ -157,20 +150,13 @@ export default function WorkOrderDetail() {
             <Card>
               <CardHeader><CardTitle className="text-sm">Detalhes</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Criada em</span>
-                  <span>{new Date(wo.created_at).toLocaleString('pt-BR')}</span>
-                </div>
-                {wo.started_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Iniciada em</span>
-                    <span>{new Date(wo.started_at).toLocaleString('pt-BR')}</span>
-                  </div>
-                )}
-                {wo.resolved_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Resolvida em</span>
-                    <span>{new Date(wo.resolved_at).toLocaleString('pt-BR')}</span>
+                <div className="flex justify-between"><span className="text-muted-foreground">Criada em</span><span>{new Date(wo.created_at).toLocaleString('pt-BR')}</span></div>
+                {wo.started_at && <div className="flex justify-between"><span className="text-muted-foreground">Iniciada em</span><span>{new Date(wo.started_at).toLocaleString('pt-BR')}</span></div>}
+                {wo.resolved_at && <div className="flex justify-between"><span className="text-muted-foreground">Resolvida em</span><span>{new Date(wo.resolved_at).toLocaleString('pt-BR')}</span></div>}
+                {(wo.response_due_at || wo.resolve_due_at) && (
+                  <div className="pt-2 border-t">
+                    <span className="text-muted-foreground block mb-2">SLA</span>
+                    <SlaIndicator workOrder={wo} />
                   </div>
                 )}
                 {wo.description && (
@@ -197,11 +183,7 @@ export default function WorkOrderDetail() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button
-                        size="sm"
-                        disabled={!newStatus || statusMutation.isPending}
-                        onClick={() => statusMutation.mutate(newStatus)}
-                      >
+                      <Button size="sm" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
                         {statusMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
                       </Button>
                     </div>
@@ -223,49 +205,28 @@ export default function WorkOrderDetail() {
                     const Icon = eventIcons[ev.type] || Clock;
                     const payload = ev.payload as any;
                     return (
-                      <motion.div
-                        key={ev.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="flex gap-3 items-start"
-                      >
+                      <motion.div key={ev.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="flex gap-3 items-start">
                         <div className="mt-1 h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                           <Icon className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium capitalize">{ev.type.replace(/_/g, ' ')}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(ev.created_at).toLocaleString('pt-BR')}
-                            </span>
+                            <span className="text-xs text-muted-foreground">{new Date(ev.created_at).toLocaleString('pt-BR')}</span>
                           </div>
                           {payload?.text && <p className="text-sm mt-1 text-muted-foreground">{payload.text}</p>}
                           {payload?.from && payload?.to && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {statusLabels[payload.from] || payload.from} → {statusLabels[payload.to] || payload.to}
-                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{statusLabels[payload.from] || payload.from} → {statusLabels[payload.to] || payload.to}</p>
                           )}
                         </div>
                       </motion.div>
                     );
                   })
                 )}
-
                 <div className="border-t pt-4 mt-4">
                   <div className="flex gap-2">
-                    <Textarea
-                      value={comment}
-                      onChange={e => setComment(e.target.value)}
-                      placeholder="Adicionar comentário..."
-                      rows={2}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="icon"
-                      disabled={!comment.trim() || commentMutation.isPending}
-                      onClick={() => commentMutation.mutate()}
-                    >
+                    <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Adicionar comentário..." rows={2} className="flex-1" />
+                    <Button size="icon" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
                       {commentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -275,22 +236,17 @@ export default function WorkOrderDetail() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="anexos">
+          <WorkOrderAttachments workOrderId={wo.id} />
+        </TabsContent>
+
         <TabsContent value="custos">
           <Card>
             <CardContent className="pt-6">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Mão de Obra</p>
-                  <p className="text-xl font-bold">R$ {Number(wo.labor_cost || 0).toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Peças</p>
-                  <p className="text-xl font-bold">R$ {Number(wo.parts_cost || 0).toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-xl font-bold text-primary">R$ {Number(wo.total_cost || 0).toFixed(2)}</p>
-                </div>
+                <div><p className="text-sm text-muted-foreground">Mão de Obra</p><p className="text-xl font-bold">R$ {Number(wo.labor_cost || 0).toFixed(2)}</p></div>
+                <div><p className="text-sm text-muted-foreground">Peças</p><p className="text-xl font-bold">R$ {Number(wo.parts_cost || 0).toFixed(2)}</p></div>
+                <div><p className="text-sm text-muted-foreground">Total</p><p className="text-xl font-bold text-primary">R$ {Number(wo.total_cost || 0).toFixed(2)}</p></div>
               </div>
             </CardContent>
           </Card>

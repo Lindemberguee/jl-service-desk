@@ -7,11 +7,14 @@ import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/li
 import { ClipboardList, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useRealtimeWorkOrders } from '@/hooks/useRealtimeWorkOrders';
+import { SlaIndicator } from '@/components/SlaIndicator';
 
 export default function Dashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { data: workOrders = [], isLoading } = useTenantQuery<any>('work_orders', 'work_orders');
+  useRealtimeWorkOrders();
 
   const open = workOrders.filter((wo: any) => wo.status === 'aberta').length;
   const inProgress = workOrders.filter((wo: any) => wo.status === 'em_execucao').length;
@@ -86,6 +89,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium truncate">{wo.title}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <SlaIndicator workOrder={wo} compact />
                     <Badge variant="outline" className={priorityColors[wo.priority]}>
                       {priorityLabels[wo.priority]}
                     </Badge>
