@@ -15,6 +15,10 @@ import Assets from "@/pages/Assets";
 import Stock from "@/pages/Stock";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminDepartments from "@/pages/admin/AdminDepartments";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminSettings from "@/pages/admin/AdminSettings";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -33,9 +37,7 @@ function ProtectedRoutes() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  return (
-    <AppLayout />
-  );
+  return <AppLayout />;
 }
 
 function AuthGate() {
@@ -73,6 +75,11 @@ const App = () => (
               <Route path="estoque" element={<Stock />} />
               <Route path="relatorios" element={<Reports />} />
               <Route path="usuarios" element={<UsersPage />} />
+              {/* Admin routes */}
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin/departamentos" element={<AdminDepartments />} />
+              <Route path="admin/usuarios" element={<AdminUsers />} />
+              <Route path="admin/configuracoes" element={<AdminSettings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
