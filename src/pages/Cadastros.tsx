@@ -345,7 +345,7 @@ function CrudSection({
     </div>
   );
 }
-// ─── Solicitantes Section ─── shows user accounts with solicitante role
+// ─── Solicitantes Section ─── shows user accounts with solicitante role + customer data
 function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
   const { currentTenantId } = useAuth();
   const { toast } = useToast();
@@ -353,11 +353,17 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [form, setForm] = useState({
+    name: '', email: '', password: '', phone: '', document: '', position: '', sector: '', notes: '',
+  });
 
   const { data: solicitantes = [], isLoading } = useQuery({
     queryKey: ['solicitantes', currentTenantId],
@@ -367,29 +373,61 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
         .from('user_memberships')
         .select('id, user_id, role, is_active, profiles!user_memberships_user_id_profiles_fkey(name, email)')
         .eq('tenant_id', currentTenantId)
-        .eq('role', 'solicitante')
-        .eq('is_active', true);
+        .eq('role', 'solicitante');
       if (error) throw error;
       return (data || []) as any[];
     },
     enabled: !!currentTenantId,
   });
 
+  // Load customer records linked to the solicitante users
+  const userIds = useMemo(() => solicitantes.map((s: any) => s.user_id).filter(Boolean), [solicitantes]);
+  const { data: customers = [] } = useQuery({
+    queryKey: ['solicitante-customers', currentTenantId, userIds],
+    queryFn: async () => {
+      if (!currentTenantId || userIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .in('user_id', userIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!currentTenantId && userIds.length > 0,
+  });
+
+  const customerMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    customers.forEach((c: any) => { if (c.user_id) map[c.user_id] = c; });
+    return map;
+  }, [customers]);
+
+  const enriched = useMemo(() =>
+    solicitantes.map((m: any) => ({ ...m, customer: customerMap[m.user_id] || null })),
+    [solicitantes, customerMap]
+  );
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return solicitantes;
+    if (!search.trim()) return enriched;
     const s = search.toLowerCase();
-    return solicitantes.filter((m: any) =>
+    return enriched.filter((m: any) =>
       m.profiles?.name?.toLowerCase().includes(s) ||
-      m.profiles?.email?.toLowerCase().includes(s)
+      m.profiles?.email?.toLowerCase().includes(s) ||
+      m.customer?.phone?.toLowerCase().includes(s) ||
+      m.customer?.sector?.toLowerCase().includes(s) ||
+      m.customer?.position?.toLowerCase().includes(s)
     );
-  }, [solicitantes, search]);
+  }, [enriched, search]);
+
+  const resetForm = () => setForm({ name: '', email: '', password: '', phone: '', document: '', position: '', sector: '', notes: '' });
 
   const handleCreate = async () => {
-    if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+      toast({ title: 'Nome, e-mail e senha são obrigatórios', variant: 'destructive' });
       return;
     }
-    if (newPassword.length < 6) {
+    if (form.password.length < 6) {
       toast({ title: 'A senha precisa ter pelo menos 6 caracteres', variant: 'destructive' });
       return;
     }
@@ -398,9 +436,14 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       const { data, error } = await supabase.functions.invoke('admin-users', {
         body: {
           action: 'create_user',
-          email: newEmail.trim(),
-          password: newPassword,
-          name: newName.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          name: form.name.trim(),
+          phone: form.phone.trim() || null,
+          document: form.document.trim() || null,
+          position: form.position.trim() || null,
+          sector: form.sector.trim() || null,
+          notes: form.notes.trim() || null,
           tenant_id: currentTenantId,
           role: 'solicitante',
         },
@@ -409,10 +452,9 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       if (data?.error) throw new Error(data.error);
       toast({ title: 'Solicitante cadastrado com sucesso!' });
       setDialogOpen(false);
-      setNewName('');
-      setNewEmail('');
-      setNewPassword('');
+      resetForm();
       qc.invalidateQueries({ queryKey: ['solicitantes', currentTenantId] });
+      qc.invalidateQueries({ queryKey: ['solicitante-customers', currentTenantId] });
     } catch (err: any) {
       toast({ title: 'Erro ao cadastrar', description: err.message, variant: 'destructive' });
     } finally {
@@ -420,74 +462,185 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
     }
   };
 
+  const openEdit = (item: any) => {
+    setSelectedItem(item);
+    setForm({
+      name: item.profiles?.name || '',
+      email: item.profiles?.email || '',
+      password: '',
+      phone: item.customer?.phone || '',
+      document: item.customer?.document || '',
+      position: item.customer?.position || '',
+      sector: item.customer?.sector || '',
+      notes: item.customer?.notes || '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!selectedItem) return;
+    setSaving(true);
+    try {
+      // Update profile name
+      await supabase.from('profiles').update({ name: form.name.trim() }).eq('id', selectedItem.user_id);
+
+      // Upsert customer record
+      if (selectedItem.customer?.id) {
+        await supabase.from('customers').update({
+          name: form.name.trim(),
+          phone: form.phone.trim() || null,
+          document: form.document.trim() || null,
+          position: form.position.trim() || null,
+          sector: form.sector.trim() || null,
+          notes: form.notes.trim() || null,
+        }).eq('id', selectedItem.customer.id);
+      } else if (currentTenantId) {
+        await supabase.from('customers').insert({
+          name: form.name.trim(),
+          email: selectedItem.profiles?.email || '',
+          phone: form.phone.trim() || null,
+          document: form.document.trim() || null,
+          position: form.position.trim() || null,
+          sector: form.sector.trim() || null,
+          notes: form.notes.trim() || null,
+          tenant_id: currentTenantId,
+          user_id: selectedItem.user_id,
+          type: 'internal' as const,
+        });
+      }
+
+      toast({ title: 'Solicitante atualizado!' });
+      setEditOpen(false);
+      resetForm();
+      setSelectedItem(null);
+      qc.invalidateQueries({ queryKey: ['solicitantes', currentTenantId] });
+      qc.invalidateQueries({ queryKey: ['solicitante-customers', currentTenantId] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    if (!deactivateTarget) return;
+    setToggling(true);
+    try {
+      const newActive = !deactivateTarget.is_active;
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: {
+          action: 'toggle_user_active',
+          user_id: deactivateTarget.user_id,
+          is_active: newActive,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: newActive ? 'Solicitante reativado!' : 'Solicitante desativado!' });
+      qc.invalidateQueries({ queryKey: ['solicitantes', currentTenantId] });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setToggling(false);
+      setDeactivateTarget(null);
+    }
+  };
+
+  const openDetail = (item: any) => {
+    setSelectedItem(item);
+    setDetailOpen(true);
+  };
+
+  const DetailRow = ({ label, value }: { label: string; value?: string | null }) => (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-3 py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-[11px] font-medium text-muted-foreground w-28 shrink-0">{label}</span>
+      <span className="text-sm">{value || '—'}</span>
+    </div>
+  );
+
+  const formFields = (isEdit: boolean) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Nome completo *</Label>
+          <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: João da Silva" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">E-mail {isEdit ? '' : '*'}</Label>
+          <Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="joao@empresa.com" type="email" className="h-9" disabled={isEdit} />
+        </div>
+      </div>
+      {!isEdit && (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Senha inicial *</Label>
+          <div className="relative">
+            <Input value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Mínimo 6 caracteres" type={showPassword ? 'text' : 'password'} className="h-9 pr-9" />
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Telefone / Ramal</Label>
+          <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="(00) 00000-0000" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">CPF / Matrícula</Label>
+          <Input value={form.document} onChange={e => setForm(p => ({ ...p, document: e.target.value }))} placeholder="Documento de identificação" className="h-9" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Cargo</Label>
+          <Input value={form.position} onChange={e => setForm(p => ({ ...p, position: e.target.value }))} placeholder="Ex: Analista, Professor" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Setor / Departamento</Label>
+          <Input value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))} placeholder="Ex: Financeiro, RH" className="h-9" />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Observações</Label>
+        <Input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Anotações internas sobre este solicitante" className="h-9" />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <UsersIcon className="h-4 w-4 text-primary" />
-          Solicitantes
-          <Badge variant="secondary" className="text-[10px] ml-1">{solicitantes.length}</Badge>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
+            <UsersIcon className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold leading-none">Solicitantes</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{solicitantes.length} registro(s)</p>
+          </div>
         </div>
         {!readOnly && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-8 gap-1.5 text-xs">
                 <Plus className="h-3.5 w-3.5" /> Cadastrar Solicitante
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle className="text-base">Cadastrar Solicitante</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Crie uma conta de acesso ao portal para o solicitante. Ele poderá abrir e acompanhar OS.
+                  Crie uma conta de acesso ao portal. O solicitante poderá abrir e acompanhar OS.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-3 mt-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Nome completo *</Label>
-                  <Input
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    placeholder="Ex: João da Silva"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">E-mail *</Label>
-                  <Input
-                    value={newEmail}
-                    onChange={e => setNewEmail(e.target.value)}
-                    placeholder="joao@empresa.com"
-                    type="email"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Senha inicial *</Label>
-                  <div className="relative">
-                    <Input
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
-                      type={showPassword ? 'text' : 'password'}
-                      className="h-9 pr-9"
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="bg-muted/50 border border-border rounded-md p-3 text-[11px] text-muted-foreground">
-                  <Shield className="h-3.5 w-3.5 inline mr-1.5" />
-                  O solicitante será criado com acesso ao <strong>Portal do Solicitante</strong> onde poderá abrir e acompanhar suas ordens de serviço.
-                </div>
+              {formFields(false)}
+              <div className="bg-muted/50 border border-border rounded-md p-3 text-[11px] text-muted-foreground">
+                <Shield className="h-3.5 w-3.5 inline mr-1.5" />
+                O solicitante será criado com acesso ao <strong>Portal do Solicitante</strong>.
               </div>
-              <DialogFooter className="mt-2">
-                <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
                 <Button size="sm" onClick={handleCreate} disabled={creating}>
                   {creating && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   Cadastrar
@@ -501,12 +654,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       {solicitantes.length > 3 && (
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou e-mail..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs"
-          />
+          <Input placeholder="Buscar por nome, e-mail, setor..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs" />
           {search && (
             <button className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setSearch('')}>
               <X className="h-3 w-3 text-muted-foreground" />
@@ -516,65 +664,176 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       )}
 
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-md" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <UsersIcon className="mx-auto h-10 w-10 mb-2 opacity-30" />
-          <p className="text-sm font-medium">Nenhum solicitante cadastrado</p>
-          <p className="text-xs mt-1">{search ? 'Nenhum resultado encontrado.' : 'Cadastre um solicitante para que ele possa abrir OS pelo portal.'}</p>
+        <div className="bg-card border border-border rounded-lg py-12 text-center">
+          <UsersIcon className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {search ? 'Nenhum resultado encontrado.' : 'Nenhum solicitante cadastrado.'}
+          </p>
+          {!readOnly && !search && (
+            <Button size="sm" variant="outline" className="mt-3 h-7 text-xs gap-1" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-3 w-3" /> Criar primeiro solicitante
+            </Button>
+          )}
         </div>
       ) : isMobile ? (
         <div className="space-y-2">
           {filtered.map((m: any) => (
             <Card key={m.id} className="border-border shadow-none">
               <CardContent className="p-3">
-                <p className="text-sm font-medium">{m.profiles?.name || '—'}</p>
-                <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-                  <Mail className="h-3 w-3" />
-                  <span className="truncate">{m.profiles?.email || '—'}</span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <Badge variant="outline" className="text-[10px] gap-1">
-                    <Shield className="h-2.5 w-2.5" /> Solicitante
-                  </Badge>
-                  <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                    {m.is_active ? 'Ativo' : 'Inativo'}
-                  </Badge>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1" onClick={() => openDetail(m)} role="button">
+                    <p className="text-sm font-medium truncate">{m.profiles?.name || '—'}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{m.profiles?.email || '—'}</span>
+                    </div>
+                    {m.customer?.sector && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{m.customer.position ? `${m.customer.position} · ` : ''}{m.customer.sector}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                      {m.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                    {!readOnly && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}>
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Papel</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((m: any) => (
-              <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.profiles?.name || '—'}</TableCell>
-                <TableCell className="text-muted-foreground">{m.profiles?.email || '—'}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-[10px] gap-1">
-                    <Shield className="h-2.5 w-2.5" /> Solicitante
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                    {m.is_active ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                </TableCell>
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Nome</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">E-mail</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Telefone</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Cargo / Setor</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Status</TableHead>
+                {!readOnly && <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((m: any) => (
+                <TableRow key={m.id} className="group cursor-pointer" onClick={() => openDetail(m)}>
+                  <TableCell className="text-sm font-medium">{m.profiles?.name || '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{m.profiles?.email || '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{m.customer?.phone || '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {m.customer?.position || m.customer?.sector
+                      ? [m.customer?.position, m.customer?.sector].filter(Boolean).join(' · ')
+                      : '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                      {m.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </TableCell>
+                  {!readOnly && (
+                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}>
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeactivateTarget(m)}>
+                          {m.is_active ? <EyeOff className="h-3.5 w-3.5 text-destructive" /> : <Eye className="h-3.5 w-3.5 text-emerald-500" />}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={(v) => { setDetailOpen(v); if (!v) setSelectedItem(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Detalhes do Solicitante</DialogTitle>
+            <DialogDescription className="text-xs">Informações completas do cadastro.</DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-1">
+              <DetailRow label="Nome" value={selectedItem.profiles?.name} />
+              <DetailRow label="E-mail" value={selectedItem.profiles?.email} />
+              <DetailRow label="Telefone" value={selectedItem.customer?.phone} />
+              <DetailRow label="CPF / Matrícula" value={selectedItem.customer?.document} />
+              <DetailRow label="Cargo" value={selectedItem.customer?.position} />
+              <DetailRow label="Setor" value={selectedItem.customer?.sector} />
+              <DetailRow label="Observações" value={selectedItem.customer?.notes} />
+              <div className="flex items-center gap-2 pt-2">
+                <Badge variant={selectedItem.is_active ? 'default' : 'secondary'}>
+                  {selectedItem.is_active ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            {!readOnly && selectedItem && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setDetailOpen(false); openEdit(selectedItem); }}>
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { resetForm(); setSelectedItem(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">Editar Solicitante</DialogTitle>
+            <DialogDescription className="text-xs">Altere os dados do solicitante e salve.</DialogDescription>
+          </DialogHeader>
+          {formFields(true)}
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setEditOpen(false); resetForm(); setSelectedItem(null); }}>Cancelar</Button>
+            <Button size="sm" onClick={handleEdit} disabled={saving}>
+              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate/Reactivate Confirmation */}
+      <AlertDialog open={!!deactivateTarget} onOpenChange={(v) => { if (!v) setDeactivateTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deactivateTarget?.is_active ? 'Desativar solicitante?' : 'Reativar solicitante?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deactivateTarget?.is_active
+                ? `O solicitante "${deactivateTarget?.profiles?.name}" perderá acesso ao portal. Você poderá reativá-lo depois.`
+                : `O solicitante "${deactivateTarget?.profiles?.name}" terá o acesso ao portal restaurado.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleActive}
+              className={deactivateTarget?.is_active ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+            >
+              {toggling && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {deactivateTarget?.is_active ? 'Desativar' : 'Reativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
