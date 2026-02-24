@@ -22,7 +22,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Play, Pause, CheckSquare, RotateCcw, Send, Lock, Unlock,
   Clock, MessageSquare, AlertTriangle, UserCheck, MapPin, Building, Package,
-  FolderOpen, Phone, Mail, Timer, Eye, EyeOff
+  FolderOpen, Phone, Mail, Timer, Eye, EyeOff, Tag
 } from 'lucide-react';
 
 const eventLabels: Record<string, string> = {
@@ -208,6 +208,11 @@ export default function TechWorkOrderDetail() {
             <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>{priorityLabels[wo.priority]}</Badge>
             <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>{statusLabels[wo.status]}</Badge>
             <SlaIndicator workOrder={wo} compact />
+            {wo.visibility === 'customer' && (
+              <Badge variant="outline" className="text-[11px] bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1">
+                <Eye className="h-3 w-3" /> Cliente
+              </Badge>
+            )}
           </div>
           <h1 className="text-lg font-semibold">{wo.title}</h1>
         </div>
@@ -362,13 +367,23 @@ export default function TechWorkOrderDetail() {
                 </CardContent>
               </Card>
               <Card className="border-border shadow-none">
-                <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">Datas</CardTitle></CardHeader>
+                <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">Informações</CardTitle></CardHeader>
                 <CardContent className="text-xs space-y-1.5 text-muted-foreground">
+                  <p>Visibilidade: <span className="text-foreground font-medium">{wo.visibility === 'internal' ? 'Interna' : 'Cliente'}</span></p>
                   <p>Criada: {new Date(wo.created_at).toLocaleString('pt-BR')}</p>
                   {wo.started_at && <p>Iniciada: {new Date(wo.started_at).toLocaleString('pt-BR')}</p>}
                   {wo.resolved_at && <p>Resolvida: {new Date(wo.resolved_at).toLocaleString('pt-BR')}</p>}
                   {wo.closed_at && <p>Encerrada: {new Date(wo.closed_at).toLocaleString('pt-BR')}</p>}
                   <p>Atualizada: {new Date(wo.updated_at).toLocaleString('pt-BR')}</p>
+                  {wo.tags && wo.tags.length > 0 && (
+                    <div className="flex items-start gap-1.5 pt-1">
+                      <div className="flex gap-1 flex-wrap">
+                        {wo.tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
