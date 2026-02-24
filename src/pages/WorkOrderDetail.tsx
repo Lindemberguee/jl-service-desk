@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission, roleLabels } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin, Play, Pause, RotateCcw, Lock, Unlock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin, Play, Pause, RotateCcw, Lock, Unlock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -588,6 +588,14 @@ export default function WorkOrderDetail() {
                             <p className="text-[11px] text-muted-foreground mt-1">
                               Atribuído para: <strong>{getProfileName(payload.assigned_to)}</strong>
                             </p>
+                          )}
+                          {payload?.rating && (
+                            <div className="flex items-center gap-1 mt-1">
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <Star key={s} className={`h-3.5 w-3.5 ${s <= payload.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                              ))}
+                              {payload?.comment && <span className="text-xs text-muted-foreground ml-2">"{payload.comment}"</span>}
+                            </div>
                           )}
                         </div>
                       </div>
