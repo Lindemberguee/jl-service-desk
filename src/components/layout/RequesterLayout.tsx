@@ -1,7 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { ClipboardList, Plus, User, LogOut, Sun, Moon, Wrench } from 'lucide-react';
 import {
@@ -9,11 +8,13 @@ import {
 } from '@/components/ui/select';
 import { Building2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const navItems = [
   { label: 'Minhas OS', icon: ClipboardList, path: '/portal' },
-  { label: 'Nova Solicitação', icon: Plus, path: '/portal/nova' },
-  { label: 'Meu Perfil', icon: User, path: '/portal/perfil' },
+  { label: 'Nova', icon: Plus, path: '/portal/nova' },
+  { label: 'Perfil', icon: User, path: '/portal/perfil' },
 ];
 
 export function RequesterLayout() {
@@ -23,17 +24,35 @@ export function RequesterLayout() {
   const { isDark, toggle } = useDarkMode();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
 
+  // Load tenant branding
+  const { data: tenant } = useQuery({
+    queryKey: ['tenant_branding', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return null;
+      const { data } = await supabase.from('tenants').select('name, logo_url, primary_color, accent_color').eq('id', currentTenantId).single();
+      return data;
+    },
+    enabled: !!currentTenantId,
+  });
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top header */}
       <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Wrench className="h-4 w-4 text-primary-foreground" />
-          </div>
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/portal')}>
+          {tenant?.logo_url ? (
+            <img src={tenant.logo_url} alt={tenant.name} className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            <div
+              className="h-8 w-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: tenant?.primary_color || 'hsl(var(--primary))' }}
+            >
+              <Wrench className="h-4 w-4 text-primary-foreground" />
+            </div>
+          )}
           <div className="hidden sm:block">
-            <p className="text-sm font-bold leading-none">ServiceOS</p>
-            <p className="text-[11px] text-muted-foreground">{currentTenant?.tenant_name || 'Portal'}</p>
+            <p className="text-sm font-bold leading-none">{tenant?.name || 'ServiceOS'}</p>
+            <p className="text-[11px] text-muted-foreground">Portal do Solicitante</p>
           </div>
         </div>
 
