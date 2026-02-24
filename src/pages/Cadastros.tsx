@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTenantQuery, useTenantInsert, useTenantDelete } from '@/hooks/useTenantQuery';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Building2, MapPin, Tag, Users as UsersIcon, Loader2 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Plus, Trash2, Building2, Tag, Users as UsersIcon, Loader2 } from 'lucide-react';
 
 function CrudSection({ title, icon: Icon, queryKey, table, fields }: {
   title: string;
@@ -22,6 +22,7 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields }: {
   const insertMutation = useTenantInsert(table, [queryKey]);
   const deleteMutation = useTenantDelete(table, [queryKey]);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
@@ -38,83 +39,110 @@ function CrudSection({ title, icon: Icon, queryKey, table, fields }: {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Icon className="h-4 w-4" />
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Icon className="h-4 w-4 text-muted-foreground" />
           {title}
-        </CardTitle>
+          <span className="text-xs font-normal text-muted-foreground">({data.length})</span>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Novo</Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" />Novo</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Novo {title}</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {fields.map(f => (
-                <div key={f.key} className="space-y-2">
-                  <Label>{f.label}</Label>
+                <div key={f.key} className="space-y-1.5">
+                  <Label className="text-xs">{f.label}</Label>
                   <Input
                     value={form[f.key] || ''}
                     onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                     required={f.required}
+                    className="h-9"
                   />
                 </div>
               ))}
-              <Button type="submit" className="w-full" disabled={insertMutation.isPending}>
-                {insertMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full h-8 text-sm" disabled={insertMutation.isPending}>
+                {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 Salvar
               </Button>
             </form>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : data.length === 0 ? (
-          <p className="text-center py-6 text-muted-foreground text-sm">Nenhum registro encontrado.</p>
-        ) : (
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full rounded-md" />)}</div>
+      ) : data.length === 0 ? (
+        <div className="bg-card border border-border rounded-md py-12 text-center text-muted-foreground">
+          <p className="text-sm">Nenhum registro encontrado.</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-2">
+          {data.map((item: any) => (
+            <div key={item.id} className="bg-card border border-border rounded-md p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                {fields.map((f, i) => (
+                  <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
+                    {i > 0 && `${f.label}: `}{item[f.key] || '-'}
+                  </p>
+                ))}
+              </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => deleteMutation.mutate(item.id)}>
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-md overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                {fields.map(f => <TableHead key={f.key}>{f.label}</TableHead>)}
-                <TableHead className="w-[60px]" />
+              <TableRow className="hover:bg-transparent">
+                {fields.map(f => <TableHead key={f.key} className="text-[11px] font-semibold uppercase text-muted-foreground">{f.label}</TableHead>)}
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.map((item: any) => (
                 <TableRow key={item.id}>
-                  {fields.map(f => <TableCell key={f.key}>{item[f.key] || '-'}</TableCell>)}
+                  {fields.map((f, i) => (
+                    <TableCell key={f.key} className={i === 0 ? 'text-sm font-medium' : 'text-xs text-muted-foreground'}>
+                      {item[f.key] || '-'}
+                    </TableCell>
+                  ))}
                   <TableCell>
-                    <Button
-                      variant="ghost" size="icon"
-                      onClick={() => deleteMutation.mutate(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMutation.mutate(item.id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function Cadastros() {
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Cadastros</h1>
+      <div>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Cadastros</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Gerencie unidades, categorias e solicitantes.</p>
+      </div>
+
       <Tabs defaultValue="units">
-        <TabsList>
-          <TabsTrigger value="units">Unidades</TabsTrigger>
-          <TabsTrigger value="categories">Categorias</TabsTrigger>
-          <TabsTrigger value="customers">Solicitantes</TabsTrigger>
+        <TabsList className="bg-card border border-border h-9">
+          <TabsTrigger value="units" className="text-xs h-7">Unidades</TabsTrigger>
+          <TabsTrigger value="categories" className="text-xs h-7">Categorias</TabsTrigger>
+          <TabsTrigger value="customers" className="text-xs h-7">Solicitantes</TabsTrigger>
         </TabsList>
-        <TabsContent value="units" className="space-y-4">
+        <TabsContent value="units" className="mt-3">
           <CrudSection
             title="Unidade"
             icon={Building2}
@@ -128,7 +156,7 @@ export default function Cadastros() {
             ]}
           />
         </TabsContent>
-        <TabsContent value="categories">
+        <TabsContent value="categories" className="mt-3">
           <CrudSection
             title="Categoria"
             icon={Tag}
@@ -137,7 +165,7 @@ export default function Cadastros() {
             fields={[{ key: 'name', label: 'Nome', required: true }]}
           />
         </TabsContent>
-        <TabsContent value="customers">
+        <TabsContent value="customers" className="mt-3">
           <CrudSection
             title="Solicitante"
             icon={UsersIcon}
