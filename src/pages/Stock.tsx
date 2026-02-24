@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw, Pencil, Trash2, Save } from 'lucide-react';
+import { Plus, Minus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw, Pencil, Trash2, Save } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -44,6 +44,7 @@ export default function Stock() {
   const [editSku, setEditSku] = useState('');
   const [editUnit, setEditUnit] = useState('');
   const [editMinLevel, setEditMinLevel] = useState('');
+  const [editCurrentLevel, setEditCurrentLevel] = useState('');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
@@ -135,6 +136,33 @@ export default function Stock() {
 
   const getMovementItemName = (m: any) => m.stock_items?.name || items.find((i: any) => i.id === m.stock_item_id)?.name || '-';
 
+  const quickMove = async (itemId: string, type: 'in' | 'out') => {
+    if (!currentTenantId) return;
+    const item = items.find((i: any) => i.id === itemId);
+    if (!item) return;
+    const currentLevel = item.current_level || 0;
+    if (type === 'out' && currentLevel <= 0) {
+      toast({ title: 'Estoque zerado', variant: 'destructive' });
+      return;
+    }
+    try {
+      await (supabase.from as any)('stock_movements').insert({
+        tenant_id: currentTenantId,
+        stock_item_id: itemId,
+        type,
+        qty: 1,
+        reference: type === 'in' ? 'Entrada rápida' : 'Saída rápida',
+        created_by: user?.id,
+      });
+      const newLevel = type === 'in' ? currentLevel + 1 : Math.max(0, currentLevel - 1);
+      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', itemId);
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      toast({ title: type === 'in' ? '+1 entrada' : '-1 saída' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+  };
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -332,9 +360,17 @@ export default function Stock() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => quickMove(item.id, 'out')} title="Saída rápida (-1)">
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => quickMove(item.id, 'in')} title="Entrada rápida (+1)">
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDetailItem(item)}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -442,6 +478,7 @@ export default function Stock() {
                   setEditSku(detailItem.sku || '');
                   setEditUnit(detailItem.unit || 'un');
                   setEditMinLevel(String(detailItem.min_level || 0));
+                  setEditCurrentLevel(String(detailItem.current_level || 0));
                   setEditMode(true);
                 }}>
                   <Pencil className="h-3 w-3" /> Editar
@@ -518,9 +555,10 @@ export default function Stock() {
                   sku: editSku || null,
                   unit: editUnit || 'un',
                   min_level: parseInt(editMinLevel) || 0,
+                  current_level: parseInt(editCurrentLevel) || 0,
                 });
                 toast({ title: 'Item atualizado!' });
-                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0 });
+                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0 });
                 setEditMode(false);
               } catch (err: any) {
                 toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -531,7 +569,10 @@ export default function Stock() {
                 <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={editSku} onChange={e => setEditSku(e.target.value)} className="h-9" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={editUnit} onChange={e => setEditUnit(e.target.value)} className="h-9" /></div>
               </div>
-              <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" value={editMinLevel} onChange={e => setEditMinLevel(e.target.value)} className="h-9" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Quantidade atual</Label><Input type="number" min="0" value={editCurrentLevel} onChange={e => setEditCurrentLevel(e.target.value)} className="h-9" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" min="0" value={editMinLevel} onChange={e => setEditMinLevel(e.target.value)} className="h-9" /></div>
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" className="flex-1 h-8 text-sm" onClick={() => setEditMode(false)}>Cancelar</Button>
                 <Button type="submit" className="flex-1 h-8 text-sm gap-1.5" disabled={updateItem.isPending}>
