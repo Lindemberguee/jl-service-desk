@@ -645,8 +645,37 @@ export default function WorkOrders() {
                       {statusLabels[wo.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
-                    {getAssignedName(wo.assigned_to_id)}
+                  <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
+                    {canAssign ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent max-w-[120px] truncate ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
+                            <UserCheck className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{getAssignedName(wo.assigned_to_id)}</span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
+                          <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                            <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
+                          </DropdownMenuItem>
+                          {wo.assigned_to_id && (
+                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
+                              <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover atribuição
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
+                            <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
+                              {p.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <span className="text-muted-foreground truncate max-w-[100px] block" onClick={() => navigate(`/os/${wo.id}`)}>
+                        {getAssignedName(wo.assigned_to_id)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
                     {getRequesterName(wo)}
