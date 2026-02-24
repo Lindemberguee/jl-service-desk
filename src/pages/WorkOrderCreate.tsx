@@ -1,29 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery, useTenantInsert } from '@/hooks/useTenantQuery';
 import { logAudit } from '@/lib/audit';
-import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Loader2, Mail, Phone } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
+  MapPin, Wrench, User, Eye, Tag, X, Plus
+} from 'lucide-react';
 
 export default function WorkOrderCreate() {
   const { currentTenantId, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Basic fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<string>('media');
   const [categoryId, setCategoryId] = useState<string>('');
   const [unitId, setUnitId] = useState<string>('');
+  const [locationId, setLocationId] = useState<string>('');
+  const [assetId, setAssetId] = useState<string>('');
+  const [assignedToId, setAssignedToId] = useState<string>('');
+  const [requesterId, setRequesterId] = useState<string>('');
+  const [visibility, setVisibility] = useState<string>('internal');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
 
   // Auto-fill email from profile
   useEffect(() => {
@@ -32,9 +47,61 @@ export default function WorkOrderCreate() {
     }
   }, [profile?.email]);
 
+  // Data queries
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
+  const { data: customers = [] } = useTenantQuery<any>('customers', 'customers');
+  const { data: assets = [] } = useTenantQuery<any>('assets', 'assets');
+
+  // Locations filtered by selected unit
+  const { data: allLocations = [] } = useTenantQuery<any>('locations', 'locations');
+  const filteredLocations = useMemo(
+    () => unitId ? allLocations.filter((l: any) => l.unit_id === unitId) : allLocations,
+    [allLocations, unitId]
+  );
+
+  // Assets filtered by selected unit
+  const filteredAssets = useMemo(
+    () => unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets,
+    [assets, unitId]
+  );
+
+  // Technicians for assignment
+  const { data: technicians = [] } = useQuery({
+    queryKey: ['technicians', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select('user_id, role, profiles!user_memberships_user_id_profiles_fkey(name, email)')
+        .eq('tenant_id', currentTenantId)
+        .eq('is_active', true)
+        .in('role', ['tecnico', 'coordenador', 'admin', 'super_admin']);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!currentTenantId,
+  });
+
+  // Reset location/asset when unit changes
+  useEffect(() => {
+    setLocationId('');
+    setAssetId('');
+  }, [unitId]);
+
   const insertMutation = useTenantInsert('work_orders', ['work_orders']);
+
+  const addTag = () => {
+    const trimmed = tagInput.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags(prev => [...prev, trimmed]);
+    }
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    setTags(prev => prev.filter(t => t !== tag));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +116,14 @@ export default function WorkOrderCreate() {
         priority,
         category_id: categoryId || null,
         unit_id: unitId || null,
-        code: '',
+        location_id: locationId || null,
+        asset_id: assetId || null,
+        assigned_to_id: assignedToId || null,
+        requester_id: requesterId || null,
         requester_user_id: user?.id || null,
+        visibility,
+        tags: tags.length > 0 ? tags : null,
+        code: '',
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
       await logAudit({
@@ -68,7 +141,8 @@ export default function WorkOrderCreate() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-3xl mx-auto space-y-5">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
@@ -79,30 +153,60 @@ export default function WorkOrderCreate() {
         </div>
       </div>
 
-      <Card className="border-border shadow-none">
-        <CardContent className="pt-5">
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Section 1: Informações Básicas */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              Informações Básicas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="title" className="text-xs font-medium">Título *</Label>
-              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required placeholder="Descreva o problema brevemente" className="h-9" />
+              <Input
+                id="title"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                required
+                placeholder="Descreva o problema brevemente"
+                className="h-9"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="description" className="text-xs font-medium">Descrição</Label>
-              <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} rows={4} placeholder="Detalhes adicionais sobre o serviço..." className="text-sm" />
+              <Textarea
+                id="description"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+                placeholder="Detalhes adicionais sobre o serviço..."
+                className="text-sm"
+              />
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Section 2: Classificação */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-primary" />
+              Classificação
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Prioridade</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="baixa">Baixa</SelectItem>
-                    <SelectItem value="media">Média</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="critica">Crítica</SelectItem>
+                    <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                    <SelectItem value="media">🔵 Média</SelectItem>
+                    <SelectItem value="alta">🟠 Alta</SelectItem>
+                    <SelectItem value="critica">🔴 Crítica</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -118,6 +222,34 @@ export default function WorkOrderCreate() {
                 </Select>
               </div>
               <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Visibilidade</Label>
+                <Select value={visibility} onValueChange={setVisibility}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="internal">
+                      <span className="flex items-center gap-1.5"><Eye className="h-3 w-3" /> Interno</span>
+                    </SelectItem>
+                    <SelectItem value="customer">
+                      <span className="flex items-center gap-1.5"><Eye className="h-3 w-3" /> Cliente</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 3: Localização & Ativo */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              Localização & Ativo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Unidade</Label>
                 <Select value={unitId} onValueChange={setUnitId}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -128,15 +260,77 @@ export default function WorkOrderCreate() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Local</Label>
+                <Select value={locationId} onValueChange={setLocationId} disabled={filteredLocations.length === 0}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={unitId ? 'Selecione' : 'Selecione a unidade'} /></SelectTrigger>
+                  <SelectContent>
+                    {filteredLocations.map((l: any) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Ativo</Label>
+                <Select value={assetId} onValueChange={setAssetId} disabled={filteredAssets.length === 0}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {filteredAssets.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}{a.patrimony_code ? ` (${a.patrimony_code})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 4: Atribuição & Solicitante */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              Atribuição & Solicitante
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Wrench className="h-3 w-3" /> Responsável Técnico
+                </Label>
+                <Select value={assignedToId} onValueChange={setAssignedToId}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Não atribuído" /></SelectTrigger>
+                  <SelectContent>
+                    {technicians.map((t: any) => (
+                      <SelectItem key={t.user_id} value={t.user_id}>
+                        {t.profiles?.name || t.profiles?.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Solicitante (Cliente)</Label>
+                <Select value={requesterId} onValueChange={setRequesterId}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    {customers.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Separator />
 
             {/* Contact info */}
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Contato do Solicitante</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <p className="text-xs font-medium text-muted-foreground">Contato do Solicitante</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium flex items-center gap-1.5">
                   <Mail className="h-3 w-3" /> E-mail
@@ -161,19 +355,56 @@ export default function WorkOrderCreate() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => navigate(-1)}>Cancelar</Button>
-              <Button type="submit" size="sm" disabled={insertMutation.isPending}>
-                {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                Criar OS
+        {/* Section 5: Tags */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Tag className="h-4 w-4 text-primary" />
+              Tags
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                placeholder="Digite uma tag e pressione Enter"
+                className="h-9 text-sm flex-1"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={addTag} className="h-9">
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-xs gap-1 pr-1">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} className="ml-0.5 hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pb-4">
+          <Button type="button" variant="outline" size="sm" onClick={() => navigate(-1)}>
+            Cancelar
+          </Button>
+          <Button type="submit" size="sm" disabled={insertMutation.isPending}>
+            {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Criar Ordem de Serviço
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
