@@ -202,7 +202,7 @@ export default function MaterialControl() {
   const totalOut = movements.filter(m => m.type === 'out').reduce((s, m) => s + Math.abs(m.qty), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -355,9 +355,9 @@ export default function MaterialControl() {
       </div>
 
       {/* Table */}
-      <Card className="rounded-xl border-border/50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      <Card className="rounded-xl border-border/50 overflow-hidden max-w-full">
+        <div className="overflow-x-auto max-w-full">
+          <table className="text-sm min-w-max">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left p-3 font-semibold sticky left-0 bg-muted/30 z-10 min-w-[200px]">
