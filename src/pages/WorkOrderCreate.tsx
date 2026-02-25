@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
-  MapPin, Wrench, User, Eye, Tag, X, Plus
+  MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
@@ -39,6 +39,7 @@ export default function WorkOrderCreate() {
   const [contactEmail, setContactEmail] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
   // Auto-fill email from profile (only if no requester selected)
   useEffect(() => {
@@ -47,11 +48,9 @@ export default function WorkOrderCreate() {
     }
   }, [profile?.email]);
 
-
   // Data queries
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
-  // Solicitantes (user accounts with solicitante role)
   const { data: solicitantes = [] } = useQuery({
     queryKey: ['solicitantes', currentTenantId],
     queryFn: async () => {
@@ -82,7 +81,7 @@ export default function WorkOrderCreate() {
     [assets, unitId]
   );
 
-  // Technicians for assignment
+  // Technicians for assignment (includes analista)
   const { data: technicians = [] } = useQuery({
     queryKey: ['technicians', currentTenantId],
     queryFn: async () => {
@@ -92,13 +91,14 @@ export default function WorkOrderCreate() {
         .select('user_id, role, profiles!user_memberships_user_id_profiles_fkey(name, email)')
         .eq('tenant_id', currentTenantId)
         .eq('is_active', true)
-        .in('role', ['tecnico', 'coordenador', 'admin', 'super_admin']);
+        .in('role', ['tecnico', 'analista', 'coordenador', 'admin', 'super_admin']);
       if (error) throw error;
       return (data || []) as any[];
     },
     enabled: !!currentTenantId,
   });
-  // Auto-fill contact info when a requester (solicitante user) is selected
+
+  // Auto-fill contact info when a requester is selected
   useEffect(() => {
     if (requesterId) {
       const solicitante = solicitantes.find((s: any) => s.user_id === requesterId);
@@ -132,19 +132,27 @@ export default function WorkOrderCreate() {
     setTags(prev => prev.filter(t => t !== tag));
   };
 
+  const isValid = title.trim().length >= 3;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (!isValid) {
+      toast({ title: 'Preencha os campos obrigatórios', description: 'O título deve ter pelo menos 3 caracteres.', variant: 'destructive' });
+      return;
+    }
+
     try {
       const requesterContact: Record<string, string> = {};
       if (contactPhone) requesterContact.phone = contactPhone;
       if (contactEmail) requesterContact.email = contactEmail;
 
-      // requesterId now holds the user_id of the solicitante
       const effectiveRequesterUserId = requesterId || user?.id || null;
 
       const result = await insertMutation.mutateAsync({
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim() || null,
         priority,
         category_id: categoryId || null,
         unit_id: unitId || null,
@@ -171,6 +179,25 @@ export default function WorkOrderCreate() {
       toast({ title: 'Erro ao criar OS', description: err.message, variant: 'destructive' });
     }
   };
+
+  const clearableSelect = (value: string, onChange: (v: string) => void, placeholder: string, children: React.ReactNode, disabled?: boolean) => (
+    <div className="relative">
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={placeholder} /></SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
+      {value && !disabled && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange(''); }}
+          className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Limpar seleção"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -203,8 +230,13 @@ export default function WorkOrderCreate() {
                 onChange={e => setTitle(e.target.value)}
                 required
                 placeholder="Descreva o problema brevemente"
-                className="h-9"
+                className={`h-9 ${submitted && title.trim().length < 3 ? 'border-destructive ring-1 ring-destructive/30' : ''}`}
               />
+              {submitted && title.trim().length < 3 && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> O título deve ter pelo menos 3 caracteres.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="description" className="text-xs font-medium">Descrição</Label>
@@ -244,14 +276,11 @@ export default function WorkOrderCreate() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Categoria</Label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {clearableSelect(categoryId, setCategoryId, 'Selecione',
+                  categories.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Visibilidade</Label>
@@ -286,45 +315,38 @@ export default function WorkOrderCreate() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Unidade (Prédio / Campus)</Label>
-                <Select value={unitId} onValueChange={setUnitId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Ex: Bloco A, Sede, Filial Centro" /></SelectTrigger>
-                  <SelectContent>
-                    {units.map((u: any) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {clearableSelect(unitId, setUnitId, 'Ex: Bloco A, Sede, Filial Centro',
+                  units.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  ))
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Sala / Espaço</Label>
-                <Select value={locationId} onValueChange={setLocationId} disabled={!unitId || filteredLocations.length === 0}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder={!unitId ? 'Selecione a unidade primeiro' : filteredLocations.length === 0 ? 'Nenhum local cadastrado' : 'Ex: Sala 101, Pátio, Recepção'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredLocations.map((l: any) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.name}{l.description ? ` — ${l.description}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {clearableSelect(
+                  locationId, setLocationId,
+                  !unitId ? 'Selecione a unidade primeiro' : filteredLocations.length === 0 ? 'Nenhum local cadastrado' : 'Ex: Sala 101, Pátio, Recepção',
+                  filteredLocations.map((l: any) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}{l.description ? ` — ${l.description}` : ''}
+                    </SelectItem>
+                  )),
+                  !unitId || filteredLocations.length === 0
+                )}
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Equipamento / Ativo vinculado</Label>
-              <Select value={assetId} onValueChange={setAssetId} disabled={filteredAssets.length === 0}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder={filteredAssets.length === 0 ? (unitId ? 'Nenhum ativo nesta unidade' : 'Selecione a unidade primeiro') : 'Ex: Ar-condicionado Sala 201, Impressora HP'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredAssets.map((a: any) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {clearableSelect(
+                assetId, setAssetId,
+                filteredAssets.length === 0 ? (unitId ? 'Nenhum ativo nesta unidade' : 'Selecione a unidade primeiro') : 'Ex: Ar-condicionado Sala 201, Impressora HP',
+                filteredAssets.map((a: any) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
+                  </SelectItem>
+                )),
+                filteredAssets.length === 0
+              )}
               <p className="text-[11px] text-muted-foreground">Opcional. Vincule um equipamento para rastrear manutenções por ativo.</p>
             </div>
           </CardContent>
@@ -344,29 +366,23 @@ export default function WorkOrderCreate() {
                 <Label className="text-xs font-medium flex items-center gap-1.5">
                   <Wrench className="h-3 w-3" /> Responsável Técnico
                 </Label>
-                <Select value={assignedToId} onValueChange={setAssignedToId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Não atribuído" /></SelectTrigger>
-                  <SelectContent>
-                    {technicians.map((t: any) => (
-                      <SelectItem key={t.user_id} value={t.user_id}>
-                        {t.profiles?.name || t.profiles?.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {clearableSelect(assignedToId, setAssignedToId, 'Não atribuído',
+                  technicians.map((t: any) => (
+                    <SelectItem key={t.user_id} value={t.user_id}>
+                      {t.profiles?.name || t.profiles?.email}
+                    </SelectItem>
+                  ))
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Solicitante</Label>
-                <Select value={requesterId} onValueChange={setRequesterId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                  <SelectContent>
-                    {solicitantes.map((s: any) => (
-                      <SelectItem key={s.user_id} value={s.user_id}>
-                        {s.profiles?.name || s.profiles?.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {clearableSelect(requesterId, setRequesterId, 'Nenhum (você será o solicitante)',
+                  solicitantes.map((s: any) => (
+                    <SelectItem key={s.user_id} value={s.user_id}>
+                      {s.profiles?.name || s.profiles?.email}
+                    </SelectItem>
+                  ))
+                )}
               </div>
             </div>
 
