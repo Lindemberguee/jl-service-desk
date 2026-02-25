@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit3, LayoutGrid, Loader2, ArrowLeft, Workflow } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Edit3, LayoutGrid, Loader2, ArrowLeft, Workflow, Users, Eye, Pencil } from 'lucide-react';
 import { useCanvasBoards } from '@/hooks/useCanvasBoards';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
+import CanvasShareDialog from '@/components/canvas/CanvasShareDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -12,10 +14,12 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 
 export default function CanvasPage() {
   const { boards, loading, saving, createBoard, saveBoard, deleteBoard, renameBoard } = useCanvasBoards();
+  const { user } = useAuth();
   const [activeBoard, setActiveBoard] = useState<string | null>(null);
   const [newBoardName, setNewBoardName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -40,6 +44,11 @@ export default function CanvasPage() {
     }
   };
 
+  const ownBoards = boards.filter(b => !b.is_shared);
+  const sharedBoards = boards.filter(b => b.is_shared);
+  const isOwner = board ? board.user_id === user?.id : false;
+  const canEdit = board ? (isOwner || board.share_permission === 'edit') : false;
+
   // Active canvas view
   if (board) {
     return (
@@ -49,6 +58,25 @@ export default function CanvasPage() {
             <LayoutGrid className="h-3.5 w-3.5" /> Voltar
           </Button>
           <span className="text-sm font-semibold truncate">{board.name}</span>
+          {board.is_shared && (
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <Users className="h-3 w-3" />
+              Compartilhado por {board.owner_name}
+              {board.share_permission === 'edit' ? (
+                <Pencil className="h-2.5 w-2.5 ml-0.5" />
+              ) : (
+                <Eye className="h-2.5 w-2.5 ml-0.5" />
+              )}
+            </Badge>
+          )}
+          {!canEdit && (
+            <Badge variant="secondary" className="text-[10px]">Somente leitura</Badge>
+          )}
+          <div className="ml-auto">
+            {isOwner && (
+              <CanvasShareDialog boardId={board.id} boardName={board.name} isOwner={isOwner} />
+            )}
+          </div>
         </div>
         <div className="flex-1 rounded-lg border border-border overflow-hidden bg-sidebar">
           <CanvasBoard
@@ -59,6 +87,7 @@ export default function CanvasPage() {
             initialViewport={board.viewport}
             onSave={(nodes, edges, viewport) => saveBoard(board.id, nodes, edges, viewport)}
             saving={saving}
+            readOnly={!canEdit}
           />
         </div>
       </div>
@@ -66,9 +95,85 @@ export default function CanvasPage() {
   }
 
   // Board listing view
+  const BoardCard = ({ b }: { b: typeof boards[0] }) => (
+    <Card
+      key={b.id}
+      className="cursor-pointer hover:border-primary/50 transition-colors group"
+      onClick={() => setActiveBoard(b.id)}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          {editingId === b.id ? (
+            <Input
+              autoFocus value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onBlur={() => handleRename(b.id)}
+              onKeyDown={e => e.key === 'Enter' && handleRename(b.id)}
+              onClick={e => e.stopPropagation()}
+              className="h-7 text-sm w-40"
+            />
+          ) : (
+            <h3 className="font-medium text-sm truncate">{b.name}</h3>
+          )}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!b.is_shared && (
+              <>
+                <div onClick={e => e.stopPropagation()}>
+                  <CanvasShareDialog boardId={b.id} boardName={b.name} isOwner={true} />
+                </div>
+                <Button
+                  variant="ghost" size="icon" className="h-6 w-6"
+                  onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name); }}
+                >
+                  <Edit3 className="h-3 w-3" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={e => e.stopPropagation()}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent onClick={e => e.stopPropagation()}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir canvas?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteBoard(b.id)}>Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{b.nodes.length} nós</span>
+          <span>•</span>
+          <span>{b.edges.length} conexões</span>
+          {b.is_shared && (
+            <>
+              <span>•</span>
+              <Badge variant="outline" className="text-[10px] h-4 px-1.5 gap-0.5">
+                <Users className="h-2.5 w-2.5" />
+                {b.owner_name}
+              </Badge>
+              <Badge variant={b.share_permission === 'edit' ? 'default' : 'secondary'} className="text-[10px] h-4 px-1.5">
+                {b.share_permission === 'edit' ? 'Editor' : 'Visualizar'}
+              </Badge>
+            </>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Atualizado {format(new Date(b.updated_at), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
+        </p>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/ferramentas')} className="gap-1 text-xs">
           <ArrowLeft className="h-3.5 w-3.5" /> Ferramentas
@@ -79,10 +184,9 @@ export default function CanvasPage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Workflow className="h-5 w-5 text-primary" /> Canvas
         </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Crie quadros visuais com nós e conexões para mapas mentais e fluxogramas.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Crie quadros visuais com nós e conexões. Compartilhe e colabore em tempo real.</p>
       </div>
 
-      {/* Create new */}
       <div className="flex items-center gap-2">
         <Input
           value={newBoardName}
@@ -100,7 +204,7 @@ export default function CanvasPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : boards.length === 0 ? (
+      ) : ownBoards.length === 0 && sharedBoards.length === 0 ? (
         <Card className="border-dashed border-2 border-border">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
@@ -113,69 +217,26 @@ export default function CanvasPage() {
           </CardContent>
         </Card>
       ) : (
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          {boards.map(b => (
-            <Card
-              key={b.id}
-              className="cursor-pointer hover:border-primary/50 transition-colors group"
-              onClick={() => setActiveBoard(b.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  {editingId === b.id ? (
-                    <Input
-                      autoFocus
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      onBlur={() => handleRename(b.id)}
-                      onKeyDown={e => e.key === 'Enter' && handleRename(b.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="h-7 text-sm w-40"
-                    />
-                  ) : (
-                    <h3 className="font-medium text-sm truncate">{b.name}</h3>
-                  )}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost" size="icon" className="h-6 w-6"
-                      onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name); }}
-                    >
-                      <Edit3 className="h-3 w-3" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={e => e.stopPropagation()}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent onClick={e => e.stopPropagation()}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir canvas?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteBoard(b.id)}>Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{b.nodes.length} nós</span>
-                  <span>•</span>
-                  <span>{b.edges.length} conexões</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Atualizado {format(new Date(b.updated_at), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          {ownBoards.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3">Meus Canvas</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {ownBoards.map(b => <BoardCard key={b.id} b={b} />)}
+              </div>
+            </div>
+          )}
+
+          {sharedBoards.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Users className="h-4 w-4" /> Compartilhados comigo
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {sharedBoards.map(b => <BoardCard key={b.id} b={b} />)}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
     </div>
