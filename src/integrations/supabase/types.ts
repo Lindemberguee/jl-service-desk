@@ -159,6 +159,42 @@ export type Database = {
         }
         Relationships: []
       }
+      canvas_boards: {
+        Row: {
+          created_at: string
+          edges: Json
+          id: string
+          name: string
+          nodes: Json
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          viewport: Json | null
+        }
+        Insert: {
+          created_at?: string
+          edges?: Json
+          id?: string
+          name?: string
+          nodes?: Json
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          viewport?: Json | null
+        }
+        Update: {
+          created_at?: string
+          edges?: Json
+          id?: string
+          name?: string
+          nodes?: Json
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          viewport?: Json | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
