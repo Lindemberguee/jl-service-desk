@@ -1,24 +1,32 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Package, Plus, Search, ChevronLeft, ChevronRight,
   ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar,
-  Download,
+  Download, Upload, FileDown, Loader2, Trash2, X,
+  ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
+
+const MONTHS_TO_SHOW = 6;
+const PAGE_SIZE = 50;
 
 interface StockItem {
   id: string;
@@ -40,29 +48,26 @@ interface StockMovement {
   tenant_id: string;
 }
 
-const MONTHS_TO_SHOW = 6;
-
 function getMonthRange(baseDate: Date, count: number) {
   const months: Date[] = [];
-  for (let i = 0; i < count; i++) {
-    months.push(addMonths(baseDate, i));
-  }
+  for (let i = 0; i < count; i++) months.push(addMonths(baseDate, i));
   return months;
 }
 
-function monthKey(d: Date) {
-  return format(d, 'yyyy-MM');
-}
-
-function monthLabel(d: Date) {
-  return format(d, 'MMMM', { locale: ptBR });
-}
+function monthKey(d: Date) { return format(d, 'yyyy-MM'); }
+function monthLabel(d: Date) { return format(d, 'MMMM', { locale: ptBR }); }
 
 export default function MaterialControl() {
   const { currentTenantId } = useAuth();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [baseDate, setBaseDate] = useState(() => startOfMonth(new Date()));
+  const [page, setPage] = useState(1);
+
+  // Movement dialog
   const [addMovOpen, setAddMovOpen] = useState(false);
   const [movItemId, setMovItemId] = useState('');
   const [movType, setMovType] = useState<'in' | 'out'>('in');
@@ -70,6 +75,16 @@ export default function MaterialControl() {
   const [movRef, setMovRef] = useState('');
   const [movMonth, setMovMonth] = useState(() => monthKey(new Date()));
   const [saving, setSaving] = useState(false);
+
+  // Selection & bulk
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Import
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importTotal, setImportTotal] = useState(0);
 
   const months = useMemo(() => getMonthRange(baseDate, MONTHS_TO_SHOW), [baseDate]);
   const rangeStart = months[0];
@@ -96,24 +111,36 @@ export default function MaterialControl() {
     enabled: !!currentTenantId,
   });
 
-  // Build pivot: itemId -> monthKey -> { in, out, total }
+  // Filter + debounce
+  const filteredItems = useMemo(() => {
+    if (!debouncedSearch.trim()) return items;
+    const s = debouncedSearch.toLowerCase();
+    return items.filter(i => i.name.toLowerCase().includes(s) || i.sku?.toLowerCase().includes(s));
+  }, [items, debouncedSearch]);
+
+  // Reset page on filter change
+  useMemo(() => { setPage(1); }, [debouncedSearch]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, page]);
+
+  // Pivot
   const pivot = useMemo(() => {
     const map: Record<string, Record<string, { in: number; out: number; total: number }>> = {};
     for (const item of items) {
       map[item.id] = {};
-      for (const m of months) {
-        map[item.id][monthKey(m)] = { in: 0, out: 0, total: 0 };
-      }
+      for (const m of months) map[item.id][monthKey(m)] = { in: 0, out: 0, total: 0 };
     }
     for (const mov of movements) {
       const mk = monthKey(parseISO(mov.created_at));
       if (map[mov.stock_item_id]?.[mk]) {
-        if (mov.type === 'in') {
-          map[mov.stock_item_id][mk].in += mov.qty;
-        } else if (mov.type === 'out') {
-          map[mov.stock_item_id][mk].out += Math.abs(mov.qty);
-        } else {
-          // adjust treated as in if positive, out if negative
+        if (mov.type === 'in') map[mov.stock_item_id][mk].in += mov.qty;
+        else if (mov.type === 'out') map[mov.stock_item_id][mk].out += Math.abs(mov.qty);
+        else {
           if (mov.qty >= 0) map[mov.stock_item_id][mk].in += mov.qty;
           else map[mov.stock_item_id][mk].out += Math.abs(mov.qty);
         }
@@ -123,23 +150,54 @@ export default function MaterialControl() {
     return map;
   }, [items, movements, months]);
 
-  const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
-    const s = search.toLowerCase();
-    return items.filter(i => i.name.toLowerCase().includes(s) || i.sku?.toLowerCase().includes(s));
-  }, [items, search]);
+  // Selection
+  const allOnPageSelected = paginatedItems.length > 0 && paginatedItems.every(i => selectedIds.has(i.id));
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) paginatedItems.forEach(i => next.delete(i.id));
+      else paginatedItems.forEach(i => next.add(i.id));
+      return next;
+    });
+  }, [allOnPageSelected, paginatedItems]);
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await supabase.from('stock_movements').delete().in('stock_item_id', ids);
+      const { error } = await supabase.from('stock_items').delete().in('id', ids);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
+      toast.success(`${ids.length} item(ns) excluído(s)!`);
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir');
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteOpen(false);
+    }
+  };
+
+  // Add movement
   const handleAddMovement = async () => {
     if (!movItemId || !movQty || !currentTenantId) return;
     setSaving(true);
     try {
       const qty = parseInt(movQty);
       if (isNaN(qty) || qty <= 0) { toast.error('Quantidade inválida'); return; }
-      
-      // Create movement at the middle of the selected month
       const [y, m] = movMonth.split('-').map(Number);
       const movDate = new Date(y, m - 1, 15, 12, 0, 0);
-
       const { error } = await supabase.from('stock_movements').insert({
         stock_item_id: movItemId,
         tenant_id: currentTenantId,
@@ -149,34 +207,27 @@ export default function MaterialControl() {
         created_at: movDate.toISOString(),
       });
       if (error) throw error;
-
-      // Update stock level
       const item = items.find(i => i.id === movItemId);
       if (item) {
         const newLevel = (item.current_level || 0) + (movType === 'in' ? qty : -qty);
         await supabase.from('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
       }
-
       toast.success('Movimentação registrada');
       queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
       queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
       setAddMovOpen(false);
-      setMovItemId('');
-      setMovQty('');
-      setMovRef('');
+      setMovItemId(''); setMovQty(''); setMovRef('');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
+  // Export CSV
   const handleExportCSV = () => {
     const header = ['Item', 'SKU', ...months.flatMap(m => {
       const label = monthLabel(m).charAt(0).toUpperCase() + monthLabel(m).slice(1);
       return [`${label} - Entrada`, `${label} - Saída`, `${label} - Total`];
     }), 'Saldo Atual'];
-
     const rows = filteredItems.map(item => {
       const cols: (string | number)[] = [item.name, item.sku || ''];
       for (const m of months) {
@@ -186,15 +237,89 @@ export default function MaterialControl() {
       cols.push(item.current_level || 0);
       return cols;
     });
-
     const csv = '\uFEFF' + [header.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `controle-materiais-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = `controle-materiais-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast.success(`${filteredItems.length} item(ns) exportado(s)`);
+  };
+
+  // Download template
+  const downloadTemplate = () => {
+    const header = 'Nome;SKU;Unidade;Quantidade Inicial;Nível Mínimo';
+    const example = 'Parafuso M6;SKU-001;un;100;20\nÓleo Lubrificante;SKU-002;litro;50;10';
+    const csv = '\uFEFF' + [header, example].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'modelo_materiais.csv';
+    a.click(); URL.revokeObjectURL(url);
+    toast.success('Modelo baixado!');
+  };
+
+  // Import CSV with progress + encoding fix
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentTenantId) return;
+    setImporting(true); setImportProgress(0); setImportTotal(0);
+    try {
+      const buffer = await file.arrayBuffer();
+      let text = new TextDecoder('utf-8').decode(buffer);
+      if (text.includes('\uFFFD')) text = new TextDecoder('windows-1252').decode(buffer);
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
+      const dataLines = lines.slice(1);
+      const total = dataLines.length;
+      setImportTotal(total);
+      let created = 0, skipped = 0;
+
+      const existingNames = new Set(items.map(i => i.name.toLowerCase()));
+      const existingSkus = new Set(items.filter(i => i.sku).map(i => i.sku!.toLowerCase()));
+      const toInsert: any[] = [];
+
+      for (let idx = 0; idx < dataLines.length; idx++) {
+        const line = dataLines[idx];
+        const delimiter = line.includes(';') ? ';' : ',';
+        const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
+        const itemName = parts[0];
+        if (!itemName) { skipped++; setImportProgress(idx + 1); continue; }
+        const itemSku = parts[1] || '';
+        if (existingNames.has(itemName.toLowerCase()) || (itemSku && existingSkus.has(itemSku.toLowerCase()))) {
+          skipped++; setImportProgress(idx + 1); continue;
+        }
+        existingNames.add(itemName.toLowerCase());
+        if (itemSku) existingSkus.add(itemSku.toLowerCase());
+        toInsert.push({
+          tenant_id: currentTenantId, name: itemName, sku: itemSku || null,
+          unit: parts[2] || 'un', current_level: parseInt(parts[3]) || 0, min_level: parseInt(parts[4]) || 0,
+        });
+      }
+
+      const BATCH = 50;
+      for (let i = 0; i < toInsert.length; i += BATCH) {
+        const batch = toInsert.slice(i, i + BATCH);
+        const { error } = await supabase.from('stock_items').insert(batch);
+        if (error) {
+          for (const item of batch) {
+            const { error: e2 } = await supabase.from('stock_items').insert(item);
+            if (e2) skipped++; else created++;
+          }
+        } else created += batch.length;
+        setImportProgress(Math.min(total, skipped + created));
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
+      toast.success(`Importação concluída: ${created} criado(s)${skipped > 0 ? `, ${skipped} ignorado(s)` : ''}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro na importação');
+    } finally {
+      setImporting(false); setImportProgress(0); setImportTotal(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // Stats
@@ -203,38 +328,52 @@ export default function MaterialControl() {
 
   return (
     <div className="space-y-6 min-w-0 overflow-hidden">
+      {/* Import Progress Overlay */}
+      {importing && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card border border-border rounded-xl shadow-lg p-6 w-[340px] space-y-4 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+            <div>
+              <p className="text-sm font-semibold">Importando materiais...</p>
+              <p className="text-xs text-muted-foreground mt-1">{importProgress} / {importTotal} itens</p>
+            </div>
+            <Progress value={importTotal > 0 ? (importProgress / importTotal) * 100 : 0} className="h-2" />
+            <p className="text-lg font-bold text-primary">{importTotal > 0 ? Math.round((importProgress / importTotal) * 100) : 0}%</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Controle de Materiais</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Visão mensal de entradas, saídas e saldo de cada item
+            Visão mensal de entradas, saídas e saldo — {items.length} itens
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={downloadTemplate}>
+            <FileDown className="h-4 w-4 mr-1" /> Modelo
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-1" /> Importar
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-1" /> CSV
+            <Download className="h-4 w-4 mr-1" /> Exportar
           </Button>
           <Dialog open={addMovOpen} onOpenChange={setAddMovOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Nova Movimentação
-              </Button>
+              <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Movimentação</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Registrar Movimentação</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Registrar Movimentação</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
                   <Label>Item</Label>
                   <Select value={movItemId} onValueChange={setMovItemId}>
                     <SelectTrigger><SelectValue placeholder="Selecione o item" /></SelectTrigger>
-                    <SelectContent>
-                      {items.map(i => (
-                        <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectContent>{items.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -279,39 +418,30 @@ export default function MaterialControl() {
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="rounded-xl border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Package className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Itens Cadastrados</p>
-              <p className="text-xl font-bold">{items.length}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">Itens</p><p className="text-xl font-bold">{items.length}</p></div>
           </CardContent>
         </Card>
         <Card className="rounded-xl border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <ArrowUpCircle className="h-5 w-5 text-green-500" />
+            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <ArrowUpCircle className="h-5 w-5 text-emerald-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Entradas no Período</p>
-              <p className="text-xl font-bold">{totalIn}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">Entradas</p><p className="text-xl font-bold">{totalIn}</p></div>
           </CardContent>
         </Card>
         <Card className="rounded-xl border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <ArrowDownCircle className="h-5 w-5 text-red-500" />
+            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <ArrowDownCircle className="h-5 w-5 text-destructive" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Saídas no Período</p>
-              <p className="text-xl font-bold">{totalOut}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">Saídas</p><p className="text-xl font-bold">{totalOut}</p></div>
           </CardContent>
         </Card>
         <Card className="rounded-xl border-border/50">
@@ -319,10 +449,7 @@ export default function MaterialControl() {
             <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-amber-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Saldo Líquido</p>
-              <p className="text-xl font-bold">{totalIn - totalOut}</p>
-            </div>
+            <div><p className="text-xs text-muted-foreground">Saldo Líquido</p><p className="text-xl font-bold">{totalIn - totalOut}</p></div>
           </CardContent>
         </Card>
       </div>
@@ -331,12 +458,7 @@ export default function MaterialControl() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar item..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 rounded-lg"
-          />
+          <Input placeholder="Buscar item..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 rounded-lg" />
         </div>
         <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setBaseDate(prev => subMonths(prev, MONTHS_TO_SHOW))}>
@@ -352,7 +474,37 @@ export default function MaterialControl() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 bg-destructive/10 rounded-lg px-3 py-1.5">
+            <span className="text-xs font-medium">{selectedIds.size} selecionado(s)</span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-3 w-3 mr-1" /> Limpar
+            </Button>
+            <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+              <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3 w-3 mr-1" /> Excluir
+              </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir {selectedIds.size} item(ns)?</AlertDialogTitle>
+                  <AlertDialogDescription>Todos os itens selecionados e suas movimentações serão removidos permanentemente.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkDelete} disabled={bulkDeleting}>
+                    {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                    Confirmar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
+
+      {/* Pagination top */}
+      <PaginationBar page={page} totalPages={totalPages} total={filteredItems.length} setPage={setPage} />
 
       {/* Table */}
       <Card className="rounded-xl border-border/50 overflow-hidden max-w-full">
@@ -360,9 +512,10 @@ export default function MaterialControl() {
           <table className="text-sm min-w-max">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left p-3 font-semibold sticky left-0 bg-muted/30 z-10 min-w-[200px]">
-                  Item
+                <th className="p-2 w-10 sticky left-0 bg-muted/30 z-10">
+                  <Checkbox checked={allOnPageSelected} onCheckedChange={toggleSelectAll} />
                 </th>
+                <th className="text-left p-3 font-semibold sticky left-10 bg-muted/30 z-10 min-w-[200px]">Item</th>
                 {months.map(m => (
                   <th key={monthKey(m)} colSpan={3} className="text-center p-2 font-semibold border-l border-border/30">
                     <span className="capitalize">{monthLabel(m)}</span>
@@ -373,25 +526,32 @@ export default function MaterialControl() {
               </tr>
               <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
                 <th className="sticky left-0 bg-muted/20 z-10 p-1.5" />
-                {months.map(m => (
-                  <MonthSubHeader key={monthKey(m)} />
-                ))}
+                <th className="sticky left-10 bg-muted/20 z-10 p-1.5" />
+                {months.map(m => <MonthSubHeader key={monthKey(m)} />)}
                 <th className="p-1.5 text-center border-l border-border/30">Atual</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={months.length * 3 + 2} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={months.length * 3 + 3} className="text-center py-12 text-muted-foreground">
                     Nenhum item encontrado
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item, idx) => {
+                paginatedItems.map((item, idx) => {
                   const isLow = (item.current_level || 0) <= (item.min_level || 0) && (item.min_level || 0) > 0;
+                  const isSelected = selectedIds.has(item.id);
                   return (
-                    <tr key={item.id} className={cn("border-b border-border/20 hover:bg-muted/20 transition-colors", idx % 2 === 0 && "bg-muted/5")}>
-                      <td className="p-3 sticky left-0 bg-card z-10">
+                    <tr key={item.id} className={cn(
+                      "border-b border-border/20 hover:bg-muted/20 transition-colors",
+                      idx % 2 === 0 && "bg-muted/5",
+                      isSelected && "bg-primary/5"
+                    )}>
+                      <td className="p-2 sticky left-0 bg-card z-10">
+                        <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(item.id)} />
+                      </td>
+                      <td className="p-3 sticky left-10 bg-card z-10">
                         <div className="flex flex-col">
                           <span className="font-medium truncate max-w-[200px]">{item.name}</span>
                           {item.sku && <span className="text-xs text-muted-foreground">{item.sku}</span>}
@@ -399,9 +559,7 @@ export default function MaterialControl() {
                       </td>
                       {months.map(m => {
                         const d = pivot[item.id]?.[monthKey(m)] || { in: 0, out: 0, total: 0 };
-                        return (
-                          <MonthCells key={monthKey(m)} data={d} />
-                        );
+                        return <MonthCells key={monthKey(m)} data={d} />;
                       })}
                       <td className="p-2 text-center border-l border-border/30">
                         <Badge variant={isLow ? 'destructive' : 'secondary'} className="font-mono text-xs">
@@ -416,6 +574,27 @@ export default function MaterialControl() {
           </table>
         </div>
       </Card>
+
+      {/* Pagination bottom */}
+      <PaginationBar page={page} totalPages={totalPages} total={filteredItems.length} setPage={setPage} />
+    </div>
+  );
+}
+
+function PaginationBar({ page, totalPages, total, setPage }: { page: number; totalPages: number; total: number; setPage: (p: number | ((p: number) => number)) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-1 py-1">
+      <span className="text-xs text-muted-foreground">
+        {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} de {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(1)}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+        <span className="text-xs px-2 font-medium">{page} / {totalPages}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+      </div>
     </div>
   );
 }
@@ -434,27 +613,15 @@ function MonthCells({ data }: { data: { in: number; out: number; total: number }
   return (
     <>
       <td className="p-2 text-center border-l border-border/30 tabular-nums">
-        {data.in > 0 ? (
-          <span className="text-green-600 dark:text-green-400 font-medium">{data.in}</span>
-        ) : (
-          <span className="text-muted-foreground/40">0</span>
-        )}
+        {data.in > 0 ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">{data.in}</span> : <span className="text-muted-foreground/40">0</span>}
       </td>
       <td className="p-2 text-center tabular-nums">
-        {data.out > 0 ? (
-          <span className="text-red-500 font-medium">-{data.out}</span>
-        ) : (
-          <span className="text-muted-foreground/40">0</span>
-        )}
+        {data.out > 0 ? <span className="text-destructive font-medium">-{data.out}</span> : <span className="text-muted-foreground/40">0</span>}
       </td>
       <td className="p-2 text-center tabular-nums font-semibold">
         {data.total !== 0 ? (
-          <span className={data.total > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}>
-            {data.total}
-          </span>
-        ) : (
-          <span className="text-muted-foreground/40">0</span>
-        )}
+          <span className={data.total > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}>{data.total}</span>
+        ) : <span className="text-muted-foreground/40">0</span>}
       </td>
     </>
   );
