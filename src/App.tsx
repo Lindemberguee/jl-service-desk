@@ -22,6 +22,7 @@ import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
+import AdminSystemHealth from "@/pages/admin/AdminSystemHealth";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
 import PortalHome from "@/pages/portal/PortalHome";
@@ -164,6 +165,7 @@ const App = () => (
               <Route path="admin/usuarios" element={<AdminUsers />} />
               <Route path="admin/configuracoes" element={<AdminSettings />} />
               <Route path="admin/auditoria" element={<AdminAuditLogs />} />
+              <Route path="admin/saude" element={<AdminSystemHealth />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
