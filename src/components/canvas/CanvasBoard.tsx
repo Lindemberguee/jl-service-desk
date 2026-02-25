@@ -29,7 +29,9 @@ import QuickNodeMenu from './QuickNodeMenu';
 import { useCanvasHistory } from '@/hooks/useCanvasHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { MousePointer2, Sparkles } from 'lucide-react';
+import { MousePointer2, Sparkles, PanelLeftOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CanvasBoardProps {
   boardId: string;
@@ -252,7 +254,24 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
 
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative">
-      {!readOnly && showPalette && <NodePalette onDragStart={handleDragStart} />}
+      {!readOnly && showPalette && <NodePalette onDragStart={handleDragStart} onClose={() => setShowPalette(false)} />}
+      {!readOnly && !showPalette && (
+        <div className="absolute left-3 top-3 z-10">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-9 w-9 rounded-xl shadow-xl bg-card/95 backdrop-blur-md border border-border hover:bg-accent"
+                onClick={() => setShowPalette(true)}
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Mostrar paleta</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
 
       {/* Quick node menu on double-click */}
       {quickMenu && (

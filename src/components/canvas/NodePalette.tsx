@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { NODE_PRESETS, NODE_CATEGORIES } from './CanvasNode';
-import { ChevronDown, ChevronRight, GripHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripHorizontal, PanelLeftClose } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NodePaletteProps {
   onDragStart: (event: React.DragEvent, nodeType: string) => void;
+  onClose: () => void;
 }
 
-export default function NodePalette({ onDragStart }: NodePaletteProps) {
+export default function NodePalette({ onDragStart, onClose }: NodePaletteProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState('');
 
@@ -24,9 +27,17 @@ export default function NodePalette({ onDragStart }: NodePaletteProps) {
       <div className="px-3 pt-3 pb-1.5">
         <div className="flex items-center gap-1.5 mb-2">
           <GripHorizontal className="h-3 w-3 text-muted-foreground/50" />
-          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex-1">
             Componentes
           </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+                <PanelLeftClose className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Ocultar paleta</TooltipContent>
+          </Tooltip>
         </div>
         <input
           type="text"
