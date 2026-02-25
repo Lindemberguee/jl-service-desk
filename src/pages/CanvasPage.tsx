@@ -24,6 +24,7 @@ export default function CanvasPage() {
   const [newBoardName, setNewBoardName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const navigate = useNavigate();
 
   const board = boards.find(b => b.id === activeBoard);
@@ -52,33 +53,39 @@ export default function CanvasPage() {
   // Active canvas view
   if (board) {
     return (
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
-        <div className="flex items-center gap-3 px-1 pb-3 shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="text-xs gap-1">
-            <LayoutGrid className="h-3.5 w-3.5" /> Voltar
-          </Button>
-          <span className="text-sm font-semibold truncate">{board.name}</span>
-          {board.is_shared && (
-            <Badge variant="outline" className="text-[10px] gap-1">
-              <Users className="h-3 w-3" />
-              Compartilhado por {board.owner_name}
-              {board.share_permission === 'edit' ? (
-                <Pencil className="h-2.5 w-2.5 ml-0.5" />
-              ) : (
-                <Eye className="h-2.5 w-2.5 ml-0.5" />
-              )}
-            </Badge>
-          )}
-          {!canEdit && (
-            <Badge variant="secondary" className="text-[10px]">Somente leitura</Badge>
-          )}
-          <div className="ml-auto">
-            {isOwner && (
-              <CanvasShareDialog boardId={board.id} boardName={board.name} isOwner={isOwner} />
+      <div className={isFullscreen
+        ? 'fixed inset-0 z-50 flex flex-col bg-background'
+        : 'flex flex-col h-[calc(100vh-4rem)]'
+      }>
+        {/* Header - hidden in fullscreen */}
+        {!isFullscreen && (
+          <div className="flex items-center gap-3 px-1 pb-3 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="text-xs gap-1">
+              <LayoutGrid className="h-3.5 w-3.5" /> Voltar
+            </Button>
+            <span className="text-sm font-semibold truncate">{board.name}</span>
+            {board.is_shared && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <Users className="h-3 w-3" />
+                Compartilhado por {board.owner_name}
+                {board.share_permission === 'edit' ? (
+                  <Pencil className="h-2.5 w-2.5 ml-0.5" />
+                ) : (
+                  <Eye className="h-2.5 w-2.5 ml-0.5" />
+                )}
+              </Badge>
             )}
+            {!canEdit && (
+              <Badge variant="secondary" className="text-[10px]">Somente leitura</Badge>
+            )}
+            <div className="ml-auto">
+              {isOwner && (
+                <CanvasShareDialog boardId={board.id} boardName={board.name} isOwner={isOwner} />
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex-1 rounded-lg border border-border overflow-hidden bg-sidebar">
+        )}
+        <div className={`flex-1 overflow-hidden bg-sidebar ${isFullscreen ? '' : 'rounded-lg border border-border'}`}>
           <CanvasBoard
             boardId={board.id}
             boardName={board.name}
@@ -88,6 +95,8 @@ export default function CanvasPage() {
             onSave={(nodes, edges, viewport) => saveBoard(board.id, nodes, edges, viewport)}
             saving={saving}
             readOnly={!canEdit}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen(f => !f)}
           />
         </div>
       </div>
