@@ -3,8 +3,9 @@ import { Handle, Position, type NodeProps, useReactFlow } from '@xyflow/react';
 import {
   Lightbulb, StickyNote, FileText, GitBranch, CheckSquare,
   GripVertical, Palette, Copy, Trash2, AlertTriangle,
-  MessageSquare, Image, Link2, Users, Star, Clock, Target,
+  MessageSquare, Link2, Users, Star, Clock, Target,
   Zap, Flag, Bookmark, Heart, Shield, Award,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -26,22 +27,18 @@ const NODE_COLORS = [
 ];
 
 export const NODE_PRESETS = [
-  // Core
   { type: 'idea', label: 'Ideia', icon: Lightbulb, color: '#3b82f6', category: 'core' },
   { type: 'note', label: 'Nota', icon: StickyNote, color: '#f59e0b', category: 'core' },
   { type: 'task', label: 'Tarefa', icon: CheckSquare, color: '#8b5cf6', category: 'core' },
   { type: 'document', label: 'Documento', icon: FileText, color: '#06b6d4', category: 'core' },
   { type: 'process', label: 'Processo', icon: GitBranch, color: '#22c55e', category: 'core' },
-  // Status
   { type: 'warning', label: 'Alerta', icon: AlertTriangle, color: '#ef4444', category: 'status' },
   { type: 'goal', label: 'Meta', icon: Target, color: '#10b981', category: 'status' },
   { type: 'milestone', label: 'Marco', icon: Flag, color: '#f97316', category: 'status' },
   { type: 'priority', label: 'Prioridade', icon: Star, color: '#eab308', category: 'status' },
-  // Communication
   { type: 'comment', label: 'Comentário', icon: MessageSquare, color: '#64748b', category: 'comm' },
   { type: 'team', label: 'Equipe', icon: Users, color: '#0ea5e9', category: 'comm' },
   { type: 'link', label: 'Link', icon: Link2, color: '#a855f7', category: 'comm' },
-  // Special
   { type: 'trigger', label: 'Gatilho', icon: Zap, color: '#d946ef', category: 'special' },
   { type: 'bookmark', label: 'Favorito', icon: Bookmark, color: '#ec4899', category: 'special' },
   { type: 'reward', label: 'Conquista', icon: Award, color: '#84cc16', category: 'special' },
@@ -58,40 +55,77 @@ export function getPreset(type: string) {
   return NODE_PRESETS.find(p => p.type === type) || NODE_PRESETS[0];
 }
 
-const handleBaseClass = "!w-3.5 !h-3.5 !border-2 !border-background !rounded-full !transition-all !duration-200";
-
-// SVG arrow indicators for handle direction
-function HandleArrow({ position, type, color, show }: { position: Position; type: 'source' | 'target'; color: string; show: boolean }) {
-  if (!show) return null;
-  // source = arrow pointing OUT (away from node), target = arrow pointing IN (toward node)
+// Arrow-only handles: invisible handle + visible arrow outside the node
+function ArrowHandle({ position, type, color, show, id }: {
+  position: Position; type: 'source' | 'target'; color: string; show: boolean; id: string;
+}) {
   const isOut = type === 'source';
+
+  // Arrow SVG rotation
   const rotations: Record<string, number> = {
     [Position.Top]: isOut ? 0 : 180,
     [Position.Bottom]: isOut ? 180 : 0,
     [Position.Left]: isOut ? 270 : 90,
     [Position.Right]: isOut ? 90 : 270,
   };
-  const offsets: Record<string, { x: number; y: number }> = {
-    [Position.Top]: { x: 0, y: -14 },
-    [Position.Bottom]: { x: 0, y: 14 },
-    [Position.Left]: { x: -14, y: 0 },
-    [Position.Right]: { x: 14, y: 0 },
+
+  // Position the arrow OUTSIDE the node
+  const arrowPositions: Record<string, React.CSSProperties> = {
+    [`${Position.Top}-source`]: { top: -16, left: 'calc(50% - 14px)', transform: `rotate(${rotations[Position.Top]}deg)` },
+    [`${Position.Top}-target`]: { top: -16, left: 'calc(50% + 4px)', transform: `rotate(${rotations[Position.Top]}deg)` },
+    [`${Position.Bottom}-source`]: { bottom: -16, left: 'calc(50% - 14px)', transform: `rotate(${rotations[Position.Bottom]}deg)` },
+    [`${Position.Bottom}-target`]: { bottom: -16, left: 'calc(50% + 4px)', transform: `rotate(${rotations[Position.Bottom]}deg)` },
+    [`${Position.Left}-source`]: { left: -16, top: 'calc(50% - 14px)', transform: `rotate(${rotations[Position.Left]}deg)` },
+    [`${Position.Left}-target`]: { left: -16, top: 'calc(50% + 4px)', transform: `rotate(${rotations[Position.Left]}deg)` },
+    [`${Position.Right}-source`]: { right: -16, top: 'calc(50% - 14px)', transform: `rotate(${rotations[Position.Right]}deg)` },
+    [`${Position.Right}-target`]: { right: -16, top: 'calc(50% + 4px)', transform: `rotate(${rotations[Position.Right]}deg)` },
   };
-  const off = offsets[position] || { x: 0, y: 0 };
+
+  const handlePositions: Record<string, React.CSSProperties> = {
+    [`${Position.Top}-source`]: { left: 'calc(50% - 8px)' },
+    [`${Position.Top}-target`]: { left: 'calc(50% + 10px)' },
+    [`${Position.Bottom}-source`]: { left: 'calc(50% - 8px)' },
+    [`${Position.Bottom}-target`]: { left: 'calc(50% + 10px)' },
+    [`${Position.Left}-source`]: { top: 'calc(50% - 8px)' },
+    [`${Position.Left}-target`]: { top: 'calc(50% + 10px)' },
+    [`${Position.Right}-source`]: { top: 'calc(50% - 8px)' },
+    [`${Position.Right}-target`]: { top: 'calc(50% + 10px)' },
+  };
+
+  const key = `${position}-${type}`;
+  const arrowColor = isOut ? color : `${color}99`;
+
   return (
-    <div
-      className="absolute pointer-events-none transition-opacity duration-200"
-      style={{
-        opacity: show ? 0.7 : 0,
-        left: `calc(50% + ${off.x}px)`,
-        top: `calc(50% + ${off.y}px)`,
-        transform: `translate(-50%, -50%) rotate(${rotations[position]}deg)`,
-      }}
-    >
-      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-        <path d="M5 0L9.5 7H0.5L5 0Z" fill={color} />
-      </svg>
-    </div>
+    <>
+      {/* Invisible handle for xyflow connections */}
+      <Handle
+        type={type}
+        position={position}
+        id={id}
+        style={{
+          width: 14,
+          height: 14,
+          background: 'transparent',
+          border: 'none',
+          opacity: show ? 1 : 0,
+          zIndex: 10,
+          ...handlePositions[key],
+        }}
+      />
+      {/* Visible arrow indicator */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          opacity: show ? 0.85 : 0,
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+          ...arrowPositions[key],
+        }}
+      >
+        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+          <path d="M6 0L11.5 9H0.5L6 0Z" fill={arrowColor} />
+        </svg>
+      </div>
+    </>
   );
 }
 
@@ -101,6 +135,7 @@ function CanvasNode({ id, data, selected }: NodeProps) {
   const [label, setLabel] = useState((data as CanvasNodeData).label || '');
   const [desc, setDesc] = useState((data as CanvasNodeData).description || '');
   const [hovered, setHovered] = useState(false);
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
   const nodeData = data as CanvasNodeData;
@@ -109,6 +144,10 @@ function CanvasNode({ id, data, selected }: NodeProps) {
   const color = customColor || preset.color;
   const Icon = preset.icon;
   const { setNodes, setEdges } = useReactFlow();
+
+  // Sync label/desc when data changes externally (e.g., type switch)
+  useEffect(() => { setLabel((data as CanvasNodeData).label || ''); }, [(data as CanvasNodeData).label]);
+  useEffect(() => { setDesc((data as CanvasNodeData).description || ''); }, [(data as CanvasNodeData).description]);
 
   useEffect(() => {
     if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
@@ -135,6 +174,27 @@ function CanvasNode({ id, data, selected }: NodeProps) {
   const setColor = useCallback((c: string) => {
     setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, color: c } } : n));
   }, [id, setNodes]);
+
+  const switchType = useCallback((newType: string) => {
+    const newPreset = getPreset(newType);
+    setNodes(nds => nds.map(n => n.id === id ? {
+      ...n,
+      data: { ...n.data, nodeType: newType, color: newPreset.color },
+    } : n));
+    setTypeMenuOpen(false);
+  }, [id, setNodes]);
+
+  const currentIdx = NODE_PRESETS.findIndex(p => p.type === (nodeData.nodeType || 'idea'));
+
+  const prevType = useCallback(() => {
+    const idx = currentIdx <= 0 ? NODE_PRESETS.length - 1 : currentIdx - 1;
+    switchType(NODE_PRESETS[idx].type);
+  }, [currentIdx, switchType]);
+
+  const nextType = useCallback(() => {
+    const idx = currentIdx >= NODE_PRESETS.length - 1 ? 0 : currentIdx + 1;
+    switchType(NODE_PRESETS[idx].type);
+  }, [currentIdx, switchType]);
 
   const duplicateNode = useCallback(() => {
     setNodes(nds => {
@@ -164,38 +224,80 @@ function CanvasNode({ id, data, selected }: NodeProps) {
       onMouseLeave={() => setHovered(false)}
       style={{ minWidth: 180, maxWidth: 320 }}
     >
-      {/* Handles with direction arrows */}
+      {/* Arrow handles - no circles, arrows only, positioned outside */}
       {([
-        { pos: Position.Top, type: 'target' as const, id: 'top-target', offset: {} },
-        { pos: Position.Top, type: 'source' as const, id: 'top-source', offset: { left: 'calc(50% + 12px)' } },
-        { pos: Position.Bottom, type: 'target' as const, id: 'bottom-target', offset: {} },
-        { pos: Position.Bottom, type: 'source' as const, id: 'bottom-source', offset: { left: 'calc(50% + 12px)' } },
-        { pos: Position.Left, type: 'target' as const, id: 'left-target', offset: {} },
-        { pos: Position.Left, type: 'source' as const, id: 'left-source', offset: { top: 'calc(50% + 12px)' } },
-        { pos: Position.Right, type: 'target' as const, id: 'right-target', offset: {} },
-        { pos: Position.Right, type: 'source' as const, id: 'right-source', offset: { top: 'calc(50% + 12px)' } },
+        { pos: Position.Top, type: 'source' as const, id: 'top-source' },
+        { pos: Position.Top, type: 'target' as const, id: 'top-target' },
+        { pos: Position.Bottom, type: 'source' as const, id: 'bottom-source' },
+        { pos: Position.Bottom, type: 'target' as const, id: 'bottom-target' },
+        { pos: Position.Left, type: 'source' as const, id: 'left-source' },
+        { pos: Position.Left, type: 'target' as const, id: 'left-target' },
+        { pos: Position.Right, type: 'source' as const, id: 'right-source' },
+        { pos: Position.Right, type: 'target' as const, id: 'right-target' },
       ]).map(h => (
-        <Handle
+        <ArrowHandle
           key={h.id}
-          type={h.type}
           position={h.pos}
+          type={h.type}
+          color={color}
+          show={!!showHandles}
           id={h.id}
-          className={handleBaseClass}
-          style={{
-            background: h.type === 'source' ? color : `${color}88`,
-            border: `2px solid ${h.type === 'source' ? 'hsl(var(--background))' : `${color}44`}`,
-            opacity: showHandles ? 1 : 0,
-            transform: showHandles ? 'scale(1)' : 'scale(0.3)',
-            ...h.offset,
-          }}
-        >
-          <HandleArrow position={h.pos} type={h.type} color={h.type === 'source' ? color : `${color}88`} show={!!showHandles} />
-        </Handle>
+        />
       ))}
 
       {/* Quick action bar */}
       {(hovered || selected) && (
         <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-0.5 shadow-xl z-10 nopan nodrag animate-in fade-in slide-in-from-bottom-1 duration-150">
+          {/* Type switcher arrows */}
+          <button onClick={prevType} className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-accent transition-colors" title="Tipo anterior">
+            <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          {/* Type selector popover */}
+          <Popover open={typeMenuOpen} onOpenChange={setTypeMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="h-6 px-1.5 rounded-md flex items-center gap-1 hover:bg-accent transition-colors"
+                title="Alterar tipo"
+              >
+                <Icon className="h-3.5 w-3.5" style={{ color }} />
+                <span className="text-[10px] font-semibold text-muted-foreground">{preset.label}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-2" side="top">
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Alterar tipo</p>
+              <div className="grid grid-cols-3 gap-1">
+                {NODE_PRESETS.map(p => {
+                  const PIcon = p.icon;
+                  const isActive = p.type === (nodeData.nodeType || 'idea');
+                  return (
+                    <button
+                      key={p.type}
+                      onClick={() => switchType(p.type)}
+                      className={`flex flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition-all duration-200 ${
+                        isActive
+                          ? 'bg-accent ring-1 ring-primary/30 scale-105'
+                          : 'hover:bg-accent/60 hover:scale-105'
+                      }`}
+                    >
+                      <div
+                        className="h-6 w-6 rounded-md flex items-center justify-center transition-colors duration-200"
+                        style={{ background: `${p.color}20` }}
+                      >
+                        <PIcon className="h-3.5 w-3.5" style={{ color: p.color }} />
+                      </div>
+                      <span className="text-[9px] font-medium text-foreground/70 leading-none">{p.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <button onClick={nextType} className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-accent transition-colors" title="Próximo tipo">
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+
+          <div className="w-px h-4 bg-border mx-0.5" />
+
           <Popover>
             <PopoverTrigger asChild>
               <button className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-accent transition-colors">
@@ -232,7 +334,7 @@ function CanvasNode({ id, data, selected }: NodeProps) {
 
       {/* Card */}
       <div
-        className="rounded-xl overflow-hidden transition-all duration-200"
+        className="rounded-xl overflow-hidden transition-all duration-300"
         style={{
           background: 'hsl(222, 47%, 8%)',
           border: `2px solid ${selected ? color : hovered ? `${color}44` : 'hsl(222, 47%, 15%)'}`,
@@ -244,23 +346,21 @@ function CanvasNode({ id, data, selected }: NodeProps) {
         }}
       >
         {/* Color accent bar */}
-        <div className="h-1" style={{ background: `linear-gradient(90deg, ${color}, ${color}66)` }} />
+        <div className="h-1 transition-all duration-300" style={{ background: `linear-gradient(90deg, ${color}, ${color}66)` }} />
 
         {/* Header bar */}
-        <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: `${color}08` }}>
+        <div className="flex items-center gap-2 px-3 py-1.5 transition-colors duration-300" style={{ background: `${color}08` }}>
           <GripVertical className="h-3 w-3 text-white/20 shrink-0 cursor-grab" />
           <div
-            className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0"
+            className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300"
             style={{ background: `${color}20`, boxShadow: `inset 0 0 0 1px ${color}15` }}
           >
-            <Icon className="h-3.5 w-3.5" style={{ color }} />
+            <Icon className="h-3.5 w-3.5 transition-colors duration-300" style={{ color }} />
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider flex-1" style={{ color: `${color}aa` }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider flex-1 transition-colors duration-300" style={{ color: `${color}aa` }}>
             {preset.label}
           </span>
-          {nodeData.emoji && (
-            <span className="text-sm">{nodeData.emoji}</span>
-          )}
+          {nodeData.emoji && <span className="text-sm">{nodeData.emoji}</span>}
         </div>
 
         {/* Body */}
