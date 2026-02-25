@@ -202,8 +202,8 @@ export default function PortalHome() {
         ].map(item => (
           <Card
             key={item.label}
-            className={`border-border shadow-none cursor-pointer hover:bg-muted/30 transition-colors ${
-              (statusFilter === item.filter || (item.filter === 'sla' && slaOnlyFilter)) ? 'ring-2 ring-primary' : ''
+            className={`border-border/50 shadow-none cursor-pointer hover:bg-muted/30 transition-all duration-200 rounded-xl ${
+              (statusFilter === item.filter || (item.filter === 'sla' && slaOnlyFilter)) ? 'ring-2 ring-primary shadow-md shadow-primary/10' : ''
             }`}
             onClick={() => {
               if (item.filter === 'sla') {
@@ -217,8 +217,8 @@ export default function PortalHome() {
           >
             <CardContent className="p-3 text-center">
               <item.icon className={`h-4 w-4 mx-auto mb-1 ${item.color}`} />
-              <p className="text-lg font-bold">{item.count}</p>
-              <p className="text-[10px] text-muted-foreground leading-tight">{item.label}</p>
+              <p className="text-xl font-bold">{item.count}</p>
+              <p className="text-[10px] text-muted-foreground leading-tight font-medium">{item.label}</p>
             </CardContent>
           </Card>
         ))}
@@ -336,14 +336,14 @@ export default function PortalHome() {
           {filtered.map((wo: any) => (
             <Card
               key={wo.id}
-              className="border-border shadow-none cursor-pointer hover:bg-muted/30 transition-colors"
+              className="border-border/50 shadow-none cursor-pointer hover:bg-muted/30 transition-all duration-200 rounded-xl active:scale-[0.99]"
               onClick={() => navigate(`/portal/os/${wo.id}`)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                      <span className="text-[11px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{wo.code}</span>
                       {memberships.length > 1 && (
                         <Badge variant="outline" className="text-[10px] h-5 gap-1">
                           <Building2 className="h-2.5 w-2.5" />
@@ -354,12 +354,12 @@ export default function PortalHome() {
                         {priorityLabels[wo.priority]}
                       </Badge>
                       {wo.status === 'aguardando_solicitante' && (
-                        <Badge variant="outline" className="text-[10px] h-5 bg-warning/10 text-warning border-warning/20">
+                        <Badge variant="outline" className="text-[10px] h-5 bg-warning/10 text-warning border-warning/20 animate-pulse">
                           Aguardando você
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm font-medium truncate">{wo.title}</p>
+                    <p className="text-sm font-semibold truncate">{wo.title}</p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
                         {statusLabels[wo.status]}
@@ -370,7 +370,7 @@ export default function PortalHome() {
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground mt-2 shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground mt-3 shrink-0" />
                 </div>
               </CardContent>
             </Card>
