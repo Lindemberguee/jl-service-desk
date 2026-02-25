@@ -54,6 +54,10 @@ export default function Stock() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
 
+  // Quick move with quantity
+  const [quickMoveItemId, setQuickMoveItemId] = useState<string | null>(null);
+  const [quickMoveQty, setQuickMoveQty] = useState('1');
+
   // Movement form
   const [movItemId, setMovItemId] = useState('');
   const [movType, setMovType] = useState<'in' | 'out' | 'adjust'>('in');
@@ -136,13 +140,13 @@ export default function Stock() {
 
   const getMovementItemName = (m: any) => m.stock_items?.name || items.find((i: any) => i.id === m.stock_item_id)?.name || '-';
 
-  const quickMove = async (itemId: string, type: 'in' | 'out') => {
+  const quickMove = async (itemId: string, type: 'in' | 'out', qty: number = 1) => {
     if (!currentTenantId) return;
     const item = items.find((i: any) => i.id === itemId);
     if (!item) return;
     const currentLevel = item.current_level || 0;
-    if (type === 'out' && currentLevel <= 0) {
-      toast({ title: 'Estoque zerado', variant: 'destructive' });
+    if (type === 'out' && currentLevel < qty) {
+      toast({ title: 'Estoque insuficiente', variant: 'destructive' });
       return;
     }
     try {
@@ -150,15 +154,17 @@ export default function Stock() {
         tenant_id: currentTenantId,
         stock_item_id: itemId,
         type,
-        qty: 1,
-        reference: type === 'in' ? 'Entrada rápida' : 'Saída rápida',
+        qty,
+        reference: type === 'in' ? `Entrada rápida (${qty})` : `Saída rápida (${qty})`,
         created_by: user?.id,
       });
-      const newLevel = type === 'in' ? currentLevel + 1 : Math.max(0, currentLevel - 1);
+      const newLevel = type === 'in' ? currentLevel + qty : Math.max(0, currentLevel - qty);
       await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', itemId);
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
-      toast({ title: type === 'in' ? '+1 entrada' : '-1 saída' });
+      toast({ title: type === 'in' ? `+${qty} entrada` : `-${qty} saída` });
+      setQuickMoveItemId(null);
+      setQuickMoveQty('1');
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -361,12 +367,36 @@ export default function Stock() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => quickMove(item.id, 'out')} title="Saída rápida (-1)">
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => quickMove(item.id, 'in')} title="Entrada rápida (+1)">
-                              <Plus className="h-3 w-3" />
-                            </Button>
+                            {quickMoveItemId === item.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={quickMoveQty}
+                                  onChange={e => setQuickMoveQty(e.target.value)}
+                                  className="h-7 w-14 text-xs text-center px-1"
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === 'Escape') { setQuickMoveItemId(null); setQuickMoveQty('1'); }
+                                  }}
+                                />
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => quickMove(item.id, 'out', parseInt(quickMoveQty) || 1)} title="Saída">
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => quickMove(item.id, 'in', parseInt(quickMoveQty) || 1)} title="Entrada">
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setQuickMoveItemId(item.id); setQuickMoveQty('1'); }} title="Saída (digitar qtd)">
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => { setQuickMoveItemId(item.id); setQuickMoveQty('1'); }} title="Entrada (digitar qtd)">
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDetailItem(item)}>
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
