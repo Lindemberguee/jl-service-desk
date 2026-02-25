@@ -33,6 +33,7 @@ export function PermissionGuard({ permission, children, fallbackPath }: Permissi
 function getFallbackPath(role: string, rolePermMap: Record<string, boolean>): string {
   const candidates: { perm: Permission; path: string }[] = [
     { perm: 'dashboard:read', path: '/dashboard' },
+    { perm: 'my_os:read', path: '/minhas-os' },
     { perm: 'os:read', path: '/os' },
     { perm: 'stock:read', path: '/estoque' },
     { perm: 'reports:read', path: '/relatorios' },
