@@ -344,6 +344,33 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          granted: boolean
+          id: string
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          granted?: boolean
+          id?: string
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          granted?: boolean
+          id?: string
+          permission?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       sla_policies: {
         Row: {
           created_at: string
@@ -1063,6 +1090,7 @@ export type Database = {
         | "coordenador"
         | "tecnico"
         | "solicitante"
+        | "analista"
         | "leitura"
       asset_status: "ativo" | "inativo" | "em_manutencao" | "descartado"
       customer_type: "internal" | "external"
@@ -1228,6 +1256,7 @@ export const Constants = {
         "coordenador",
         "tecnico",
         "solicitante",
+        "analista",
         "leitura",
       ],
       asset_status: ["ativo", "inativo", "em_manutencao", "descartado"],

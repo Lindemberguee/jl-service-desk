@@ -1,34 +1,45 @@
-export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'solicitante' | 'leitura';
+export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'analista' | 'solicitante' | 'leitura';
 
 export type Permission =
-  | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage'
-  | 'assets:read' | 'assets:manage' | 'stock:read' | 'stock:manage'
+  | 'dashboard:read'
+  | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage' | 'os:comment'
+  | 'assets:read' | 'assets:manage'
+  | 'stock:read' | 'stock:manage'
+  | 'materiais:read' | 'materiais:manage'
   | 'users:read' | 'users:manage'
   | 'reports:read' | 'settings:manage'
   | 'cadastros:read' | 'cadastros:manage'
   | 'tools:read';
 
+// Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
   super_admin: [
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
+    'dashboard:read',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'materiais:read', 'materiais:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   admin: [
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage',
+    'dashboard:read',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'materiais:read', 'materiais:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   coordenador: [
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close',
+    'dashboard:read',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
+    'materiais:read', 'materiais:manage',
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
   ],
-  tecnico: ['os:read', 'os:create', 'os:update', 'stock:read', 'stock:manage'],
-  solicitante: ['os:read', 'os:create'],
-  leitura: ['os:read'],
+  tecnico: ['dashboard:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read'],
+  analista: ['dashboard:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'reports:read', 'cadastros:read'],
+  solicitante: ['os:read', 'os:create', 'os:comment'],
+  leitura: ['os:read', 'dashboard:read'],
 };
 
 export function getPermissionsForRole(role: AppRole): Permission[] {
@@ -46,12 +57,10 @@ export function hasPermission(
   rolePermMap?: Record<string, boolean>,
 ): boolean {
   if (overrides?.includes(permission)) return true;
-  // If we have DB-loaded permissions, use those
   const key = `${role}:${permission}`;
   if (rolePermMap && key in rolePermMap) {
     return rolePermMap[key];
   }
-  // Fallback to hardcoded
   return getPermissionsForRole(role).includes(permission);
 }
 
@@ -60,8 +69,19 @@ export const roleLabels: Record<AppRole, string> = {
   admin: 'Administrador',
   coordenador: 'Coordenador',
   tecnico: 'Técnico',
+  analista: 'Analista',
   solicitante: 'Solicitante',
   leitura: 'Somente Leitura',
+};
+
+export const roleDescriptions: Record<AppRole, string> = {
+  super_admin: 'Acesso total ao sistema e administração global',
+  admin: 'Gestão completa do departamento',
+  coordenador: 'Coordenação operacional e cadastros',
+  tecnico: 'Execução de ordens de serviço',
+  analista: 'Visualização e criação de OS, relatórios e estoque',
+  solicitante: 'Abertura e acompanhamento de solicitações',
+  leitura: 'Apenas visualização de ordens de serviço',
 };
 
 export const priorityLabels: Record<string, string> = {

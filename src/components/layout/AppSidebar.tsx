@@ -27,7 +27,7 @@ interface MenuItem {
 }
 
 const operationalItems: MenuItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'os:read' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
   { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read' },
   { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create' },
 ];
@@ -36,7 +36,7 @@ const managementItems: MenuItem[] = [
   { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' },
   { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
   { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
-  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'stock:read' },
+  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
   { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' },
   { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' },
 ];
