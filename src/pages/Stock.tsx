@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,11 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,9 +20,12 @@ import {
   Plus, Minus, Package, Loader2, ArrowDown, ArrowUp, Search,
   AlertTriangle, Eye, History, Link2, Filter, RotateCcw,
   Pencil, Trash2, Save, Download, Upload, FileDown,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
+
+const PAGE_SIZE = 50;
 
 export default function Stock() {
   const { currentTenantId, user } = useAuth();
@@ -58,6 +63,12 @@ export default function Stock() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Quick move dialog
   const [qmOpen, setQmOpen] = useState(false);
   const [qmItem, setQmItem] = useState<any>(null);
@@ -66,8 +77,13 @@ export default function Stock() {
   const [qmRef, setQmRef] = useState('');
   const [qmLoading, setQmLoading] = useState(false);
 
-  // Import
+  // Import progress
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importTotal, setImportTotal] = useState(0);
+
+  // Bulk delete
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Movement form
   const [movItemId, setMovItemId] = useState('');
@@ -79,19 +95,77 @@ export default function Stock() {
   const lowStockCount = items.filter((i: any) => (i.current_level || 0) <= (i.min_level || 0) && i.min_level > 0).length;
 
   const filteredItems = useMemo(() => {
-    return items.filter((item: any) => {
+    const result = items.filter((item: any) => {
       const s = debouncedSearch.toLowerCase();
       const matchSearch = !debouncedSearch || item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s);
       const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
       const matchStatus = statusFilter === 'all' || (statusFilter === 'low' && isLow) || (statusFilter === 'normal' && !isLow);
       return matchSearch && matchStatus;
     });
+    return result;
   }, [items, debouncedSearch, statusFilter]);
+
+  // Reset page when filters change
+  useMemo(() => { setPage(1); }, [debouncedSearch, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, page]);
 
   const itemMovements = useMemo(() => {
     if (!detailItem) return [];
     return movements.filter((m: any) => m.stock_item_id === detailItem.id);
   }, [detailItem, movements]);
+
+  // Selection helpers
+  const allOnPageSelected = paginatedItems.length > 0 && paginatedItems.every((i: any) => selectedIds.has(i.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedItems.forEach((i: any) => next.delete(i.id));
+      } else {
+        paginatedItems.forEach((i: any) => next.add(i.id));
+      }
+      return next;
+    });
+  }, [allOnPageSelected, paginatedItems]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      // Delete movements first for selected items
+      await (supabase.from as any)('stock_movements').delete().in('stock_item_id', ids);
+      // Delete items
+      const { error } = await (supabase.from as any)('stock_items').delete().in('id', ids);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      toast({ title: `${ids.length} item(ns) excluído(s)!` });
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,19 +185,17 @@ export default function Stock() {
       if (!currentTenantId || !movItemId) throw new Error('Dados incompletos');
       const qty = parseInt(movQty);
       if (!qty || qty <= 0) throw new Error('Quantidade inválida');
-      const { error: movErr } = await (supabase.from as any)('stock_movements').insert({
+      await (supabase.from as any)('stock_movements').insert({
         tenant_id: currentTenantId, stock_item_id: movItemId, type: movType,
         qty, reference: movRef || null, work_order_id: movWoId || null, created_by: user?.id,
       });
-      if (movErr) throw movErr;
       const item = items.find((i: any) => i.id === movItemId);
       const currentLevel = item?.current_level || 0;
       let newLevel = currentLevel;
       if (movType === 'in') newLevel = currentLevel + qty;
       else if (movType === 'out') newLevel = Math.max(0, currentLevel - qty);
       else newLevel = qty;
-      const { error: upErr } = await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
-      if (upErr) throw upErr;
+      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
     },
     onSuccess: () => {
       toast({ title: 'Movimentação registrada!' });
@@ -139,7 +211,7 @@ export default function Stock() {
 
   const getMovementItemName = (m: any) => m.stock_items?.name || items.find((i: any) => i.id === m.stock_item_id)?.name || '-';
 
-  // Quick move via dialog
+  // Quick move
   const openQuickMove = (item: any, type: 'in' | 'out') => {
     setQmItem(item);
     setQmType(type);
@@ -151,15 +223,9 @@ export default function Stock() {
   const handleQuickMove = async () => {
     if (!currentTenantId || !qmItem) return;
     const qty = parseInt(qmQty);
-    if (!qty || qty <= 0) {
-      toast({ title: 'Quantidade inválida', variant: 'destructive' });
-      return;
-    }
+    if (!qty || qty <= 0) { toast({ title: 'Quantidade inválida', variant: 'destructive' }); return; }
     const currentLevel = qmItem.current_level || 0;
-    if (qmType === 'out' && currentLevel < qty) {
-      toast({ title: 'Estoque insuficiente', variant: 'destructive' });
-      return;
-    }
+    if (qmType === 'out' && currentLevel < qty) { toast({ title: 'Estoque insuficiente', variant: 'destructive' }); return; }
     setQmLoading(true);
     try {
       await (supabase.from as any)('stock_movements').insert({
@@ -175,15 +241,13 @@ export default function Stock() {
       setQmOpen(false);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    } finally {
-      setQmLoading(false);
-    }
+    } finally { setQmLoading(false); }
   };
 
   // Export CSV
   const exportCSV = () => {
     const header = 'Nome;SKU;Unidade;Quantidade Atual;Nível Mínimo';
-    const rows = items.map((i: any) =>
+    const rows = filteredItems.map((i: any) =>
       `${i.name};${i.sku || ''};${i.unit || 'un'};${i.current_level || 0};${i.min_level || 0}`
     );
     const csv = '\uFEFF' + [header, ...rows].join('\n');
@@ -194,7 +258,7 @@ export default function Stock() {
     a.download = `estoque_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: 'Estoque exportado!' });
+    toast({ title: `Exportação concluída!`, description: `${filteredItems.length} item(ns) exportado(s).` });
   };
 
   // Download template
@@ -212,55 +276,136 @@ export default function Stock() {
     toast({ title: 'Modelo baixado!' });
   };
 
-  // Import CSV
+  // Import CSV with progress
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentTenantId) return;
     setImporting(true);
+    setImportProgress(0);
+    setImportTotal(0);
     try {
       const text = await file.text();
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
-      const dataLines = lines.slice(1); // skip header
+      const dataLines = lines.slice(1);
+      const total = dataLines.length;
+      setImportTotal(total);
       let created = 0;
       let skipped = 0;
-      for (const line of dataLines) {
-        const parts = line.split(';').map(p => p.trim());
+
+      // Batch insert: process in chunks of 50
+      const BATCH = 50;
+      const existingNames = new Set(items.map((i: any) => i.name.toLowerCase()));
+      const existingSkus = new Set(items.filter((i: any) => i.sku).map((i: any) => i.sku!.toLowerCase()));
+      const toInsert: any[] = [];
+
+      for (let idx = 0; idx < dataLines.length; idx++) {
+        const line = dataLines[idx];
+        // Support both ; and , as delimiter
+        const delimiter = line.includes(';') ? ';' : ',';
+        const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
         const itemName = parts[0];
-        if (!itemName) { skipped++; continue; }
+        if (!itemName) { skipped++; setImportProgress(idx + 1); continue; }
         const itemSku = parts[1] || '';
         const itemUnit = parts[2] || 'un';
         const itemQty = parseInt(parts[3]) || 0;
         const itemMin = parseInt(parts[4]) || 0;
-        // Check if item with same name or sku already exists
-        const existing = items.find((i: any) =>
-          i.name.toLowerCase() === itemName.toLowerCase() ||
-          (itemSku && i.sku?.toLowerCase() === itemSku.toLowerCase())
-        );
-        if (existing) { skipped++; continue; }
-        const { error } = await (supabase.from as any)('stock_items').insert({
+
+        if (existingNames.has(itemName.toLowerCase()) || (itemSku && existingSkus.has(itemSku.toLowerCase()))) {
+          skipped++;
+          setImportProgress(idx + 1);
+          continue;
+        }
+        // Track to avoid duplicates within same file
+        existingNames.add(itemName.toLowerCase());
+        if (itemSku) existingSkus.add(itemSku.toLowerCase());
+
+        toInsert.push({
           tenant_id: currentTenantId,
           name: itemName, sku: itemSku || null, unit: itemUnit,
           current_level: itemQty, min_level: itemMin,
         });
-        if (error) { skipped++; continue; }
-        created++;
       }
+
+      // Insert in batches
+      for (let i = 0; i < toInsert.length; i += BATCH) {
+        const batch = toInsert.slice(i, i + BATCH);
+        const { error } = await (supabase.from as any)('stock_items').insert(batch);
+        if (error) {
+          // Fallback: insert one by one
+          for (const item of batch) {
+            const { error: singleErr } = await (supabase.from as any)('stock_items').insert(item);
+            if (singleErr) skipped++; else created++;
+          }
+        } else {
+          created += batch.length;
+        }
+        setImportProgress(Math.min(dataLines.length, (skipped + created)));
+      }
+
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       toast({
         title: 'Importação concluída!',
-        description: `${created} item(ns) criado(s)${skipped > 0 ? `, ${skipped} ignorado(s) (duplicados ou inválidos)` : ''}`,
+        description: `${created} criado(s)${skipped > 0 ? `, ${skipped} ignorado(s)` : ''}`,
       });
     } catch (err: any) {
       toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' });
     } finally {
       setImporting(false);
+      setImportProgress(0);
+      setImportTotal(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  // Pagination component
+  const PaginationBar = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-1 py-2">
+        <span className="text-xs text-muted-foreground">
+          {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filteredItems.length)} de {filteredItems.length}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(1)}>
+            <ChevronsLeft className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+          <span className="text-xs px-2 font-medium">{page} / {totalPages}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
+            <ChevronsRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4 min-w-0">
+      {/* Import Progress Overlay */}
+      {importing && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card border border-border rounded-xl shadow-lg p-6 w-[340px] space-y-4 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+            <div>
+              <p className="text-sm font-semibold">Importando estoque...</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {importProgress} / {importTotal} itens processados
+              </p>
+            </div>
+            <Progress value={importTotal > 0 ? (importProgress / importTotal) * 100 : 0} className="h-2" />
+            <p className="text-lg font-bold text-primary">
+              {importTotal > 0 ? Math.round((importProgress / importTotal) * 100) : 0}%
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
@@ -268,13 +413,11 @@ export default function Stock() {
           <p className="text-xs text-muted-foreground mt-0.5">{filteredItems.length} item(ns)</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {/* Import/Export/Template */}
           <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={downloadTemplate}>
-            <FileDown className="h-3.5 w-3.5" /> Baixar Modelo
+            <FileDown className="h-3.5 w-3.5" /> Modelo
           </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-            {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            Importar
+            <Upload className="h-3.5 w-3.5" /> Importar
           </Button>
           <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImport} />
           <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportCSV} disabled={items.length === 0}>
@@ -383,6 +526,39 @@ export default function Stock() {
         </div>
       )}
 
+      {/* Selection bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+          <span className="text-xs font-medium text-primary">{selectedIds.size} selecionado(s)</span>
+          <div className="flex-1" />
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={clearSelection}>
+            <X className="h-3 w-3" /> Limpar
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" disabled={bulkDeleting}>
+                {bulkDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                Excluir selecionados
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir {selectedIds.size} item(ns)?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todos os itens selecionados e suas movimentações serão excluídos permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleBulkDelete}>
+                  Excluir {selectedIds.size} item(ns)
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
+
       <Tabs defaultValue="items">
         <TabsList className="bg-card border border-border h-9">
           <TabsTrigger value="items" className="text-xs h-7">Itens</TabsTrigger>
@@ -418,25 +594,31 @@ export default function Stock() {
             </div>
           ) : isMobile ? (
             <div className="space-y-2">
-              {filteredItems.map((item: any) => {
+              {paginatedItems.map((item: any) => {
                 const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
+                const isSelected = selectedIds.has(item.id);
                 return (
-                  <div key={item.id} className="bg-card border border-border rounded-md p-3">
-                    <div className="flex items-start justify-between gap-2" onClick={() => setDetailItem(item)}>
-                      <div>
-                        <p className="text-sm font-medium">{item.name}</p>
-                        {item.sku && <p className="text-[11px] text-muted-foreground mt-0.5">SKU: {item.sku}</p>}
+                  <div key={item.id} className={`bg-card border rounded-md p-3 ${isSelected ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                    <div className="flex items-start gap-2">
+                      <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(item.id)} className="mt-0.5" />
+                      <div className="flex-1 min-w-0" onClick={() => setDetailItem(item)}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium">{item.name}</p>
+                            {item.sku && <p className="text-[11px] text-muted-foreground mt-0.5">SKU: {item.sku}</p>}
+                          </div>
+                          <Badge variant="outline" className={`text-[10px] h-5 shrink-0 ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
+                            {isLow ? 'Baixo' : 'Normal'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex gap-4 text-xs text-muted-foreground">
+                            <span>Atual: <strong className="text-foreground">{item.current_level}</strong> {item.unit || 'un'}</span>
+                            <span>Mín: {item.min_level}</span>
+                          </div>
+                        </div>
                       </div>
-                      <Badge variant="outline" className={`text-[10px] h-5 ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
-                        {isLow ? 'Baixo' : 'Normal'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>Atual: <strong className="text-foreground">{item.current_level}</strong> {item.unit || 'un'}</span>
-                        <span>Mín: {item.min_level}</span>
-                      </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button variant="outline" size="icon" className="h-7 w-7 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => openQuickMove(item, 'out')}>
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -448,12 +630,16 @@ export default function Stock() {
                   </div>
                 );
               })}
+              <PaginationBar />
             </div>
           ) : (
             <div className="bg-card border border-border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[40px]">
+                      <Checkbox checked={allOnPageSelected} onCheckedChange={toggleSelectAll} />
+                    </TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">SKU</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Unid.</TableHead>
@@ -464,11 +650,15 @@ export default function Stock() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item: any) => {
+                  {paginatedItems.map((item: any) => {
                     const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
+                    const isSelected = selectedIds.has(item.id);
                     return (
-                      <TableRow key={item.id} className="cursor-pointer" onClick={() => setDetailItem(item)}>
-                        <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                      <TableRow key={item.id} className={`cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(item.id)} />
+                        </TableCell>
+                        <TableCell className="text-sm font-medium" onClick={() => setDetailItem(item)}>{item.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.sku || '-'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.unit || 'un'}</TableCell>
                         <TableCell className="text-sm font-medium">{item.current_level}</TableCell>
@@ -496,6 +686,7 @@ export default function Stock() {
                   })}
                 </TableBody>
               </Table>
+              <PaginationBar />
             </div>
           )}
         </TabsContent>
@@ -594,23 +785,14 @@ export default function Stock() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Quantidade *</Label>
               <Input
-                type="number"
-                min="1"
-                value={qmQty}
-                onChange={e => setQmQty(e.target.value)}
-                className="h-10 text-lg text-center font-semibold"
-                autoFocus
+                type="number" min="1" value={qmQty} onChange={e => setQmQty(e.target.value)}
+                className="h-10 text-lg text-center font-semibold" autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') handleQuickMove(); }}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Observação (opcional)</Label>
-              <Input
-                value={qmRef}
-                onChange={e => setQmRef(e.target.value)}
-                className="h-9"
-                placeholder="Ex: NF-12345, Manutenção preventiva..."
-              />
+              <Input value={qmRef} onChange={e => setQmRef(e.target.value)} className="h-9" placeholder="Ex: NF-12345, Manutenção preventiva..." />
             </div>
             {qmType === 'out' && parseInt(qmQty) > (qmItem?.current_level || 0) && (
               <p className="text-xs text-destructive flex items-center gap-1">
