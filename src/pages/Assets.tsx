@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -119,7 +120,7 @@ export default function Assets() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertMutation.mutateAsync({
+      const result = await insertMutation.mutateAsync({
         name: form.name,
         patrimony_code: form.patrimony_code || null,
         serial_number: form.serial_number || null,
@@ -128,6 +129,7 @@ export default function Assets() {
         location_id: form.location_id || null,
         category_id: form.category_id || null,
       });
+      await logAudit({ entity: 'asset', entityId: (result as any)?.id, action: 'asset.created', tenantId: currentTenantId, diff: { name: form.name, patrimony_code: form.patrimony_code, status: form.status } });
       toast({ title: 'Ativo criado com sucesso!' });
       setCreateOpen(false);
       resetForm();
@@ -164,6 +166,7 @@ export default function Assets() {
         location_id: form.location_id || null,
         category_id: form.category_id || null,
       });
+      await logAudit({ entity: 'asset', entityId: editId, action: 'asset.updated', tenantId: currentTenantId, diff: { name: form.name, status: form.status } });
       toast({ title: 'Ativo atualizado!' });
       setEditOpen(false);
       resetForm();
@@ -177,6 +180,7 @@ export default function Assets() {
     if (!deleteTarget) return;
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
+      await logAudit({ entity: 'asset', entityId: deleteTarget.id, action: 'asset.deleted', tenantId: currentTenantId, diff: { name: deleteTarget.name } });
       toast({ title: 'Ativo excluído!' });
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });

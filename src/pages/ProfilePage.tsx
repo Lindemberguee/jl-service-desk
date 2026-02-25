@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +36,7 @@ export default function ProfilePage() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+      await logAudit({ entity: 'user', entityId: profile?.id, action: 'user.self_password_changed', diff: { changed_by: 'self' } });
       toast({ title: 'Senha alterada com sucesso!' });
       setCurrentPassword('');
       setNewPassword('');

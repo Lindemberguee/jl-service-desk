@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { supabase } from '@/integrations/supabase/client';
@@ -198,6 +199,7 @@ export default function MaterialControl() {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
+      await logAudit({ entity: 'stock', action: 'stock.bulk_deleted', tenantId: currentTenantId, diff: { count: ids.length, source: 'material_control' } });
       toast.success(`${ids.length} item(ns) excluído(s)!`);
       setSelectedIds(new Set());
     } catch (err: any) {
@@ -231,6 +233,7 @@ export default function MaterialControl() {
         const newLevel = (item.current_level || 0) + (movType === 'in' ? qty : -qty);
         await supabase.from('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
       }
+      await logAudit({ entity: 'stock', entityId: movItemId, action: 'stock.movement', tenantId: currentTenantId, diff: { type: movType, qty, month: movMonth, reference: movRef || null, source: 'material_control' } });
       toast.success('Movimentação registrada');
       queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
       queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });

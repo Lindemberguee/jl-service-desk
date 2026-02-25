@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
@@ -39,7 +40,7 @@ type FieldDef = {
 };
 
 function CrudSection({
-  title, icon: Icon, queryKey, table, fields, readOnly, renderCell, searchKeys,
+  title, icon: Icon, queryKey, table, fields, readOnly, renderCell, searchKeys, tenantId,
 }: {
   title: string;
   icon: any;
@@ -49,6 +50,7 @@ function CrudSection({
   readOnly?: boolean;
   renderCell?: (field: FieldDef, item: any) => React.ReactNode;
   searchKeys?: string[];
+  tenantId?: string | null;
 }) {
   const { data = [], isLoading } = useTenantQuery<any>(queryKey, table);
   const insertMutation = useTenantInsert(table, [queryKey]);
@@ -80,7 +82,8 @@ function CrudSection({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await insertMutation.mutateAsync(form);
+      const result = await insertMutation.mutateAsync(form);
+      await logAudit({ entity: table, entityId: (result as any)?.id, action: `${table}.created`, tenantId: tenantId, diff: form });
       toast({ title: `${title} criado(a) com sucesso!` });
       setCreateOpen(false);
       resetForm();
@@ -102,6 +105,7 @@ function CrudSection({
     if (!editId) return;
     try {
       await updateMutation.mutateAsync({ id: editId, ...form });
+      await logAudit({ entity: table, entityId: editId, action: `${table}.updated`, tenantId: tenantId, diff: form });
       toast({ title: `${title} atualizado(a)!` });
       setEditOpen(false);
       resetForm();
@@ -115,6 +119,7 @@ function CrudSection({
     if (!deleteTarget) return;
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
+      await logAudit({ entity: table, entityId: deleteTarget.id, action: `${table}.deleted`, tenantId: tenantId, diff: { name: deleteTarget[fields[0]?.key] } });
       toast({ title: `${title} excluído(a)!` });
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
@@ -839,7 +844,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
 }
 
 export default function Cadastros() {
-  const { currentRole } = useAuth();
+  const { currentRole, currentTenantId } = useAuth();
   const readOnly = !currentRole || !hasPermission(currentRole, 'cadastros:manage');
 
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
@@ -905,6 +910,7 @@ export default function Cadastros() {
             queryKey="units"
             table="units"
             readOnly={readOnly}
+            tenantId={currentTenantId}
             searchKeys={['name', 'address', 'city']}
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Bloco A, Sede, Filial Centro', required: true },
@@ -922,6 +928,7 @@ export default function Cadastros() {
             queryKey="locations"
             table="locations"
             readOnly={readOnly}
+            tenantId={currentTenantId}
             renderCell={locationRenderCell}
             searchKeys={['name', 'description']}
             fields={[
@@ -939,6 +946,7 @@ export default function Cadastros() {
             queryKey="categories"
             table="categories"
             readOnly={readOnly}
+            tenantId={currentTenantId}
             searchKeys={['name']}
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Elétrica, Hidráulica, TI', required: true },
