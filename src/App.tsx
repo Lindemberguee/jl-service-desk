@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RequesterLayout } from "@/components/layout/RequesterLayout";
+import { PermissionGuard } from "@/components/PermissionGuard";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import WorkOrders from "@/pages/WorkOrders";
@@ -62,6 +63,7 @@ function ProtectedRoutes() {
     return <Navigate to="/tech" replace />;
   }
 
+  // All other roles (admin, coordenador, analista, super_admin) use AppLayout
   return <AppLayout />;
 }
 
@@ -149,25 +151,25 @@ const App = () => (
             {/* Admin/Operational Layout */}
             <Route path="/" element={<ProtectedRoutes />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="os" element={<WorkOrders />} />
-              <Route path="os/nova" element={<WorkOrderCreate />} />
-              <Route path="os/:id" element={<WorkOrderDetail />} />
-              <Route path="cadastros" element={<Cadastros />} />
-              <Route path="ativos" element={<Assets />} />
-              <Route path="estoque" element={<Stock />} />
-              <Route path="materiais" element={<MaterialControl />} />
-              <Route path="relatorios" element={<Reports />} />
-              <Route path="usuarios" element={<UsersPage />} />
-              <Route path="ferramentas" element={<Ferramentas />} />
+              <Route path="dashboard" element={<PermissionGuard permission="dashboard:read"><Dashboard /></PermissionGuard>} />
+              <Route path="os" element={<PermissionGuard permission="os:read"><WorkOrders /></PermissionGuard>} />
+              <Route path="os/nova" element={<PermissionGuard permission="os:create"><WorkOrderCreate /></PermissionGuard>} />
+              <Route path="os/:id" element={<PermissionGuard permission="os:read"><WorkOrderDetail /></PermissionGuard>} />
+              <Route path="cadastros" element={<PermissionGuard permission="cadastros:read"><Cadastros /></PermissionGuard>} />
+              <Route path="ativos" element={<PermissionGuard permission="assets:read"><Assets /></PermissionGuard>} />
+              <Route path="estoque" element={<PermissionGuard permission="stock:read"><Stock /></PermissionGuard>} />
+              <Route path="materiais" element={<PermissionGuard permission="materiais:read"><MaterialControl /></PermissionGuard>} />
+              <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
+              <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />
+              <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
               <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
-              <Route path="admin" element={<AdminDashboard />} />
-              <Route path="admin/departamentos" element={<AdminDepartments />} />
-              <Route path="admin/usuarios" element={<AdminUsers />} />
-              <Route path="admin/configuracoes" element={<AdminSettings />} />
-              <Route path="admin/auditoria" element={<AdminAuditLogs />} />
-              <Route path="admin/saude" element={<AdminSystemHealth />} />
+              <Route path="admin" element={<PermissionGuard permission="settings:manage"><AdminDashboard /></PermissionGuard>} />
+              <Route path="admin/departamentos" element={<PermissionGuard permission="settings:manage"><AdminDepartments /></PermissionGuard>} />
+              <Route path="admin/usuarios" element={<PermissionGuard permission="settings:manage"><AdminUsers /></PermissionGuard>} />
+              <Route path="admin/configuracoes" element={<PermissionGuard permission="settings:manage"><AdminSettings /></PermissionGuard>} />
+              <Route path="admin/auditoria" element={<PermissionGuard permission="settings:manage"><AdminAuditLogs /></PermissionGuard>} />
+              <Route path="admin/saude" element={<PermissionGuard permission="settings:manage"><AdminSystemHealth /></PermissionGuard>} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
