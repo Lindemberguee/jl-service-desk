@@ -36,6 +36,7 @@ const managementItems: MenuItem[] = [
   { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' },
   { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
   { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
+  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'stock:read' },
   { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' },
   { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' },
 ];
