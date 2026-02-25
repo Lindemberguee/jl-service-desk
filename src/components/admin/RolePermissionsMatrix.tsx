@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X,
+  Check, X, Hammer, PenTool, Bell, CalendarDays,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -100,7 +100,17 @@ const permissionGroups: PermissionGroup[] = [
     permissions: [
       { key: 'reports:read', label: 'Relatórios', description: 'Acessar relatórios e exportações' },
       { key: 'settings:manage', label: 'Configurações', description: 'Alterar configurações do sistema' },
-      { key: 'tools:read', label: 'Ferramentas', description: 'Acesso ao módulo de ferramentas avançadas' },
+    ],
+  },
+  {
+    label: 'Ferramentas',
+    icon: Hammer,
+    permissions: [
+      { key: 'tools:read', label: 'Acesso Geral', description: 'Acesso ao módulo de ferramentas' },
+      { key: 'tools:canvas', label: 'Canvas', description: 'Quadro de mapa mental e brainstorm' },
+      { key: 'tools:notes', label: 'Anotações', description: 'Bloco de notas pessoal' },
+      { key: 'tools:reminders', label: 'Lembretes', description: 'Lembretes e alertas pessoais' },
+      { key: 'tools:calendar', label: 'Calendário', description: 'Calendário de atividades' },
     ],
   },
 ];
