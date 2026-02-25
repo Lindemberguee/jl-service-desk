@@ -21,6 +21,7 @@ import MaterialControl from "@/pages/MaterialControl";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
 import Ferramentas from "@/pages/Ferramentas";
+import CanvasPage from "@/pages/CanvasPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -166,6 +167,7 @@ const App = () => (
               <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
               <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />
               <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
+              <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:read"><CanvasPage /></PermissionGuard>} />
               <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
               <Route path="admin" element={<PermissionGuard permission="settings:manage"><AdminDashboard /></PermissionGuard>} />

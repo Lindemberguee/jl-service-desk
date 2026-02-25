@@ -19,8 +19,20 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Save, Trash2, Type, StickyNote, FileText, Loader2 } from 'lucide-react';
+import {
+  Plus, Save, Trash2, StickyNote, FileText, Loader2,
+  Lightbulb, GitBranch, CheckSquare, Undo2, Redo2,
+  ZoomIn, ZoomOut, Maximize,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 
 interface CanvasBoardProps {
   boardId: string;
@@ -32,11 +44,13 @@ interface CanvasBoardProps {
   saving: boolean;
 }
 
-const nodeColors: Record<string, string> = {
-  default: 'hsl(var(--primary))',
-  note: 'hsl(var(--accent))',
-  document: 'hsl(var(--secondary))',
-};
+const nodeTypes = [
+  { type: 'idea', label: 'Ideia', icon: Lightbulb, bg: 'hsl(213 94% 20%)', border: 'hsl(213 94% 55%)', accent: '#3b82f6' },
+  { type: 'note', label: 'Nota', icon: StickyNote, bg: 'hsl(38 50% 15%)', border: 'hsl(38 92% 50%)', accent: '#f59e0b' },
+  { type: 'document', label: 'Documento', icon: FileText, bg: 'hsl(199 50% 15%)', border: 'hsl(199 89% 48%)', accent: '#06b6d4' },
+  { type: 'process', label: 'Processo', icon: GitBranch, bg: 'hsl(142 40% 14%)', border: 'hsl(142 71% 38%)', accent: '#22c55e' },
+  { type: 'task', label: 'Tarefa', icon: CheckSquare, bg: 'hsl(262 40% 18%)', border: 'hsl(262 60% 50%)', accent: '#8b5cf6' },
+] as const;
 
 let nodeId = 0;
 const getNodeId = () => `node_${Date.now()}_${nodeId++}`;
@@ -46,21 +60,20 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [newNodeLabel, setNewNodeLabel] = useState('');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, getViewport } = useReactFlow();
+  const { screenToFlowPosition, getViewport, zoomIn, zoomOut, fitView } = useReactFlow();
 
   const onConnect: OnConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'hsl(var(--primary))' } }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({
+      ...params,
+      animated: true,
+      style: { stroke: 'hsl(213 94% 55%)', strokeWidth: 2 },
+    }, eds)),
     [setEdges]
   );
 
-  const addNode = useCallback((type: string = 'default') => {
+  const addNode = useCallback((typeKey: string = 'idea') => {
     const label = newNodeLabel.trim() || `Nó ${nodes.length + 1}`;
-    const colors = {
-      default: { bg: '#1e293b', border: '#3b82f6' },
-      note: { bg: '#1c1917', border: '#f59e0b' },
-      document: { bg: '#172554', border: '#06b6d4' },
-    };
-    const c = colors[type as keyof typeof colors] || colors.default;
+    const nodeType = nodeTypes.find(t => t.type === typeKey) || nodeTypes[0];
 
     const newNode: Node = {
       id: getNodeId(),
@@ -70,15 +83,15 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
         y: 150 + Math.random() * 200,
       },
       style: {
-        background: c.bg,
+        background: nodeType.bg,
         color: '#e2e8f0',
-        border: `2px solid ${c.border}`,
-        borderRadius: '8px',
+        border: `2px solid ${nodeType.border}`,
+        borderRadius: '10px',
         padding: '12px 20px',
         fontSize: '13px',
         fontWeight: 500,
-        minWidth: '120px',
-        boxShadow: `0 4px 20px ${c.border}33`,
+        minWidth: '130px',
+        boxShadow: `0 4px 24px ${nodeType.accent}22, 0 1px 3px rgba(0,0,0,0.3)`,
       },
     };
     setNodes((nds) => [...nds, newNode]);
@@ -86,14 +99,32 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   }, [newNodeLabel, nodes.length, setNodes]);
 
   const deleteSelected = useCallback(() => {
+    const selectedNodes = nodes.filter(n => n.selected);
+    const selectedEdges = edges.filter(e => e.selected);
+    if (selectedNodes.length === 0 && selectedEdges.length === 0) {
+      toast.info('Selecione elementos para excluir');
+      return;
+    }
     setNodes((nds) => nds.filter((n) => !n.selected));
     setEdges((eds) => eds.filter((e) => !e.selected));
-  }, [setNodes, setEdges]);
+    toast.success(`${selectedNodes.length + selectedEdges.length} elemento(s) excluído(s)`);
+  }, [nodes, edges, setNodes, setEdges]);
 
   const handleSave = useCallback(async () => {
     const viewport = getViewport();
     await onSave(nodes, edges, viewport);
   }, [nodes, edges, getViewport, onSave]);
+
+  const ToolbarButton = ({ icon: Icon, label, onClick, variant = 'ghost', className = '' }: any) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant={variant} size="icon" onClick={onClick} className={`h-8 w-8 ${className}`}>
+          <Icon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+    </Tooltip>
+  );
 
   return (
     <div ref={reactFlowWrapper} className="w-full h-full">
@@ -108,40 +139,85 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
         snapGrid={[16, 16]}
         className="canvas-flow"
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ animated: true, style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 } }}
+        defaultEdgeOptions={{
+          animated: true,
+          style: { stroke: 'hsl(213 94% 55%)', strokeWidth: 2 },
+        }}
       >
-        <Controls className="!bg-sidebar !border-border !rounded-lg !shadow-lg [&_button]:!bg-sidebar [&_button]:!border-border [&_button]:!text-foreground [&_button:hover]:!bg-accent" />
+        <Controls
+          showInteractive={false}
+          className="!hidden"
+        />
         <MiniMap
-          className="!bg-sidebar !border-border !rounded-lg !shadow-lg"
+          className="!bg-sidebar/90 !border-border !rounded-lg !shadow-xl !backdrop-blur-sm"
           nodeColor="#3b82f6"
           maskColor="rgba(0,0,0,0.5)"
+          pannable
+          zoomable
         />
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.15)" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="hsl(var(--muted-foreground) / 0.12)"
+        />
 
-        <Panel position="top-left" className="flex items-center gap-2 flex-wrap">
+        {/* Top Toolbar */}
+        <Panel position="top-left" className="flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1.5 shadow-lg">
+          {/* Add node input */}
           <Input
             value={newNodeLabel}
             onChange={(e) => setNewNodeLabel(e.target.value)}
-            placeholder="Nome do nó..."
-            className="w-44 h-8 text-xs bg-sidebar border-border"
-            onKeyDown={(e) => e.key === 'Enter' && addNode('default')}
+            placeholder="Novo nó..."
+            className="w-36 h-7 text-xs bg-background border-border"
+            onKeyDown={(e) => e.key === 'Enter' && addNode('idea')}
           />
-          <Button size="sm" variant="outline" onClick={() => addNode('default')} className="h-8 text-xs gap-1 bg-sidebar">
-            <Plus className="h-3.5 w-3.5" /> Ideia
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => addNode('note')} className="h-8 text-xs gap-1 bg-sidebar">
-            <StickyNote className="h-3.5 w-3.5" /> Nota
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => addNode('document')} className="h-8 text-xs gap-1 bg-sidebar">
-            <FileText className="h-3.5 w-3.5" /> Doc
-          </Button>
+
+          <Separator orientation="vertical" className="h-5 mx-1" />
+
+          {/* Node type buttons */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 px-2">
+                <Plus className="h-3.5 w-3.5" /> Adicionar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[160px]">
+              {nodeTypes.map(nt => {
+                const Icon = nt.icon;
+                return (
+                  <DropdownMenuItem key={nt.type} onClick={() => addNode(nt.type)} className="gap-2 text-xs">
+                    <Icon className="h-3.5 w-3.5" style={{ color: nt.accent }} />
+                    {nt.label}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Separator orientation="vertical" className="h-5 mx-1" />
+
+          {/* Zoom controls */}
+          <ToolbarButton icon={ZoomOut} label="Diminuir zoom" onClick={() => zoomOut()} />
+          <ToolbarButton icon={ZoomIn} label="Aumentar zoom" onClick={() => zoomIn()} />
+          <ToolbarButton icon={Maximize} label="Ajustar à tela" onClick={() => fitView({ padding: 0.2 })} />
         </Panel>
 
-        <Panel position="top-right" className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={deleteSelected} className="h-8 text-xs gap-1 bg-sidebar text-destructive hover:text-destructive">
-            <Trash2 className="h-3.5 w-3.5" /> Excluir
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="h-8 text-xs gap-1">
+        {/* Right toolbar */}
+        <Panel position="top-right" className="flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1.5 shadow-lg">
+          <ToolbarButton
+            icon={Trash2}
+            label="Excluir selecionados"
+            onClick={deleteSelected}
+            className="text-destructive hover:text-destructive"
+          />
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            className="h-7 text-xs gap-1 px-3"
+          >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             Salvar
           </Button>
