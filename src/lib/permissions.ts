@@ -38,7 +38,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
   ],
   tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read'],
-  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'reports:read', 'cadastros:read'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'stock:manage', 'materiais:read', 'reports:read', 'cadastros:read'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read'],
 };
