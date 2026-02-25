@@ -59,7 +59,7 @@ export default function AdminSystemHealth() {
 
   const roleLabelsMap: Record<string, string> = {
     super_admin: 'Super Admin', admin: 'Admin', coordenador: 'Coordenador',
-    tecnico: 'Técnico', solicitante: 'Solicitante', leitura: 'Leitura',
+    tecnico: 'Técnico', analista: 'Analista', solicitante: 'Solicitante', leitura: 'Leitura',
   };
 
   const statusLabelsMap: Record<string, string> = {
