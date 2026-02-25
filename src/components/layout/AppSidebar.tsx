@@ -59,7 +59,7 @@ const adminItems = [
 function isPathActive(current: string, itemPath: string): boolean {
   if (itemPath === '/dashboard') return current === '/dashboard';
   if (itemPath === '/os/nova') return current === '/os/nova';
-  if (itemPath === '/minhas-os') return current === '/minhas-os';
+  if (itemPath === '/minhas-os') return current === '/minhas-os' || current.startsWith('/minhas-os/');
   if (itemPath === '/admin') return current === '/admin';
   if (current.startsWith('/admin')) return current.startsWith(itemPath) && itemPath.startsWith('/admin');
   return current === itemPath || (current.startsWith(itemPath) && !current.startsWith('/admin'));

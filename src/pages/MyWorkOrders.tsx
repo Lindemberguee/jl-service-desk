@@ -252,7 +252,7 @@ export default function MyWorkOrders() {
             <Card
               key={wo.id}
               className="border-border/50 shadow-none cursor-pointer hover:bg-muted/30 transition-all duration-200 rounded-xl active:scale-[0.99]"
-              onClick={() => navigate(`/os/${wo.id}`)}
+              onClick={() => navigate(`/minhas-os/${wo.id}`)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
