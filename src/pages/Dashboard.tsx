@@ -7,7 +7,7 @@ import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/li
 import { ClipboardList, AlertTriangle, Clock, Zap, ChevronRight, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SlaIndicator } from '@/components/SlaIndicator';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 export default function Dashboard() {
   const { profile, memberships } = useAuth();
@@ -72,54 +72,52 @@ export default function Dashboard() {
               <p className="text-sm">Nenhuma ordem de serviço encontrada.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px]">Código</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Título</TableHead>
-                  {memberships.length > 1 && (
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Depto</TableHead>
-                  )}
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">Prioridade</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Status</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">SLA</TableHead>
-                  <TableHead className="w-8" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentOrders.map((wo: any) => (
-                  <TableRow
-                    key={wo.id}
-                    className="cursor-pointer group"
-                    onClick={() => navigate(`/os/${wo.id}`)}
-                  >
-                    <TableCell className="font-mono text-xs text-muted-foreground">{wo.code}</TableCell>
-                    <TableCell className="text-sm font-medium truncate max-w-[250px]">{wo.title}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
-                        {priorityLabels[wo.priority]}
-                      </Badge>
-                    </TableCell>
-                    {memberships.length > 1 && (
-                      <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]">
-                        {tenantMap[wo.tenant_id] || '—'}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
-                        {statusLabels[wo.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <SlaIndicator workOrder={wo} compact />
-                    </TableCell>
-                    <TableCell>
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="divide-y divide-border">
+              {recentOrders.map((wo: any) => (
+                <div
+                  key={wo.id}
+                  className="flex items-center gap-4 px-4 sm:px-5 py-3.5 cursor-pointer hover:bg-muted/50 transition-colors group"
+                  onClick={() => navigate(`/os/${wo.id}`)}
+                >
+                  {/* Left: code + title block */}
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
+                      {memberships.length > 1 && (
+                        <Badge variant="secondary" className="text-[10px] h-4 font-normal gap-0.5">
+                          <Building2 className="h-2.5 w-2.5" />
+                          {tenantMap[wo.tenant_id] || ''}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium truncate">{wo.title}</p>
+                  </div>
+
+                  {/* Middle: priority + status */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
+                      {priorityLabels[wo.priority]}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
+                      {statusLabels[wo.status]}
+                    </Badge>
+                  </div>
+
+                  {/* SLA */}
+                  <div className="hidden md:block shrink-0 w-[100px]">
+                    <SlaIndicator workOrder={wo} compact />
+                  </div>
+
+                  {/* Date */}
+                  <span className="hidden lg:block text-xs text-muted-foreground shrink-0 w-[80px] text-right">
+                    {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
+                  </span>
+
+                  {/* Arrow */}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
