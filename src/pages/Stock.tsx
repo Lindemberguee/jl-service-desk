@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,13 +152,12 @@ export default function Stock() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedIds);
-      // Delete movements first for selected items
       await (supabase.from as any)('stock_movements').delete().in('stock_item_id', ids);
-      // Delete items
       const { error } = await (supabase.from as any)('stock_items').delete().in('id', ids);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      await logAudit({ entity: 'stock', action: 'stock.bulk_deleted', tenantId: currentTenantId, diff: { count: ids.length, ids } });
       toast({ title: `${ids.length} item(ns) excluído(s)!` });
       setSelectedIds(new Set());
     } catch (err: any) {
@@ -171,7 +171,8 @@ export default function Stock() {
     e.preventDefault();
     try {
       const qty = parseInt(initialQty) || 0;
-      await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty });
+      const result = await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty });
+      await logAudit({ entity: 'stock', entityId: (result as any)?.id, action: 'stock.created', tenantId: currentTenantId, diff: { name, sku, unit, initial_qty: qty } });
       toast({ title: 'Item criado!' });
       setOpen(false);
       setName(''); setSku(''); setUnit('un'); setMinLevel('0'); setInitialQty('0');
@@ -196,6 +197,8 @@ export default function Stock() {
       else if (movType === 'out') newLevel = Math.max(0, currentLevel - qty);
       else newLevel = qty;
       await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
+      const itemName = item?.name || movItemId;
+      await logAudit({ entity: 'stock', entityId: movItemId, action: 'stock.movement', tenantId: currentTenantId, diff: { type: movType, qty, item_name: itemName, reference: movRef || null, work_order_id: movWoId || null } });
     },
     onSuccess: () => {
       toast({ title: 'Movimentação registrada!' });
@@ -237,6 +240,7 @@ export default function Stock() {
       await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', qmItem.id);
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      await logAudit({ entity: 'stock', entityId: qmItem.id, action: 'stock.movement', tenantId: currentTenantId, diff: { type: qmType, qty, item_name: qmItem.name, reference: qmRef || null } });
       toast({ title: qmType === 'in' ? `+${qty} entrada registrada` : `-${qty} saída registrada` });
       setQmOpen(false);
     } catch (err: any) {
@@ -883,6 +887,7 @@ export default function Stock() {
                       <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
                         try {
                           await deleteItem.mutateAsync(detailItem.id);
+                          await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.deleted', tenantId: currentTenantId, diff: { name: detailItem.name, sku: detailItem.sku } });
                           toast({ title: 'Item excluído!' });
                           setDetailItem(null);
                         } catch (err: any) {
@@ -934,6 +939,7 @@ export default function Stock() {
                   unit: editUnit || 'un', min_level: parseInt(editMinLevel) || 0,
                   current_level: parseInt(editCurrentLevel) || 0,
                 });
+                await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.updated', tenantId: currentTenantId, diff: { name: editName, sku: editSku, min_level: editMinLevel } });
                 toast({ title: 'Item atualizado!' });
                 setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0 });
                 setEditMode(false);
