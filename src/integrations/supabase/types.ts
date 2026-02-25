@@ -159,6 +159,58 @@ export type Database = {
         }
         Relationships: []
       }
+      canvas_board_shares: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          permission: string
+          shared_by: string
+          shared_with_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          permission?: string
+          shared_by: string
+          shared_with_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          permission?: string
+          shared_by?: string
+          shared_with_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_board_shares_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_board_shares_shared_with_user_id_fkey"
+            columns: ["shared_with_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_board_shares_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canvas_boards: {
         Row: {
           created_at: string
