@@ -3,6 +3,7 @@ export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'ana
 export type Permission =
   | 'dashboard:read'
   | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage' | 'os:comment'
+  | 'my_os:read'
   | 'assets:read' | 'assets:manage'
   | 'stock:read' | 'stock:manage'
   | 'materiais:read' | 'materiais:manage'
@@ -14,7 +15,7 @@ export type Permission =
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
   super_admin: [
-    'dashboard:read',
+    'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage',
@@ -22,7 +23,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   admin: [
-    'dashboard:read',
+    'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage',
@@ -30,14 +31,14 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'cadastros:read', 'cadastros:manage', 'tools:read',
   ],
   coordenador: [
-    'dashboard:read',
+    'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage',
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
   ],
-  tecnico: ['dashboard:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read'],
-  analista: ['dashboard:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'reports:read', 'cadastros:read'],
+  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'reports:read', 'cadastros:read'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read'],
 };

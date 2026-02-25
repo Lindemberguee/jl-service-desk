@@ -10,6 +10,7 @@ import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, Hammer, ChevronRight, CircleDot, Activity,
+  UserCircle,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ const operationalItems: MenuItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
   { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read' },
   { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create' },
+  { label: 'Minhas OS', icon: UserCircle, path: '/minhas-os', permission: 'my_os:read' },
 ];
 
 const managementItems: MenuItem[] = [
@@ -57,6 +59,7 @@ const adminItems = [
 function isPathActive(current: string, itemPath: string): boolean {
   if (itemPath === '/dashboard') return current === '/dashboard';
   if (itemPath === '/os/nova') return current === '/os/nova';
+  if (itemPath === '/minhas-os') return current === '/minhas-os';
   if (itemPath === '/admin') return current === '/admin';
   if (current.startsWith('/admin')) return current.startsWith(itemPath) && itemPath.startsWith('/admin');
   return current === itemPath || (current.startsWith(itemPath) && !current.startsWith('/admin'));
