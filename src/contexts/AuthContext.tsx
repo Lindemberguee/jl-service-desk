@@ -128,22 +128,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [loadUserData]);
 
+  const logAuthEvent = async (action: string, userId?: string, email?: string) => {
+    try {
+      await supabase.functions.invoke('audit-auth-hook', {
+        body: { action, user_id: userId, email, provider: 'email', timestamp: new Date().toISOString() },
+      });
+    } catch {
+      // Never block auth flow
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    logAuthEvent('login', data.user?.id, email);
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { name }, emailRedirectTo: window.location.origin },
     });
     if (error) throw error;
+    logAuthEvent('signup', data.user?.id, email);
   };
 
   const signOut = async () => {
+    const userId = state.user?.id;
+    const email = state.profile?.email;
     await supabase.auth.signOut();
     localStorage.removeItem('currentTenantId');
+    if (userId) logAuthEvent('logout', userId, email || undefined);
   };
 
   const switchTenant = (tenantId: string) => {
