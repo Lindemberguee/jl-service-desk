@@ -311,40 +311,68 @@ export default function WorkOrderDetail() {
         </TabsList>
 
         {/* ─── Resumo ─── */}
-        <TabsContent value="resumo" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Main content */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Description */}
-              <Card className="border-border shadow-none rounded-xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground" />Descrição</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {wo.description ? (
-                    <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">{wo.description}</p>
+        <TabsContent value="resumo" className="mt-4 space-y-4">
+          {/* Row 1: Description + Requester side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <Card className="border-border shadow-none rounded-xl lg:col-span-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground" />Descrição</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {wo.description ? (
+                  <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">{wo.description}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Sem descrição.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border shadow-none rounded-xl lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />Solicitante</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {wo.requester_id ? (
+                    <>
+                      <p className="text-sm font-medium">{getCustomerName(wo.requester_id)}</p>
+                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
+                    </>
+                  ) : (wo as any).requester_user_id ? (
+                    <>
+                      <p className="text-sm font-medium">{getProfileName((wo as any).requester_user_id)}</p>
+                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
+                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
+                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">🕐 Horário: {(wo.requester_contact as any).preferred_time}</p>}
+                    </>
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">Sem descrição.</p>
+                    <p className="text-muted-foreground text-xs italic">Não informado</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Context */}
-              <Card className="border-border shadow-none rounded-xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />Contexto</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
-                    <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
-                    <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
-                    <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Row 2: Context (full width) */}
+          <Card className="border-border shadow-none rounded-xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />Contexto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
+                <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
+                <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
+                <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
+              </div>
+            </CardContent>
+          </Card>
 
-              {/* SLA */}
+          {/* Row 3: SLA + Assignment + Status + Info */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            {/* Left: SLA */}
+            <div className="lg:col-span-3 space-y-4">
               {(wo.response_due_at || wo.resolve_due_at) && (
                 <Card className={`shadow-none rounded-xl ${sla.responseOverdue || sla.resolveOverdue ? 'border-destructive/40 bg-destructive/5' : 'border-border'}`}>
                   <CardHeader className="pb-2">
@@ -382,38 +410,36 @@ export default function WorkOrderDetail() {
                   </CardContent>
                 </Card>
               )}
-            </div>
 
-            {/* ─── Sidebar ─── */}
-            <div className="space-y-4">
-              {/* Requester */}
+              {/* Info card moved here */}
               <Card className="border-border shadow-none rounded-xl">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />Solicitante</CardTitle>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Informações</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {wo.requester_id ? (
-                      <>
-                        <p className="text-sm font-medium">{getCustomerName(wo.requester_id)}</p>
-                        {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
-                        {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
-                      </>
-                    ) : (wo as any).requester_user_id ? (
-                      <>
-                        <p className="text-sm font-medium">{getProfileName((wo as any).requester_user_id)}</p>
-                        {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
-                        {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
-                        {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">🕐 Horário: {(wo.requester_contact as any).preferred_time}</p>}
-                      </>
-                    ) : (
-                      <p className="text-muted-foreground text-xs italic">Não informado</p>
-                    )}
-                  </div>
+                <CardContent className="space-y-2.5 text-xs">
+                  <InfoRow label="ID" value={wo.id.slice(0, 8)} mono />
+                  <InfoRow label="Visibilidade" value={wo.visibility === 'internal' ? 'Interna' : 'Cliente'} />
+                  <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
+                  {wo.started_at && <InfoRow label="Iniciada em" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
+                  {wo.resolved_at && <InfoRow label="Resolvida em" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
+                  {wo.closed_at && <InfoRow label="Encerrada em" value={new Date(wo.closed_at).toLocaleString('pt-BR')} />}
+                  <InfoRow label="Atualizada em" value={new Date(wo.updated_at).toLocaleString('pt-BR')} />
+                  {wo.tags && wo.tags.length > 0 && (
+                    <div className="flex items-start gap-1.5 pt-1">
+                      <Tag className="h-3 w-3 mt-0.5 text-muted-foreground" />
+                      <div className="flex gap-1 flex-wrap">
+                        {wo.tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Assignment */}
+            {/* Right: Assignment + Status */}
+            <div className="lg:col-span-2 space-y-4">
               <Card className="border-border shadow-none rounded-xl">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Atribuição</CardTitle>
@@ -442,7 +468,6 @@ export default function WorkOrderDetail() {
                 </CardContent>
               </Card>
 
-              {/* Status change */}
               {canUpdate && (
                 <Card className="border-border shadow-none rounded-xl">
                   <CardHeader className="pb-2">
@@ -463,32 +488,6 @@ export default function WorkOrderDetail() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Info */}
-              <Card className="border-border shadow-none rounded-xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Informações</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2.5 text-xs">
-                  <InfoRow label="ID" value={wo.id.slice(0, 8)} mono />
-                  <InfoRow label="Visibilidade" value={wo.visibility === 'internal' ? 'Interna' : 'Cliente'} />
-                  <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
-                  {wo.started_at && <InfoRow label="Iniciada em" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
-                  {wo.resolved_at && <InfoRow label="Resolvida em" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
-                  {wo.closed_at && <InfoRow label="Encerrada em" value={new Date(wo.closed_at).toLocaleString('pt-BR')} />}
-                  <InfoRow label="Atualizada em" value={new Date(wo.updated_at).toLocaleString('pt-BR')} />
-                  {wo.tags && wo.tags.length > 0 && (
-                    <div className="flex items-start gap-1.5 pt-1">
-                      <Tag className="h-3 w-3 mt-0.5 text-muted-foreground" />
-                      <div className="flex gap-1 flex-wrap">
-                        {wo.tags.map((tag: string) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px] h-5">{tag}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           </div>
         </TabsContent>
