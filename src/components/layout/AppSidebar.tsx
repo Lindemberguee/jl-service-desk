@@ -234,6 +234,14 @@ export function AppSidebar() {
           <LogOut className="h-4 w-4" />
           <span>Sair</span>
         </button>
+        <div className="mt-1 pt-2 border-t border-sidebar-border/30 text-center">
+          <p className="text-[9px] text-sidebar-foreground/25 leading-relaxed">
+            Desenvolvido por{' '}
+            <a href="https://github.com/Lindemberguee" target="_blank" rel="noopener noreferrer" className="text-sidebar-primary/50 hover:text-sidebar-primary transition-colors">
+              José Lindembergue
+            </a>
+          </p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

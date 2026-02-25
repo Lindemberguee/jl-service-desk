@@ -146,9 +146,19 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-sidebar-border">
+          <div className="mt-12 pt-8 border-t border-sidebar-border space-y-1.5">
             <p className="text-xs text-sidebar-muted-foreground">
               © {new Date().getFullYear()} ServiceOS · Plataforma corporativa de gestão de serviços
+            </p>
+            <p className="text-[10px] text-sidebar-muted-foreground/60">
+              Desenvolvido por{' '}
+              <a href="https://github.com/Lindemberguee" target="_blank" rel="noopener noreferrer" className="text-sidebar-primary/60 hover:text-sidebar-primary transition-colors">
+                José Lindembergue
+              </a>
+              {' · '}
+              <a href="https://instagram.com/j.lindembergue" target="_blank" rel="noopener noreferrer" className="text-sidebar-primary/60 hover:text-sidebar-primary transition-colors">
+                @j.lindembergue
+              </a>
             </p>
           </div>
         </motion.div>
