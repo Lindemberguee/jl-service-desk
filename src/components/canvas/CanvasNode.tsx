@@ -58,7 +58,42 @@ export function getPreset(type: string) {
   return NODE_PRESETS.find(p => p.type === type) || NODE_PRESETS[0];
 }
 
-const handleBaseClass = "!w-3 !h-3 !border-2 !border-background !rounded-full !transition-all !duration-200";
+const handleBaseClass = "!w-3.5 !h-3.5 !border-2 !border-background !rounded-full !transition-all !duration-200";
+
+// SVG arrow indicators for handle direction
+function HandleArrow({ position, type, color, show }: { position: Position; type: 'source' | 'target'; color: string; show: boolean }) {
+  if (!show) return null;
+  // source = arrow pointing OUT (away from node), target = arrow pointing IN (toward node)
+  const isOut = type === 'source';
+  const rotations: Record<string, number> = {
+    [Position.Top]: isOut ? 0 : 180,
+    [Position.Bottom]: isOut ? 180 : 0,
+    [Position.Left]: isOut ? 270 : 90,
+    [Position.Right]: isOut ? 90 : 270,
+  };
+  const offsets: Record<string, { x: number; y: number }> = {
+    [Position.Top]: { x: 0, y: -14 },
+    [Position.Bottom]: { x: 0, y: 14 },
+    [Position.Left]: { x: -14, y: 0 },
+    [Position.Right]: { x: 14, y: 0 },
+  };
+  const off = offsets[position] || { x: 0, y: 0 };
+  return (
+    <div
+      className="absolute pointer-events-none transition-opacity duration-200"
+      style={{
+        opacity: show ? 0.7 : 0,
+        left: `calc(50% + ${off.x}px)`,
+        top: `calc(50% + ${off.y}px)`,
+        transform: `translate(-50%, -50%) rotate(${rotations[position]}deg)`,
+      }}
+    >
+      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+        <path d="M5 0L9.5 7H0.5L5 0Z" fill={color} />
+      </svg>
+    </div>
+  );
+}
 
 function CanvasNode({ id, data, selected }: NodeProps) {
   const [editing, setEditing] = useState(false);
@@ -129,39 +164,34 @@ function CanvasNode({ id, data, selected }: NodeProps) {
       onMouseLeave={() => setHovered(false)}
       style={{ minWidth: 180, maxWidth: 320 }}
     >
-      {/* 8 Handles: top, bottom, left, right — each both source AND target */}
-      <Handle type="target" position={Position.Top} id="top-target"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
-      />
-      <Handle type="source" position={Position.Top} id="top-source"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', left: 'calc(50% + 10px)' }}
-      />
-      <Handle type="target" position={Position.Bottom} id="bottom-target"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
-      />
-      <Handle type="source" position={Position.Bottom} id="bottom-source"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', left: 'calc(50% + 10px)' }}
-      />
-      <Handle type="target" position={Position.Left} id="left-target"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
-      />
-      <Handle type="source" position={Position.Left} id="left-source"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', top: 'calc(50% + 10px)' }}
-      />
-      <Handle type="target" position={Position.Right} id="right-target"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
-      />
-      <Handle type="source" position={Position.Right} id="right-source"
-        className={handleBaseClass}
-        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', top: 'calc(50% + 10px)' }}
-      />
+      {/* Handles with direction arrows */}
+      {([
+        { pos: Position.Top, type: 'target' as const, id: 'top-target', offset: {} },
+        { pos: Position.Top, type: 'source' as const, id: 'top-source', offset: { left: 'calc(50% + 12px)' } },
+        { pos: Position.Bottom, type: 'target' as const, id: 'bottom-target', offset: {} },
+        { pos: Position.Bottom, type: 'source' as const, id: 'bottom-source', offset: { left: 'calc(50% + 12px)' } },
+        { pos: Position.Left, type: 'target' as const, id: 'left-target', offset: {} },
+        { pos: Position.Left, type: 'source' as const, id: 'left-source', offset: { top: 'calc(50% + 12px)' } },
+        { pos: Position.Right, type: 'target' as const, id: 'right-target', offset: {} },
+        { pos: Position.Right, type: 'source' as const, id: 'right-source', offset: { top: 'calc(50% + 12px)' } },
+      ]).map(h => (
+        <Handle
+          key={h.id}
+          type={h.type}
+          position={h.pos}
+          id={h.id}
+          className={handleBaseClass}
+          style={{
+            background: h.type === 'source' ? color : `${color}88`,
+            border: `2px solid ${h.type === 'source' ? 'hsl(var(--background))' : `${color}44`}`,
+            opacity: showHandles ? 1 : 0,
+            transform: showHandles ? 'scale(1)' : 'scale(0.3)',
+            ...h.offset,
+          }}
+        >
+          <HandleArrow position={h.pos} type={h.type} color={h.type === 'source' ? color : `${color}88`} show={!!showHandles} />
+        </Handle>
+      ))}
 
       {/* Quick action bar */}
       {(hovered || selected) && (

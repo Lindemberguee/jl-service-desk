@@ -40,18 +40,21 @@ interface CanvasBoardProps {
   onSave: (nodes: Node[], edges: Edge[], viewport: { x: number; y: number; zoom: number }) => Promise<void>;
   saving: boolean;
   readOnly?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 let nodeId = 0;
 const getNodeId = () => `node_${Date.now()}_${nodeId++}`;
 
-function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, initialViewport, onSave, saving, readOnly = false }: CanvasBoardProps) {
+function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, initialViewport, onSave, saving, readOnly = false, isFullscreen, onToggleFullscreen }: CanvasBoardProps) {
   const nodeTypeMap = useMemo(() => ({ canvasNode: CanvasNode }), []);
   const edgeTypeMap = useMemo(() => ({ custom: CustomEdge }), []);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hasChanges, setHasChanges] = useState(false);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
+  const [showPalette, setShowPalette] = useState(true);
   const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const contextMenuPos = useRef({ x: 0, y: 0 });
@@ -93,8 +96,12 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
 
   // Keyboard shortcuts
   useEffect(() => {
-    if (readOnly) return;
     const handler = (e: KeyboardEvent) => {
+      // Fullscreen toggle works even in readOnly
+      if (e.key === 'F11') { e.preventDefault(); onToggleFullscreen?.(); return; }
+      if (e.key === 'Escape' && isFullscreen) { onToggleFullscreen?.(); return; }
+
+      if (readOnly) return;
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
@@ -105,7 +112,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [nodes, edges, readOnly]);
+  }, [nodes, edges, readOnly, isFullscreen, onToggleFullscreen]);
 
   const pushHistory = useCallback(() => {
     history.push(nodes, edges);
@@ -245,7 +252,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
 
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative">
-      {!readOnly && <NodePalette onDragStart={handleDragStart} />}
+      {!readOnly && showPalette && <NodePalette onDragStart={handleDragStart} />}
 
       {/* Quick node menu on double-click */}
       {quickMenu && (
@@ -327,6 +334,10 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
                 canUndo={history.canUndo()}
                 canRedo={history.canRedo()}
                 onExport={handleExport}
+                showPalette={showPalette}
+                onTogglePalette={() => setShowPalette(p => !p)}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={onToggleFullscreen}
               />
             </Panel>
 
