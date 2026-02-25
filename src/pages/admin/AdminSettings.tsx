@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { priorityLabels } from '@/lib/permissions';
-import { Plus, Settings2, Tag, Clock } from 'lucide-react';
+import { Plus, Settings2, Tag, Clock, Star } from 'lucide-react';
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -132,6 +133,7 @@ export default function AdminSettings() {
         <TabsList>
           <TabsTrigger value="categories"><Tag className="h-3 w-3 mr-1" />Categorias</TabsTrigger>
           <TabsTrigger value="sla"><Clock className="h-3 w-3 mr-1" />Políticas SLA</TabsTrigger>
+          <TabsTrigger value="departamento"><Settings2 className="h-3 w-3 mr-1" />Departamento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories">
@@ -209,6 +211,26 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="departamento">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Configurações por Departamento</CardTitle>
+              <CardDescription className="text-xs">Controle de visibilidade e funcionalidades por departamento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {tenants.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum departamento encontrado.</p>
+              ) : (
+                <div className="space-y-4">
+                  {(scopeTenant === 'all' ? tenants : tenants.filter((t: any) => t.id === scopeTenant)).map((t: any) => (
+                    <TenantSettingsCard key={t.id} tenant={t} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* New Category Dialog */}
@@ -270,6 +292,47 @@ export default function AdminSettings() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function TenantSettingsCard({ tenant }: { tenant: any }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const toggleRatings = useMutation({
+    mutationFn: async (value: boolean) => {
+      const { error } = await supabase.from('tenants').update({ show_ratings_to_techs: value } as any).eq('id', tenant.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin_tenants'] });
+      toast({ title: 'Configuração atualizada!' });
+    },
+    onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+  });
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Badge variant="outline">{tenant.name}</Badge>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label className="text-sm flex items-center gap-1.5">
+            <Star className="h-3.5 w-3.5 text-yellow-500" />
+            Exibir avaliações para técnicos
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Quando ativado, técnicos podem ver notas de avaliação na timeline da OS.
+          </p>
+        </div>
+        <Switch
+          checked={!!tenant.show_ratings_to_techs}
+          onCheckedChange={(v) => toggleRatings.mutate(v)}
+          disabled={toggleRatings.isPending}
+        />
+      </div>
     </div>
   );
 }
