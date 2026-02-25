@@ -27,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import CanvasNode, { getPreset, type CanvasNodeData } from './CanvasNode';
 import NodePalette from './NodePalette';
+import CanvasPresence from './CanvasPresence';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -220,6 +221,13 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
           zoomable
         />
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="hsl(var(--muted-foreground) / 0.1)" />
+
+        {/* Presence indicators */}
+        <Panel position="top-right" className="mt-2 mr-2">
+          <div className="bg-card/95 backdrop-blur-md border border-border rounded-xl px-3 py-1.5 shadow-xl">
+            <CanvasPresence boardId={boardId} />
+          </div>
+        </Panel>
 
         <Panel position="bottom-center" className="flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border rounded-xl px-3 py-1.5 shadow-xl mb-2">
           <Btn icon={ZoomOut} label="Diminuir zoom" onClick={() => zoomOut()} />

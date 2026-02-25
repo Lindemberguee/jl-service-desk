@@ -426,6 +426,60 @@ export type Database = {
           },
         ]
       }
+      notes: {
+        Row: {
+          content: string
+          created_at: string
+          folder: string
+          id: string
+          is_pinned: boolean
+          tags: string[]
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          folder?: string
+          id?: string
+          is_pinned?: boolean
+          tags?: string[]
+          tenant_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          folder?: string
+          id?: string
+          is_pinned?: boolean
+          tags?: string[]
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
