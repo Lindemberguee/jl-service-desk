@@ -19,6 +19,10 @@ interface Profile {
   avatar_url: string | null;
 }
 
+interface RolePermMap {
+  [rolePermKey: string]: boolean; // "admin:os:read" -> true
+}
+
 interface AuthState {
   user: User | null;
   session: Session | null;
@@ -26,6 +30,7 @@ interface AuthState {
   memberships: Membership[];
   currentTenantId: string | null;
   currentRole: AppRole | null;
+  rolePermissions: RolePermMap;
   loading: boolean;
 }
 
@@ -41,7 +46,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null, session: null, profile: null,
-    memberships: [], currentTenantId: null, currentRole: null, loading: true,
+    memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {}, loading: true,
   });
 
   const loadUserData = useCallback(async (user: User) => {
@@ -64,13 +69,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenant_slug: m.tenants?.slug,
     }));
 
+    // Load role permissions from DB
+    let rolePermissions: RolePermMap = {};
+    try {
+      const rpRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/role_permissions?select=role,permission,granted`,
+        {
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+        }
+      );
+      if (rpRes.ok) {
+        const rows: { role: string; permission: string; granted: boolean }[] = await rpRes.json();
+        for (const r of rows) {
+          rolePermissions[`${r.role}:${r.permission}`] = r.granted;
+        }
+      }
+    } catch {
+      // fallback to hardcoded defaults
+    }
+
     const savedTenant = localStorage.getItem('currentTenantId');
     const defaultTenant = memberships.find(m => m.tenant_id === savedTenant)?.tenant_id
       || memberships[0]?.tenant_id || null;
     const currentRole = memberships.find(m => m.tenant_id === defaultTenant)?.role || null;
 
     setState(prev => ({
-      ...prev, user, profile, memberships,
+      ...prev, user, profile, memberships, rolePermissions,
       currentTenantId: defaultTenant, currentRole, loading: false,
     }));
   }, []);
@@ -84,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setState({
           user: null, session: null, profile: null,
-          memberships: [], currentTenantId: null, currentRole: null, loading: false,
+          memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {}, loading: false,
         });
       }
     });

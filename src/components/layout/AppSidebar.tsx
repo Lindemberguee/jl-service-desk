@@ -108,7 +108,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function AppSidebar() {
-  const { currentRole, profile, signOut, memberships, currentTenantId } = useAuth();
+  const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
@@ -117,7 +117,7 @@ export function AppSidebar() {
   const renderMenuGroup = (items: MenuItem[]) => (
     <SidebarMenu>
       {items.map(item => {
-        if (currentRole && !hasPermission(currentRole, item.permission)) return null;
+        if (currentRole && !hasPermission(currentRole, item.permission, undefined, rolePermissions)) return null;
         const isActive = isPathActive(location.pathname, item.path);
         return (
           <MenuItemButton
@@ -170,7 +170,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Ferramentas */}
-        {currentRole && hasPermission(currentRole, 'tools:read') && (
+        {currentRole && hasPermission(currentRole, 'tools:read', undefined, rolePermissions) && (
           <>
             <div className="mx-4 my-1">
               <Separator className="bg-sidebar-border/30" />

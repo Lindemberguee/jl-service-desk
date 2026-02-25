@@ -35,8 +35,23 @@ export function getPermissionsForRole(role: AppRole): Permission[] {
   return rolePermissions[role] || [];
 }
 
-export function hasPermission(role: AppRole, permission: Permission, overrides?: string[]): boolean {
+/**
+ * Check permission using DB-loaded map first, then fallback to hardcoded defaults.
+ * @param rolePermMap - Map of "role:permission" -> boolean from AuthContext
+ */
+export function hasPermission(
+  role: AppRole,
+  permission: Permission,
+  overrides?: string[],
+  rolePermMap?: Record<string, boolean>,
+): boolean {
   if (overrides?.includes(permission)) return true;
+  // If we have DB-loaded permissions, use those
+  const key = `${role}:${permission}`;
+  if (rolePermMap && key in rolePermMap) {
+    return rolePermMap[key];
+  }
+  // Fallback to hardcoded
   return getPermissionsForRole(role).includes(permission);
 }
 
