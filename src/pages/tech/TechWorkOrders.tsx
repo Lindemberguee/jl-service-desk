@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
@@ -34,7 +35,7 @@ const VIEWS: SavedView[] = [
 
 export default function TechWorkOrders() {
   const navigate = useNavigate();
-  const { user, memberships } = useAuth();
+  const { user, memberships, currentTenantId } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
@@ -105,7 +106,7 @@ export default function TechWorkOrders() {
       const { error } = await supabase.from('work_orders').update(updates as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work_orders'] }); qc.invalidateQueries({ queryKey: ['work_orders_all'] }); toast({ title: 'Status atualizado!' }); },
+    onSuccess: async (_: any, vars: { id: string; status: string; wo: any }) => { await logAudit({ entity: 'work_order', entityId: vars.id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: vars.wo.status, to: vars.status } }); qc.invalidateQueries({ queryKey: ['work_orders'] }); qc.invalidateQueries({ queryKey: ['work_orders_all'] }); toast({ title: 'Status atualizado!' }); },
   });
 
   const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '—';

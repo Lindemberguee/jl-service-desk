@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,7 +68,8 @@ export default function AdminDepartments() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'tenant', entityId: editing?.id, action: editing ? 'tenant.updated' : 'tenant.created', diff: { name: form.name, slug: form.slug } });
       qc.invalidateQueries({ queryKey: ['admin_tenants'] });
       toast({ title: editing ? 'Departamento atualizado!' : 'Departamento criado!' });
       setOpen(false); setEditing(null);
@@ -81,7 +83,7 @@ export default function AdminDepartments() {
       const { error } = await supabase.from('tenants').update({ is_active }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_tenants'] }); toast({ title: 'Status alterado!' }); },
+    onSuccess: async (_: any, vars: { id: string; is_active: boolean }) => { await logAudit({ entity: 'tenant', entityId: vars.id, action: vars.is_active ? 'tenant.activated' : 'tenant.deactivated', diff: { is_active: vars.is_active } }); qc.invalidateQueries({ queryKey: ['admin_tenants'] }); toast({ title: 'Status alterado!' }); },
   });
 
   const openEdit = (t: any) => {

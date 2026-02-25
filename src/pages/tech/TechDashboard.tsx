@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { logAudit } from '@/lib/audit';
 import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,7 @@ const itemVariants = {
 };
 
 export default function TechDashboard() {
-  const { profile, user, memberships } = useAuth();
+  const { profile, user, memberships, currentTenantId } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -87,7 +88,8 @@ export default function TechDashboard() {
       const { error } = await supabase.from('work_orders').update(updates as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, vars: { id: string; status: string; wo: any }) => {
+      await logAudit({ entity: 'work_order', entityId: vars.id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: vars.wo.status, to: vars.status } });
       qc.invalidateQueries({ queryKey: ['work_orders'] });
       qc.invalidateQueries({ queryKey: ['work_orders_all'] });
       toast({ title: 'Status atualizado!' });

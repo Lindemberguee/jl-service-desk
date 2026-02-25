@@ -455,6 +455,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      await logAudit({ entity: 'customer', entityId: data?.user_id, action: 'customer.created', tenantId: currentTenantId, diff: { name: form.name.trim(), email: form.email.trim(), role: 'solicitante' } });
       toast({ title: 'Solicitante cadastrado com sucesso!' });
       setDialogOpen(false);
       resetForm();
@@ -514,6 +515,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
         });
       }
 
+      await logAudit({ entity: 'customer', entityId: selectedItem.user_id, action: 'customer.updated', tenantId: currentTenantId, diff: { name: form.name.trim(), phone: form.phone, position: form.position, sector: form.sector } });
       toast({ title: 'Solicitante atualizado!' });
       setEditOpen(false);
       resetForm();
@@ -541,6 +543,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      await logAudit({ entity: 'customer', entityId: deactivateTarget.user_id, action: newActive ? 'customer.reactivated' : 'customer.deactivated', tenantId: currentTenantId, diff: { name: deactivateTarget.profiles?.name, is_active: newActive } });
       toast({ title: newActive ? 'Solicitante reativado!' : 'Solicitante desativado!' });
       qc.invalidateQueries({ queryKey: ['solicitantes', currentTenantId] });
     } catch (err: any) {
