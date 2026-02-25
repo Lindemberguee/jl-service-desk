@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,14 +12,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
+
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Package, Plus, Search, ChevronLeft, ChevronRight,
   ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar,
-  Download, Upload, FileDown, Loader2, Trash2, X,
+  Download, Loader2, Trash2, X,
   ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -60,7 +60,7 @@ function monthLabel(d: Date) { return format(d, 'MMMM', { locale: ptBR }); }
 export default function MaterialControl() {
   const { currentTenantId } = useAuth();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -82,10 +82,6 @@ export default function MaterialControl() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // Import
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importTotal, setImportTotal] = useState(0);
 
   const months = useMemo(() => getMonthRange(baseDate, MONTHS_TO_SHOW), [baseDate]);
   const rangeStart = months[0];
@@ -269,81 +265,6 @@ export default function MaterialControl() {
     toast.success(`${filteredItems.length} item(ns) exportado(s)`);
   };
 
-  // Download template
-  const downloadTemplate = () => {
-    const header = 'Nome;SKU;Unidade;Quantidade Inicial;Nível Mínimo';
-    const example = 'Parafuso M6;SKU-001;un;100;20\nÓleo Lubrificante;SKU-002;litro;50;10';
-    const csv = '\uFEFF' + [header, example].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'modelo_materiais.csv';
-    a.click(); URL.revokeObjectURL(url);
-    toast.success('Modelo baixado!');
-  };
-
-  // Import CSV with progress + encoding fix
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentTenantId) return;
-    setImporting(true); setImportProgress(0); setImportTotal(0);
-    try {
-      const buffer = await file.arrayBuffer();
-      let text = new TextDecoder('utf-8').decode(buffer);
-      if (text.includes('\uFFFD')) text = new TextDecoder('windows-1252').decode(buffer);
-      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
-      const dataLines = lines.slice(1);
-      const total = dataLines.length;
-      setImportTotal(total);
-      let created = 0, skipped = 0;
-
-      const existingNames = new Set(items.map(i => i.name.toLowerCase()));
-      const existingSkus = new Set(items.filter(i => i.sku).map(i => i.sku!.toLowerCase()));
-      const toInsert: any[] = [];
-
-      for (let idx = 0; idx < dataLines.length; idx++) {
-        const line = dataLines[idx];
-        const delimiter = line.includes(';') ? ';' : ',';
-        const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
-        const itemName = parts[0];
-        if (!itemName) { skipped++; setImportProgress(idx + 1); continue; }
-        const itemSku = parts[1] || '';
-        if (existingNames.has(itemName.toLowerCase()) || (itemSku && existingSkus.has(itemSku.toLowerCase()))) {
-          skipped++; setImportProgress(idx + 1); continue;
-        }
-        existingNames.add(itemName.toLowerCase());
-        if (itemSku) existingSkus.add(itemSku.toLowerCase());
-        toInsert.push({
-          tenant_id: currentTenantId, name: itemName, sku: itemSku || null,
-          unit: parts[2] || 'un', current_level: parseInt(parts[3]) || 0, min_level: parseInt(parts[4]) || 0,
-        });
-      }
-
-      const BATCH = 50;
-      for (let i = 0; i < toInsert.length; i += BATCH) {
-        const batch = toInsert.slice(i, i + BATCH);
-        const { error } = await supabase.from('stock_items').insert(batch);
-        if (error) {
-          for (const item of batch) {
-            const { error: e2 } = await supabase.from('stock_items').insert(item);
-            if (e2) skipped++; else created++;
-          }
-        } else created += batch.length;
-        setImportProgress(Math.min(total, skipped + created));
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
-      toast.success(`Importação concluída: ${created} criado(s)${skipped > 0 ? `, ${skipped} ignorado(s)` : ''}`);
-    } catch (err: any) {
-      toast.error(err.message || 'Erro na importação');
-    } finally {
-      setImporting(false); setImportProgress(0); setImportTotal(0);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   // Stats
   const totalIn = movements.filter(m => m.type === 'in').reduce((s, m) => s + m.qty, 0);
@@ -351,21 +272,6 @@ export default function MaterialControl() {
 
   return (
     <div className="space-y-6 min-w-0 overflow-hidden">
-      {/* Import Progress Overlay */}
-      {importing && (
-        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-card border border-border rounded-xl shadow-lg p-6 w-[340px] space-y-4 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-            <div>
-              <p className="text-sm font-semibold">Importando materiais...</p>
-              <p className="text-xs text-muted-foreground mt-1">{importProgress} / {importTotal} itens</p>
-            </div>
-            <Progress value={importTotal > 0 ? (importProgress / importTotal) * 100 : 0} className="h-2" />
-            <p className="text-lg font-bold text-primary">{importTotal > 0 ? Math.round((importProgress / importTotal) * 100) : 0}%</p>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -375,13 +281,6 @@ export default function MaterialControl() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={downloadTemplate}>
-            <FileDown className="h-4 w-4 mr-1" /> Modelo
-          </Button>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-1" /> Importar
-          </Button>
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-1" /> Exportar
           </Button>
