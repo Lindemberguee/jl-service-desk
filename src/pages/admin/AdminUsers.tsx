@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -171,7 +172,8 @@ export default function AdminUsers() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'user', action: 'user.created', diff: { name: newName, email: newEmail, role: newRole, tenant_id: newTenantId } });
       qc.invalidateQueries({ queryKey: ['admin_profiles'] });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Usuário criado com sucesso!' });
@@ -189,7 +191,8 @@ export default function AdminUsers() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'user', entityId: changePwUserId, action: 'user.password_changed', diff: { changed_by: 'admin' } });
       toast({ title: 'Senha alterada com sucesso!' });
       setChangePwOpen(false);
       setNewPw('');
@@ -205,7 +208,8 @@ export default function AdminUsers() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, vars: { user_id: string; is_active: boolean }) => {
+      await logAudit({ entity: 'user', entityId: vars.user_id, action: vars.is_active ? 'user.activated' : 'user.deactivated', diff: { is_active: vars.is_active } });
       qc.invalidateQueries({ queryKey: ['admin_profiles'] });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Status do usuário alterado!' });
@@ -222,7 +226,8 @@ export default function AdminUsers() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'membership', action: 'membership.created', diff: { user_id: selectedUserId, tenant_id: selectedTenantId, role: selectedRole } });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Acesso adicionado!' });
       setAddAccessOpen(false);
@@ -236,7 +241,8 @@ export default function AdminUsers() {
       const { error } = await supabase.from('user_memberships').update({ role: role as any }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, vars: { id: string; role: string }) => {
+      await logAudit({ entity: 'membership', entityId: vars.id, action: 'membership.role_changed', diff: { new_role: vars.role } });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Papel atualizado!' });
     },
@@ -247,7 +253,8 @@ export default function AdminUsers() {
       const { error } = await supabase.from('user_memberships').update({ is_active }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, vars: { id: string; is_active: boolean }) => {
+      await logAudit({ entity: 'membership', entityId: vars.id, action: vars.is_active ? 'membership.activated' : 'membership.deactivated', diff: { is_active: vars.is_active } });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Acesso atualizado!' });
     },
@@ -258,7 +265,8 @@ export default function AdminUsers() {
       const { error } = await supabase.from('user_memberships').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, id: string) => {
+      await logAudit({ entity: 'membership', entityId: id, action: 'membership.deleted' });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Acesso removido!' });
     },

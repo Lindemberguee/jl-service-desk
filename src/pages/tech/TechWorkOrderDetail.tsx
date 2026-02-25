@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -191,7 +192,7 @@ export default function TechWorkOrderDetail() {
         payload: { from: wo?.status, to: status },
       });
     },
-    onSuccess: () => { invalidateAll(); toast({ title: 'Status atualizado!' }); },
+    onSuccess: async (_: any, status: string) => { await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: status } }); invalidateAll(); toast({ title: 'Status atualizado!' }); },
   });
 
   const commentMutation = useMutation({
@@ -202,7 +203,8 @@ export default function TechWorkOrderDetail() {
         actor_user_id: user?.id, payload: { text: comment },
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.comment_added', tenantId: currentTenantId, diff: { type: isPublicComment ? 'public' : 'internal' } });
       setComment('');
       qc.invalidateQueries({ queryKey: ['work_order_events', id] });
       toast({ title: 'Comentário adicionado!' });

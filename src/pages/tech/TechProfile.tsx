@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +24,7 @@ export default function TechProfile() {
       const { error } = await supabase.from('profiles').update({ name }).eq('id', user!.id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profiles_list'] }); toast({ title: 'Perfil atualizado!' }); },
+    onSuccess: async () => { await logAudit({ entity: 'user', entityId: user?.id, action: 'user.profile_updated', diff: { name } }); qc.invalidateQueries({ queryKey: ['profiles_list'] }); toast({ title: 'Perfil atualizado!' }); },
   });
 
   const updatePassword = useMutation({
@@ -31,7 +32,7 @@ export default function TechProfile() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
     },
-    onSuccess: () => { setCurrentPassword(''); setNewPassword(''); toast({ title: 'Senha alterada!' }); },
+    onSuccess: async () => { await logAudit({ entity: 'user', entityId: user?.id, action: 'user.self_password_changed', diff: { changed_by: 'self' } }); setCurrentPassword(''); setNewPassword(''); toast({ title: 'Senha alterada!' }); },
     onError: (err: any) => { toast({ title: 'Erro', description: err.message, variant: 'destructive' }); },
   });
 

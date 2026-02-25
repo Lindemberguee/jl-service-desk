@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,7 +73,8 @@ export default function AdminSettings() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'category', action: 'category.created', tenantId: catForm.tenant_id, diff: { name: catForm.name } });
       qc.invalidateQueries({ queryKey: ['admin_categories'] });
       toast({ title: 'Categoria criada!' });
       setCatOpen(false);
@@ -103,7 +105,8 @@ export default function AdminSettings() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await logAudit({ entity: 'sla_policy', action: 'sla_policy.created', tenantId: slaForm.tenant_id, diff: { name: slaForm.name, response_hours: slaForm.response_hours, resolve_hours: slaForm.resolve_hours } });
       qc.invalidateQueries({ queryKey: ['admin_sla_policies'] });
       toast({ title: 'Política SLA criada!' });
       setSlaOpen(false);
@@ -315,7 +318,8 @@ function TenantSettingsCard({ tenant }: { tenant: any }) {
       const { error } = await supabase.from('tenants').update({ show_ratings_to_techs: value } as any).eq('id', tenant.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_: any, value: boolean) => {
+      await logAudit({ entity: 'tenant', entityId: tenant.id, action: 'tenant.settings_changed', diff: { show_ratings_to_techs: value } });
       qc.invalidateQueries({ queryKey: ['admin_tenants'] });
       toast({ title: 'Configuração atualizada!' });
     },
