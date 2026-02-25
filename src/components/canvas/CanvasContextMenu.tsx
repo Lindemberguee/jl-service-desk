@@ -1,9 +1,9 @@
-import { NODE_PRESETS } from './CanvasNode';
+import { NODE_PRESETS, NODE_CATEGORIES } from './CanvasNode';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Copy, Clipboard, Trash2, Plus } from 'lucide-react';
+import { Copy, Clipboard, Trash2, Plus, MousePointer } from 'lucide-react';
 
 interface CanvasContextMenuProps {
   children: React.ReactNode;
@@ -20,33 +20,38 @@ export default function CanvasContextMenu({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="w-52">
-        <ContextMenuSub>
-          <ContextMenuSubTrigger className="gap-2">
-            <Plus className="h-3.5 w-3.5" /> Adicionar nó
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-44">
-            {NODE_PRESETS.map(p => {
-              const Icon = p.icon;
-              return (
-                <ContextMenuItem
-                  key={p.type}
-                  className="gap-2"
-                  onClick={() => onAddNode(p.type, position.current)}
-                >
-                  <Icon className="h-3.5 w-3.5" style={{ color: p.color }} />
-                  {p.label}
-                </ContextMenuItem>
-              );
-            })}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+      <ContextMenuContent className="w-56">
+        {NODE_CATEGORIES.map(cat => {
+          const items = NODE_PRESETS.filter(p => p.category === cat.id);
+          return (
+            <ContextMenuSub key={cat.id}>
+              <ContextMenuSubTrigger className="gap-2">
+                <Plus className="h-3.5 w-3.5" /> {cat.label}
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-44">
+                {items.map(p => {
+                  const Icon = p.icon;
+                  return (
+                    <ContextMenuItem
+                      key={p.type}
+                      className="gap-2"
+                      onClick={() => onAddNode(p.type, position.current)}
+                    >
+                      <Icon className="h-3.5 w-3.5" style={{ color: p.color }} />
+                      {p.label}
+                    </ContextMenuItem>
+                  );
+                })}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          );
+        })}
         <ContextMenuSeparator />
         <ContextMenuItem className="gap-2" onClick={onDuplicate}>
           <Copy className="h-3.5 w-3.5" /> Duplicar selecionados
         </ContextMenuItem>
         <ContextMenuItem className="gap-2" onClick={onSelectAll}>
-          <Clipboard className="h-3.5 w-3.5" /> Selecionar todos
+          <MousePointer className="h-3.5 w-3.5" /> Selecionar todos
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem className="gap-2 text-destructive" onClick={onDeleteSelected}>

@@ -15,6 +15,7 @@ import {
   useReactFlow,
   ReactFlowProvider,
   MarkerType,
+  Controls,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toast } from 'sonner';
@@ -24,10 +25,11 @@ import NodePalette from './NodePalette';
 import CanvasPresence from './CanvasPresence';
 import CanvasToolbar from './CanvasToolbar';
 import CanvasContextMenu from './CanvasContextMenu';
+import QuickNodeMenu from './QuickNodeMenu';
 import { useCanvasHistory } from '@/hooks/useCanvasHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { MousePointer2 } from 'lucide-react';
+import { MousePointer2, Sparkles } from 'lucide-react';
 
 interface CanvasBoardProps {
   boardId: string;
@@ -50,15 +52,15 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hasChanges, setHasChanges] = useState(false);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
+  const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const contextMenuPos = useRef({ x: 0, y: 0 });
   const { screenToFlowPosition, getViewport } = useReactFlow();
   const { user, currentTenantId } = useAuth();
   const skipRealtimeRef = useRef(false);
   const history = useCanvasHistory();
-  const [undoKey, setUndoKey] = useState(0); // force re-render for undo/redo state
+  const [, setUndoKey] = useState(0);
 
-  // Track changes
   useEffect(() => { setHasChanges(true); }, [nodes, edges]);
 
   // Realtime sync
@@ -78,14 +80,14 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     return () => { supabase.removeChannel(channel); };
   }, [boardId, currentTenantId, user?.id, readOnly, setNodes, setEdges]);
 
-  // Auto-save every 30s
+  // Auto-save every 20s
   useEffect(() => {
     if (!hasChanges || readOnly) return;
     const timer = setTimeout(async () => {
       skipRealtimeRef.current = true;
       await onSave(nodes, edges, getViewport());
       setHasChanges(false);
-    }, 30000);
+    }, 20000);
     return () => clearTimeout(timer);
   }, [nodes, edges, hasChanges, getViewport, onSave, readOnly]);
 
@@ -93,14 +95,13 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   useEffect(() => {
     if (readOnly) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Only if not editing an input
-        if ((e.target as HTMLElement).tagName === 'INPUT') return;
-        deleteSelected();
-      }
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); selectAll(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -111,16 +112,21 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     setUndoKey(k => k + 1);
   }, [nodes, edges, history]);
 
+  const edgeColor = useMemo(() => {
+    const colors = ['hsl(213, 94%, 55%)', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+    return colors[edges.length % colors.length];
+  }, [edges.length]);
+
   const onConnect: OnConnect = useCallback((params: Connection) => {
     if (readOnly) return;
     pushHistory();
     setEdges((eds) => addEdge({
       ...params,
       type: 'custom',
-      data: { edgeStyle, animated: true, color: 'hsl(213, 94%, 55%)' } satisfies CustomEdgeData,
-      markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(213, 94%, 55%)', width: 16, height: 16 },
+      data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
+      markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
     }, eds));
-  }, [setEdges, readOnly, edgeStyle, pushHistory]);
+  }, [setEdges, readOnly, edgeStyle, pushHistory, edgeColor]);
 
   const createNode = useCallback((type: string, position: { x: number; y: number }) => {
     if (readOnly) return;
@@ -158,7 +164,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     if (readOnly) return;
     const sn = nodes.filter(n => n.selected).length;
     const se = edges.filter(e => e.selected).length;
-    if (sn === 0 && se === 0) { toast.info('Selecione elementos para excluir'); return; }
+    if (sn === 0 && se === 0) return;
     pushHistory();
     setNodes(nds => nds.filter(n => !n.selected));
     setEdges(eds => eds.filter(e => !e.selected));
@@ -168,7 +174,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const duplicateSelected = useCallback(() => {
     if (readOnly) return;
     const selected = nodes.filter(n => n.selected);
-    if (selected.length === 0) { toast.info('Selecione nós para duplicar'); return; }
+    if (selected.length === 0) return;
     pushHistory();
     const newNodes = selected.map(n => ({
       ...n,
@@ -195,20 +201,12 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
 
   const handleUndo = useCallback(() => {
     const snapshot = history.undo(nodes, edges);
-    if (snapshot) {
-      setNodes(snapshot.nodes);
-      setEdges(snapshot.edges);
-      setUndoKey(k => k + 1);
-    }
+    if (snapshot) { setNodes(snapshot.nodes); setEdges(snapshot.edges); setUndoKey(k => k + 1); }
   }, [nodes, edges, history, setNodes, setEdges]);
 
   const handleRedo = useCallback(() => {
     const snapshot = history.redo(nodes, edges);
-    if (snapshot) {
-      setNodes(snapshot.nodes);
-      setEdges(snapshot.edges);
-      setUndoKey(k => k + 1);
-    }
+    if (snapshot) { setNodes(snapshot.nodes); setEdges(snapshot.edges); setUndoKey(k => k + 1); }
   }, [nodes, edges, history, setNodes, setEdges]);
 
   const handleExport = useCallback(() => {
@@ -222,19 +220,41 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
         a.click();
         toast.success('Canvas exportado!');
       }).catch(() => toast.error('Erro ao exportar'));
-    }).catch(() => toast.error('Instale html-to-image para exportar'));
+    });
   }, [boardName]);
 
   const onNodesChangeWrapped = useCallback((changes: any) => {
-    // Push to history on drag end
     const hasDragEnd = changes.some((c: any) => c.type === 'position' && c.dragging === false);
     if (hasDragEnd) pushHistory();
     onNodesChange(changes);
   }, [onNodesChange, pushHistory]);
 
+  // Double click → open quick node menu
+  const handleDoubleClick = useCallback((event: React.MouseEvent) => {
+    if (readOnly) return;
+    const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    setQuickMenu({ screen: { x: event.clientX, y: event.clientY }, flow: flowPos });
+  }, [readOnly, screenToFlowPosition]);
+
+  const handleQuickNodeSelect = useCallback((type: string) => {
+    if (quickMenu) {
+      createNode(type, quickMenu.flow);
+      setQuickMenu(null);
+    }
+  }, [quickMenu, createNode]);
+
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative">
       {!readOnly && <NodePalette onDragStart={handleDragStart} />}
+
+      {/* Quick node menu on double-click */}
+      {quickMenu && (
+        <QuickNodeMenu
+          position={quickMenu.screen}
+          onSelect={handleQuickNodeSelect}
+          onClose={() => setQuickMenu(null)}
+        />
+      )}
 
       <CanvasContextMenu
         onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))}
@@ -261,19 +281,17 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
             nodesDraggable={!readOnly}
             nodesConnectable={!readOnly}
             elementsSelectable={!readOnly}
+            connectionLineStyle={{ stroke: edgeColor, strokeWidth: 2 }}
             defaultEdgeOptions={{
               type: 'custom',
-              data: { edgeStyle, animated: true } satisfies CustomEdgeData,
-              markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(213, 94%, 55%)', width: 16, height: 16 },
+              data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
+              markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
             }}
             className="canvas-flow"
             onContextMenu={(e) => {
               contextMenuPos.current = { x: e.clientX, y: e.clientY };
             }}
-            onDoubleClick={readOnly ? undefined : (event) => {
-              const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-              createNode('idea', position);
-            }}
+            onDoubleClick={handleDoubleClick}
           >
             <MiniMap
               className="!bg-card/90 !border-border !rounded-xl !shadow-xl !backdrop-blur-sm"
@@ -285,7 +303,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
               pannable
               zoomable
             />
-            <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="hsl(var(--muted-foreground) / 0.1)" />
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="hsl(var(--muted-foreground) / 0.08)" />
 
             {/* Presence */}
             <Panel position="top-right" className="mt-2 mr-2">
@@ -313,9 +331,17 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
             </Panel>
 
             <Panel position="bottom-left" className="mb-2 ml-2">
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 bg-card/60 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/50">
-                <MousePointer2 className="h-3 w-3" />
-                {readOnly ? 'Modo visualização' : 'Duplo clique • Arraste da paleta • Clique direito'}
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 bg-card/70 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/50">
+                <Sparkles className="h-3 w-3" />
+                {readOnly ? 'Somente leitura' : (
+                  <span>
+                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">2×clique</kbd> novo bloco
+                    {' • '}
+                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Del</kbd> excluir
+                    {' • '}
+                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Ctrl+D</kbd> duplicar
+                  </span>
+                )}
               </div>
             </Panel>
           </ReactFlow>

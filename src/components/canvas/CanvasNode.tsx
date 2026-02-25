@@ -2,7 +2,9 @@ import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, type NodeProps, useReactFlow } from '@xyflow/react';
 import {
   Lightbulb, StickyNote, FileText, GitBranch, CheckSquare,
-  GripVertical, Palette, Copy, Trash2,
+  GripVertical, Palette, Copy, Trash2, AlertTriangle,
+  MessageSquare, Image, Link2, Users, Star, Clock, Target,
+  Zap, Flag, Bookmark, Heart, Shield, Award,
 } from 'lucide-react';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -13,38 +15,59 @@ export interface CanvasNodeData {
   nodeType: string;
   description?: string;
   color?: string;
+  emoji?: string;
   [key: string]: unknown;
 }
 
 const NODE_COLORS = [
   '#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444',
   '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1',
+  '#64748b', '#0ea5e9', '#a855f7', '#d946ef', '#84cc16',
 ];
 
 export const NODE_PRESETS = [
-  { type: 'idea', label: 'Ideia', icon: Lightbulb, color: '#3b82f6', bgLight: '#eff6ff', bgDark: '#1e3a5f' },
-  { type: 'note', label: 'Nota', icon: StickyNote, color: '#f59e0b', bgLight: '#fffbeb', bgDark: '#422006' },
-  { type: 'document', label: 'Documento', icon: FileText, color: '#06b6d4', bgLight: '#ecfeff', bgDark: '#0e3744' },
-  { type: 'process', label: 'Processo', icon: GitBranch, color: '#22c55e', bgLight: '#f0fdf4', bgDark: '#14352a' },
-  { type: 'task', label: 'Tarefa', icon: CheckSquare, color: '#8b5cf6', bgLight: '#f5f3ff', bgDark: '#2e1065' },
+  // Core
+  { type: 'idea', label: 'Ideia', icon: Lightbulb, color: '#3b82f6', category: 'core' },
+  { type: 'note', label: 'Nota', icon: StickyNote, color: '#f59e0b', category: 'core' },
+  { type: 'task', label: 'Tarefa', icon: CheckSquare, color: '#8b5cf6', category: 'core' },
+  { type: 'document', label: 'Documento', icon: FileText, color: '#06b6d4', category: 'core' },
+  { type: 'process', label: 'Processo', icon: GitBranch, color: '#22c55e', category: 'core' },
+  // Status
+  { type: 'warning', label: 'Alerta', icon: AlertTriangle, color: '#ef4444', category: 'status' },
+  { type: 'goal', label: 'Meta', icon: Target, color: '#10b981', category: 'status' },
+  { type: 'milestone', label: 'Marco', icon: Flag, color: '#f97316', category: 'status' },
+  { type: 'priority', label: 'Prioridade', icon: Star, color: '#eab308', category: 'status' },
+  // Communication
+  { type: 'comment', label: 'Comentário', icon: MessageSquare, color: '#64748b', category: 'comm' },
+  { type: 'team', label: 'Equipe', icon: Users, color: '#0ea5e9', category: 'comm' },
+  { type: 'link', label: 'Link', icon: Link2, color: '#a855f7', category: 'comm' },
+  // Special
+  { type: 'trigger', label: 'Gatilho', icon: Zap, color: '#d946ef', category: 'special' },
+  { type: 'bookmark', label: 'Favorito', icon: Bookmark, color: '#ec4899', category: 'special' },
+  { type: 'reward', label: 'Conquista', icon: Award, color: '#84cc16', category: 'special' },
 ] as const;
+
+export const NODE_CATEGORIES = [
+  { id: 'core', label: 'Básicos' },
+  { id: 'status', label: 'Status' },
+  { id: 'comm', label: 'Comunicação' },
+  { id: 'special', label: 'Especiais' },
+];
 
 export function getPreset(type: string) {
   return NODE_PRESETS.find(p => p.type === type) || NODE_PRESETS[0];
 }
 
-const handleStyle = (color: string, show: boolean) => ({
-  background: color,
-  opacity: show ? 1 : 0,
-  transition: 'opacity 0.2s, transform 0.2s',
-  transform: show ? 'scale(1)' : 'scale(0.5)',
-});
+const handleBaseClass = "!w-3 !h-3 !border-2 !border-background !rounded-full !transition-all !duration-200";
 
 function CanvasNode({ id, data, selected }: NodeProps) {
   const [editing, setEditing] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
   const [label, setLabel] = useState((data as CanvasNodeData).label || '');
+  const [desc, setDesc] = useState((data as CanvasNodeData).description || '');
   const [hovered, setHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
   const nodeData = data as CanvasNodeData;
   const customColor = nodeData.color;
   const preset = getPreset(nodeData.nodeType || 'idea');
@@ -53,20 +76,26 @@ function CanvasNode({ id, data, selected }: NodeProps) {
   const { setNodes, setEdges } = useReactFlow();
 
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
+    if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
   }, [editing]);
+
+  useEffect(() => {
+    if (editingDesc && descRef.current) { descRef.current.focus(); }
+  }, [editingDesc]);
 
   const commitEdit = useCallback(() => {
     setEditing(false);
     if (label.trim()) {
-      (data as CanvasNodeData).label = label.trim();
+      setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: label.trim() } } : n));
     } else {
       setLabel((data as CanvasNodeData).label);
     }
-  }, [label, data]);
+  }, [label, data, id, setNodes]);
+
+  const commitDesc = useCallback(() => {
+    setEditingDesc(false);
+    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, description: desc.trim() || undefined } } : n));
+  }, [desc, id, setNodes]);
 
   const setColor = useCallback((c: string) => {
     setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, color: c } } : n));
@@ -76,14 +105,13 @@ function CanvasNode({ id, data, selected }: NodeProps) {
     setNodes(nds => {
       const original = nds.find(n => n.id === id);
       if (!original) return nds;
-      const newNode = {
+      return [...nds, {
         ...original,
         id: `node_${Date.now()}_dup`,
         position: { x: original.position.x + 30, y: original.position.y + 30 },
         selected: false,
         data: { ...original.data },
-      };
-      return [...nds, newNode];
+      }];
     });
   }, [id, setNodes]);
 
@@ -99,56 +127,75 @@ function CanvasNode({ id, data, selected }: NodeProps) {
       className="group relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ minWidth: 170, maxWidth: 300 }}
+      style={{ minWidth: 180, maxWidth: 320 }}
     >
-      {/* Handles */}
-      <Handle type="target" position={Position.Top}
-        className="!w-2.5 !h-2.5 !border-2 !border-white/80 !rounded-full"
-        style={handleStyle(color, !!showHandles)}
+      {/* 8 Handles: top, bottom, left, right — each both source AND target */}
+      <Handle type="target" position={Position.Top} id="top-target"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
       />
-      <Handle type="source" position={Position.Bottom}
-        className="!w-2.5 !h-2.5 !border-2 !border-white/80 !rounded-full"
-        style={handleStyle(color, !!showHandles)}
+      <Handle type="source" position={Position.Top} id="top-source"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', left: 'calc(50% + 10px)' }}
       />
-      <Handle type="source" position={Position.Right} id="right"
-        className="!w-2.5 !h-2.5 !border-2 !border-white/80 !rounded-full"
-        style={handleStyle(color, !!showHandles)}
+      <Handle type="target" position={Position.Bottom} id="bottom-target"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
       />
-      <Handle type="target" position={Position.Left} id="left"
-        className="!w-2.5 !h-2.5 !border-2 !border-white/80 !rounded-full"
-        style={handleStyle(color, !!showHandles)}
+      <Handle type="source" position={Position.Bottom} id="bottom-source"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', left: 'calc(50% + 10px)' }}
+      />
+      <Handle type="target" position={Position.Left} id="left-target"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
+      />
+      <Handle type="source" position={Position.Left} id="left-source"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', top: 'calc(50% + 10px)' }}
+      />
+      <Handle type="target" position={Position.Right} id="right-target"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)' }}
+      />
+      <Handle type="source" position={Position.Right} id="right-source"
+        className={handleBaseClass}
+        style={{ background: color, opacity: showHandles ? 1 : 0, transform: showHandles ? 'scale(1)' : 'scale(0.3)', top: 'calc(50% + 10px)' }}
       />
 
       {/* Quick action bar */}
       {(hovered || selected) && (
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-0.5 shadow-lg z-10 nopan nodrag">
+        <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-0.5 shadow-xl z-10 nopan nodrag animate-in fade-in slide-in-from-bottom-1 duration-150">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="h-5 w-5 rounded flex items-center justify-center hover:bg-accent transition-colors">
-                <Palette className="h-3 w-3 text-muted-foreground" />
+              <button className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-accent transition-colors">
+                <Palette className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-2" side="top">
-              <div className="grid grid-cols-5 gap-1">
+            <PopoverContent className="w-auto p-2.5" side="top">
+              <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Cor do nó</p>
+              <div className="grid grid-cols-5 gap-1.5">
                 {NODE_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setColor(c)}
-                    className="h-5 w-5 rounded-full border-2 transition-transform hover:scale-125"
+                    className="h-6 w-6 rounded-full border-2 transition-all hover:scale-125 hover:shadow-md"
                     style={{
                       background: c,
                       borderColor: c === color ? 'white' : 'transparent',
+                      boxShadow: c === color ? `0 0 0 2px ${c}44` : undefined,
                     }}
                   />
                 ))}
               </div>
             </PopoverContent>
           </Popover>
-          <button onClick={duplicateNode} className="h-5 w-5 rounded flex items-center justify-center hover:bg-accent transition-colors">
-            <Copy className="h-3 w-3 text-muted-foreground" />
+          <button onClick={duplicateNode} className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-accent transition-colors" title="Duplicar">
+            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <button onClick={deleteNode} className="h-5 w-5 rounded flex items-center justify-center hover:bg-destructive/20 transition-colors">
-            <Trash2 className="h-3 w-3 text-destructive" />
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <button onClick={deleteNode} className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-destructive/20 transition-colors" title="Excluir">
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </button>
         </div>
       )}
@@ -158,33 +205,36 @@ function CanvasNode({ id, data, selected }: NodeProps) {
         className="rounded-xl overflow-hidden transition-all duration-200"
         style={{
           background: 'hsl(222, 47%, 8%)',
-          border: `2px solid ${selected ? color : 'hsl(222, 47%, 15%)'}`,
+          border: `2px solid ${selected ? color : hovered ? `${color}44` : 'hsl(222, 47%, 15%)'}`,
           boxShadow: selected
-            ? `0 0 0 2px ${color}44, 0 8px 32px ${color}22`
+            ? `0 0 0 2px ${color}44, 0 8px 32px ${color}22, inset 0 1px 0 ${color}15`
             : hovered
-              ? `0 4px 20px rgba(0,0,0,0.4)`
+              ? `0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px ${color}22`
               : '0 2px 12px rgba(0,0,0,0.3)',
         }}
       >
+        {/* Color accent bar */}
+        <div className="h-1" style={{ background: `linear-gradient(90deg, ${color}, ${color}66)` }} />
+
         {/* Header bar */}
-        <div className="flex items-center gap-2 px-3 py-2" style={{ background: `${color}15` }}>
-          <GripVertical className="h-3 w-3 text-white/25 shrink-0 cursor-grab" />
+        <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: `${color}08` }}>
+          <GripVertical className="h-3 w-3 text-white/20 shrink-0 cursor-grab" />
           <div
-            className="h-5 w-5 rounded-md flex items-center justify-center shrink-0"
-            style={{ background: `${color}25` }}
+            className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `${color}20`, boxShadow: `inset 0 0 0 1px ${color}15` }}
           >
-            <Icon className="h-3 w-3" style={{ color }} />
+            <Icon className="h-3.5 w-3.5" style={{ color }} />
           </div>
-          <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: `${color}bb` }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider flex-1" style={{ color: `${color}aa` }}>
             {preset.label}
           </span>
-          {customColor && customColor !== preset.color && (
-            <div className="ml-auto h-2.5 w-2.5 rounded-full" style={{ background: customColor }} />
+          {nodeData.emoji && (
+            <span className="text-sm">{nodeData.emoji}</span>
           )}
         </div>
 
         {/* Body */}
-        <div className="px-3 py-2.5">
+        <div className="px-3 py-2.5 space-y-1">
           {editing ? (
             <input
               ref={inputRef}
@@ -195,20 +245,39 @@ function CanvasNode({ id, data, selected }: NodeProps) {
                 if (e.key === 'Enter') commitEdit();
                 if (e.key === 'Escape') { setLabel((data as CanvasNodeData).label); setEditing(false); }
               }}
-              className="w-full bg-transparent text-sm text-white outline-none border-b border-white/20 pb-0.5 nopan nodrag"
+              className="w-full bg-white/5 text-sm text-white outline-none border border-white/10 rounded-md px-2 py-1 nopan nodrag"
               style={{ caretColor: color }}
             />
           ) : (
             <p
-              className="text-sm text-white/90 font-medium cursor-text leading-snug"
+              className="text-sm text-white/90 font-medium cursor-text leading-snug hover:text-white transition-colors"
               onDoubleClick={() => setEditing(true)}
-              title="Clique duplo para editar"
+              title="Duplo clique para editar título"
             >
               {(data as CanvasNodeData).label}
             </p>
           )}
-          {nodeData.description && (
-            <p className="text-[11px] text-white/40 mt-1 leading-relaxed">{nodeData.description}</p>
+          {editingDesc ? (
+            <textarea
+              ref={descRef}
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              onBlur={commitDesc}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setDesc((data as CanvasNodeData).description || ''); setEditingDesc(false); }
+              }}
+              rows={2}
+              className="w-full bg-white/5 text-[11px] text-white/70 outline-none border border-white/10 rounded-md px-2 py-1 resize-none nopan nodrag"
+              placeholder="Adicionar descrição..."
+            />
+          ) : (
+            <p
+              className="text-[11px] text-white/35 leading-relaxed cursor-text hover:text-white/50 transition-colors min-h-[16px]"
+              onDoubleClick={() => setEditingDesc(true)}
+              title="Duplo clique para editar descrição"
+            >
+              {nodeData.description || (hovered ? '+ Adicionar descrição...' : '')}
+            </p>
           )}
         </div>
       </div>
