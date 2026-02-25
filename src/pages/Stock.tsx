@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,12 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Minus, Package, Loader2, ArrowDown, ArrowUp, Search, AlertTriangle, Eye, History, Link2, Filter, RotateCcw, Pencil, Trash2, Save } from 'lucide-react';
+import {
+  Plus, Minus, Package, Loader2, ArrowDown, ArrowUp, Search,
+  AlertTriangle, Eye, History, Link2, Filter, RotateCcw,
+  Pencil, Trash2, Save, Download, Upload, FileDown,
+} from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -34,6 +37,7 @@ export default function Stock() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // States
   const [open, setOpen] = useState(false);
@@ -54,9 +58,16 @@ export default function Stock() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
 
-  // Quick move with quantity
-  const [quickMoveItemId, setQuickMoveItemId] = useState<string | null>(null);
-  const [quickMoveQty, setQuickMoveQty] = useState('1');
+  // Quick move dialog
+  const [qmOpen, setQmOpen] = useState(false);
+  const [qmItem, setQmItem] = useState<any>(null);
+  const [qmQty, setQmQty] = useState('1');
+  const [qmType, setQmType] = useState<'in' | 'out'>('in');
+  const [qmRef, setQmRef] = useState('');
+  const [qmLoading, setQmLoading] = useState(false);
+
+  // Import
+  const [importing, setImporting] = useState(false);
 
   // Movement form
   const [movItemId, setMovItemId] = useState('');
@@ -100,30 +111,18 @@ export default function Stock() {
       if (!currentTenantId || !movItemId) throw new Error('Dados incompletos');
       const qty = parseInt(movQty);
       if (!qty || qty <= 0) throw new Error('Quantidade inválida');
-
-      // Insert movement
       const { error: movErr } = await (supabase.from as any)('stock_movements').insert({
-        tenant_id: currentTenantId,
-        stock_item_id: movItemId,
-        type: movType,
-        qty,
-        reference: movRef || null,
-        work_order_id: movWoId || null,
-        created_by: user?.id,
+        tenant_id: currentTenantId, stock_item_id: movItemId, type: movType,
+        qty, reference: movRef || null, work_order_id: movWoId || null, created_by: user?.id,
       });
       if (movErr) throw movErr;
-
-      // Update stock level
       const item = items.find((i: any) => i.id === movItemId);
       const currentLevel = item?.current_level || 0;
       let newLevel = currentLevel;
       if (movType === 'in') newLevel = currentLevel + qty;
       else if (movType === 'out') newLevel = Math.max(0, currentLevel - qty);
-      else newLevel = qty; // adjust sets absolute value
-
-      const { error: upErr } = await (supabase.from as any)('stock_items')
-        .update({ current_level: newLevel })
-        .eq('id', movItemId);
+      else newLevel = qty;
+      const { error: upErr } = await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
       if (upErr) throw upErr;
     },
     onSuccess: () => {
@@ -140,44 +139,148 @@ export default function Stock() {
 
   const getMovementItemName = (m: any) => m.stock_items?.name || items.find((i: any) => i.id === m.stock_item_id)?.name || '-';
 
-  const quickMove = async (itemId: string, type: 'in' | 'out', qty: number = 1) => {
-    if (!currentTenantId) return;
-    const item = items.find((i: any) => i.id === itemId);
-    if (!item) return;
-    const currentLevel = item.current_level || 0;
-    if (type === 'out' && currentLevel < qty) {
+  // Quick move via dialog
+  const openQuickMove = (item: any, type: 'in' | 'out') => {
+    setQmItem(item);
+    setQmType(type);
+    setQmQty('1');
+    setQmRef('');
+    setQmOpen(true);
+  };
+
+  const handleQuickMove = async () => {
+    if (!currentTenantId || !qmItem) return;
+    const qty = parseInt(qmQty);
+    if (!qty || qty <= 0) {
+      toast({ title: 'Quantidade inválida', variant: 'destructive' });
+      return;
+    }
+    const currentLevel = qmItem.current_level || 0;
+    if (qmType === 'out' && currentLevel < qty) {
       toast({ title: 'Estoque insuficiente', variant: 'destructive' });
       return;
     }
+    setQmLoading(true);
     try {
       await (supabase.from as any)('stock_movements').insert({
-        tenant_id: currentTenantId,
-        stock_item_id: itemId,
-        type,
-        qty,
-        reference: type === 'in' ? `Entrada rápida (${qty})` : `Saída rápida (${qty})`,
+        tenant_id: currentTenantId, stock_item_id: qmItem.id, type: qmType,
+        qty, reference: qmRef || (qmType === 'in' ? `Entrada (${qty})` : `Saída (${qty})`),
         created_by: user?.id,
       });
-      const newLevel = type === 'in' ? currentLevel + qty : Math.max(0, currentLevel - qty);
-      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', itemId);
+      const newLevel = qmType === 'in' ? currentLevel + qty : Math.max(0, currentLevel - qty);
+      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', qmItem.id);
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
-      toast({ title: type === 'in' ? `+${qty} entrada` : `-${qty} saída` });
-      setQuickMoveItemId(null);
-      setQuickMoveQty('1');
+      toast({ title: qmType === 'in' ? `+${qty} entrada registrada` : `-${qty} saída registrada` });
+      setQmOpen(false);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setQmLoading(false);
     }
   };
+
+  // Export CSV
+  const exportCSV = () => {
+    const header = 'Nome;SKU;Unidade;Quantidade Atual;Nível Mínimo';
+    const rows = items.map((i: any) =>
+      `${i.name};${i.sku || ''};${i.unit || 'un'};${i.current_level || 0};${i.min_level || 0}`
+    );
+    const csv = '\uFEFF' + [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `estoque_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Estoque exportado!' });
+  };
+
+  // Download template
+  const downloadTemplate = () => {
+    const header = 'Nome;SKU;Unidade;Quantidade Inicial;Nível Mínimo';
+    const example = 'Parafuso M6;SKU-001;un;100;20\nÓleo Lubrificante;SKU-002;litro;50;10\nFiltro de Ar;SKU-003;un;30;5';
+    const csv = '\uFEFF' + [header, example].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo_estoque.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Modelo baixado!' });
+  };
+
+  // Import CSV
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentTenantId) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
+      const dataLines = lines.slice(1); // skip header
+      let created = 0;
+      let skipped = 0;
+      for (const line of dataLines) {
+        const parts = line.split(';').map(p => p.trim());
+        const itemName = parts[0];
+        if (!itemName) { skipped++; continue; }
+        const itemSku = parts[1] || '';
+        const itemUnit = parts[2] || 'un';
+        const itemQty = parseInt(parts[3]) || 0;
+        const itemMin = parseInt(parts[4]) || 0;
+        // Check if item with same name or sku already exists
+        const existing = items.find((i: any) =>
+          i.name.toLowerCase() === itemName.toLowerCase() ||
+          (itemSku && i.sku?.toLowerCase() === itemSku.toLowerCase())
+        );
+        if (existing) { skipped++; continue; }
+        const { error } = await (supabase.from as any)('stock_items').insert({
+          tenant_id: currentTenantId,
+          name: itemName, sku: itemSku || null, unit: itemUnit,
+          current_level: itemQty, min_level: itemMin,
+        });
+        if (error) { skipped++; continue; }
+        created++;
+      }
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      toast({
+        title: 'Importação concluída!',
+        description: `${created} item(ns) criado(s)${skipped > 0 ? `, ${skipped} ignorado(s) (duplicados ou inválidos)` : ''}`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Estoque</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{filteredItems.length} item(ns)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Import/Export/Template */}
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={downloadTemplate}>
+            <FileDown className="h-3.5 w-3.5" /> Baixar Modelo
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            Importar
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImport} />
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportCSV} disabled={items.length === 0}>
+            <Download className="h-3.5 w-3.5" /> Exportar
+          </Button>
+
           <Dialog open={movOpen} onOpenChange={setMovOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
@@ -318,19 +421,29 @@ export default function Stock() {
               {filteredItems.map((item: any) => {
                 const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
                 return (
-                  <div key={item.id} className="bg-card border border-border rounded-md p-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setDetailItem(item)}>
-                    <div className="flex items-start justify-between gap-2">
+                  <div key={item.id} className="bg-card border border-border rounded-md p-3">
+                    <div className="flex items-start justify-between gap-2" onClick={() => setDetailItem(item)}>
                       <div>
                         <p className="text-sm font-medium">{item.name}</p>
                         {item.sku && <p className="text-[11px] text-muted-foreground mt-0.5">SKU: {item.sku}</p>}
                       </div>
-                      <Badge variant="outline" className={`text-[10px] h-5 ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}`}>
+                      <Badge variant="outline" className={`text-[10px] h-5 ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
                         {isLow ? 'Baixo' : 'Normal'}
                       </Badge>
                     </div>
-                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>Atual: <strong className="text-foreground">{item.current_level}</strong> {item.unit || 'un'}</span>
-                      <span>Mín: {item.min_level}</span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>Atual: <strong className="text-foreground">{item.current_level}</strong> {item.unit || 'un'}</span>
+                        <span>Mín: {item.min_level}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="icon" className="h-7 w-7 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => openQuickMove(item, 'out')}>
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-7 w-7 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10" onClick={() => openQuickMove(item, 'in')}>
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -347,7 +460,7 @@ export default function Stock() {
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Atual</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Mín.</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Status</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[60px]"></TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -361,43 +474,19 @@ export default function Stock() {
                         <TableCell className="text-sm font-medium">{item.current_level}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.min_level}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[11px] ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}`}>
+                          <Badge variant="outline" className={`text-[11px] ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
                             {isLow ? 'Baixo' : 'Normal'}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            {quickMoveItemId === item.id ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={quickMoveQty}
-                                  onChange={e => setQuickMoveQty(e.target.value)}
-                                  className="h-7 w-14 text-xs text-center px-1"
-                                  autoFocus
-                                  onKeyDown={e => {
-                                    if (e.key === 'Escape') { setQuickMoveItemId(null); setQuickMoveQty('1'); }
-                                  }}
-                                />
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => quickMove(item.id, 'out', parseInt(quickMoveQty) || 1)} title="Saída">
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => quickMove(item.id, 'in', parseInt(quickMoveQty) || 1)} title="Entrada">
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setQuickMoveItemId(item.id); setQuickMoveQty('1'); }} title="Saída (digitar qtd)">
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-600 hover:bg-green-500/10" onClick={() => { setQuickMoveItemId(item.id); setQuickMoveQty('1'); }} title="Entrada (digitar qtd)">
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDetailItem(item)}>
+                            <Button variant="outline" size="icon" className="h-7 w-7 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => openQuickMove(item, 'out')} title="Saída">
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="icon" className="h-7 w-7 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10" onClick={() => openQuickMove(item, 'in')} title="Entrada">
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailItem(item)}>
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -423,7 +512,7 @@ export default function Stock() {
                 <div key={m.id} className="bg-card border border-border rounded-md p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium truncate">{getMovementItemName(m)}</span>
-                    {m.type === 'in' && <Badge variant="outline" className="text-[10px] h-5 bg-green-500/10 text-green-600 gap-1 shrink-0"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
+                    {m.type === 'in' && <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 text-emerald-600 gap-1 shrink-0"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
                     {m.type === 'out' && <Badge variant="outline" className="text-[10px] h-5 bg-destructive/10 text-destructive gap-1 shrink-0"><ArrowUp className="h-3 w-3" />Saída</Badge>}
                     {m.type === 'adjust' && <Badge variant="outline" className="text-[10px] h-5 shrink-0">Ajuste</Badge>}
                   </div>
@@ -454,7 +543,7 @@ export default function Stock() {
                     <TableRow key={m.id}>
                       <TableCell className="text-sm font-medium">{getMovementItemName(m)}</TableCell>
                       <TableCell>
-                        {m.type === 'in' && <Badge variant="outline" className="text-[11px] bg-green-500/10 text-green-600 gap-1"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
+                        {m.type === 'in' && <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 gap-1"><ArrowDown className="h-3 w-3" />Entrada</Badge>}
                         {m.type === 'out' && <Badge variant="outline" className="text-[11px] bg-destructive/10 text-destructive gap-1"><ArrowUp className="h-3 w-3" />Saída</Badge>}
                         {m.type === 'adjust' && <Badge variant="outline" className="text-[11px]">Ajuste</Badge>}
                       </TableCell>
@@ -477,6 +566,81 @@ export default function Stock() {
         </TabsContent>
       </Tabs>
 
+      {/* Quick Move Dialog */}
+      <Dialog open={qmOpen} onOpenChange={setQmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {qmType === 'in' ? (
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <ArrowDown className="h-4 w-4 text-emerald-600" />
+                </div>
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <ArrowUp className="h-4 w-4 text-destructive" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm">{qmType === 'in' ? 'Entrada' : 'Saída'} de Estoque</p>
+                <p className="text-xs font-normal text-muted-foreground">{qmItem?.name}</p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Estoque atual</span>
+              <span className="text-lg font-bold">{qmItem?.current_level || 0} <span className="text-xs font-normal text-muted-foreground">{qmItem?.unit || 'un'}</span></span>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Quantidade *</Label>
+              <Input
+                type="number"
+                min="1"
+                value={qmQty}
+                onChange={e => setQmQty(e.target.value)}
+                className="h-10 text-lg text-center font-semibold"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handleQuickMove(); }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Observação (opcional)</Label>
+              <Input
+                value={qmRef}
+                onChange={e => setQmRef(e.target.value)}
+                className="h-9"
+                placeholder="Ex: NF-12345, Manutenção preventiva..."
+              />
+            </div>
+            {qmType === 'out' && parseInt(qmQty) > (qmItem?.current_level || 0) && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Quantidade maior que o estoque atual
+              </p>
+            )}
+            <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between border border-border/50">
+              <span className="text-xs text-muted-foreground">Novo saldo</span>
+              <span className="text-lg font-bold">
+                {qmType === 'in'
+                  ? (qmItem?.current_level || 0) + (parseInt(qmQty) || 0)
+                  : Math.max(0, (qmItem?.current_level || 0) - (parseInt(qmQty) || 0))
+                } <span className="text-xs font-normal text-muted-foreground">{qmItem?.unit || 'un'}</span>
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleQuickMove}
+              disabled={qmLoading || !parseInt(qmQty) || parseInt(qmQty) <= 0}
+              className={`w-full h-9 text-sm gap-2 ${qmType === 'in' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'}`}
+            >
+              {qmLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {qmType === 'in' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
+              Confirmar {qmType === 'in' ? 'Entrada' : 'Saída'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Item Detail Dialog */}
       <Dialog open={!!detailItem} onOpenChange={(v) => { if (!v) { setDetailItem(null); setEditMode(false); } }}>
         <DialogContent className="sm:max-w-lg">
@@ -488,7 +652,6 @@ export default function Stock() {
           </DialogHeader>
           {detailItem && !editMode && (
             <div className="space-y-4">
-              {/* Info */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 rounded-md p-2.5">
                   <p className="text-[11px] text-muted-foreground mb-0.5">Nível Atual</p>
@@ -501,7 +664,6 @@ export default function Stock() {
               </div>
               {detailItem.sku && <p className="text-xs text-muted-foreground">SKU: {detailItem.sku}</p>}
 
-              {/* Actions */}
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => {
                   setEditName(detailItem.name);
@@ -523,7 +685,7 @@ export default function Stock() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir item?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        O item "{detailItem.name}" será excluído permanentemente. Esta ação não pode ser desfeita.
+                        O item "{detailItem.name}" será excluído permanentemente.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -544,7 +706,6 @@ export default function Stock() {
                 </AlertDialog>
               </div>
 
-              {/* Movement history */}
               <div>
                 <p className="text-xs font-semibold mb-2 flex items-center gap-1">
                   <History className="h-3.5 w-3.5" /> Histórico de Movimentações
@@ -555,7 +716,7 @@ export default function Stock() {
                   <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
                     {itemMovements.map((m: any) => (
                       <div key={m.id} className="flex items-center gap-2 bg-muted/30 rounded-md p-2 text-xs">
-                        {m.type === 'in' && <ArrowDown className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                        {m.type === 'in' && <ArrowDown className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
                         {m.type === 'out' && <ArrowUp className="h-3.5 w-3.5 text-destructive shrink-0" />}
                         {m.type === 'adjust' && <RotateCcw className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                         <span className="font-medium">{m.type === 'in' ? '+' : m.type === 'out' ? '-' : '='}{m.qty}</span>
@@ -574,17 +735,13 @@ export default function Stock() {
             </div>
           )}
 
-          {/* Edit mode */}
           {detailItem && editMode && (
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
                 await updateItem.mutateAsync({
-                  id: detailItem.id,
-                  name: editName,
-                  sku: editSku || null,
-                  unit: editUnit || 'un',
-                  min_level: parseInt(editMinLevel) || 0,
+                  id: detailItem.id, name: editName, sku: editSku || null,
+                  unit: editUnit || 'un', min_level: parseInt(editMinLevel) || 0,
                   current_level: parseInt(editCurrentLevel) || 0,
                 });
                 toast({ title: 'Item atualizado!' });
