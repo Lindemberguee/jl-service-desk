@@ -284,7 +284,15 @@ export default function Stock() {
     setImportProgress(0);
     setImportTotal(0);
     try {
-      const text = await file.text();
+      // Read file with proper encoding for accented characters
+      const buffer = await file.arrayBuffer();
+      let text = new TextDecoder('utf-8').decode(buffer);
+      // If UTF-8 produces replacement chars, re-decode as Windows-1252 (Excel default)
+      if (text.includes('\uFFFD')) {
+        text = new TextDecoder('windows-1252').decode(buffer);
+      }
+      // Remove BOM if present
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
       const dataLines = lines.slice(1);
