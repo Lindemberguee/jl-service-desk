@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -620,140 +620,166 @@ export default function WorkOrders() {
           ))}
         </div>
       ) : (
-        /* Desktop: Table */
-        <div className="bg-card border border-border rounded-md overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
+        /* Desktop: Row-based list */
+        <div className="bg-card border border-border rounded-md overflow-hidden divide-y divide-border">
+          {/* Header row */}
+          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/30">
+            {canUpdate && (
+              <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
+                <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
+              </div>
+            )}
+            <button className="flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[110px] shrink-0 select-none" onClick={() => handleSort('code')}>
+              Código <SortIcon field="code" />
+            </button>
+            <button className="flex items-center text-[11px] font-semibold uppercase text-muted-foreground flex-1 min-w-0 select-none" onClick={() => handleSort('title')}>
+              Título <SortIcon field="title" />
+            </button>
+            <button className="hidden md:flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[180px] shrink-0 select-none" onClick={() => handleSort('priority')}>
+              Prioridade / Status <SortIcon field="priority" />
+            </button>
+            {memberships.length > 1 && (
+              <span className="hidden lg:block text-[11px] font-semibold uppercase text-muted-foreground w-[90px] shrink-0">Depto</span>
+            )}
+            <span className="hidden lg:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">Responsável</span>
+            <span className="hidden xl:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">Solicitante</span>
+            <span className="hidden md:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">SLA</span>
+            <button className="hidden sm:flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[85px] shrink-0 select-none text-right justify-end" onClick={() => handleSort('updated_at')}>
+              Atualizada <SortIcon field="updated_at" />
+            </button>
+            <span className="w-8 shrink-0" />
+          </div>
+
+          {/* Data rows */}
+          {paginatedData.map((wo: any) => (
+            <div
+              key={wo.id}
+              className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors group"
+            >
+              {canUpdate && (
+                <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
+                  <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
+                </div>
+              )}
+
+              {/* Code */}
+              <div className="w-[110px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
+                <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
+              </div>
+
+              {/* Title block — two lines */}
+              <div className="flex-1 min-w-0 space-y-0.5" onClick={() => navigate(`/os/${wo.id}`)}>
+                <p className="text-sm font-medium truncate">{wo.title}</p>
+                <div className="flex items-center gap-2 md:hidden flex-wrap">
+                  <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
+                    {priorityLabels[wo.priority]}
+                  </Badge>
+                  <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                    {statusLabels[wo.status]}
+                  </Badge>
+                  <SlaIndicator workOrder={wo} compact />
+                </div>
+              </div>
+
+              {/* Priority + Status (desktop) */}
+              <div className="hidden md:flex items-center gap-1.5 w-[180px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
+                <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
+                  {priorityLabels[wo.priority]}
+                </Badge>
+                <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
+                  {statusLabels[wo.status]}
+                </Badge>
+              </div>
+
+              {/* Depto */}
+              {memberships.length > 1 && (
+                <span className="hidden lg:block text-xs text-muted-foreground w-[90px] shrink-0 truncate" onClick={() => navigate(`/os/${wo.id}`)}>
+                  {tenantMap[wo.tenant_id] || '—'}
+                </span>
+              )}
+
+              {/* Responsável */}
+              <div className="hidden lg:block w-[100px] shrink-0" onClick={e => e.stopPropagation()}>
+                {canAssign ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent max-w-[100px] truncate ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
+                        <UserCheck className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{getAssignedName(wo.assigned_to_id)}</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
+                      <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                        <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
+                      </DropdownMenuItem>
+                      {wo.assigned_to_id && (
+                        <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
+                          <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
+                        <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
+                          {p.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <span className="text-xs text-muted-foreground truncate block" onClick={() => navigate(`/os/${wo.id}`)}>
+                    {getAssignedName(wo.assigned_to_id)}
+                  </span>
+                )}
+              </div>
+
+              {/* Solicitante */}
+              <span className="hidden xl:block text-xs text-muted-foreground w-[100px] shrink-0 truncate" onClick={() => navigate(`/os/${wo.id}`)}>
+                {getRequesterName(wo)}
+              </span>
+
+              {/* SLA */}
+              <div className="hidden md:block w-[100px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
+                <SlaIndicator workOrder={wo} compact />
+              </div>
+
+              {/* Date */}
+              <span className="hidden sm:block text-xs text-muted-foreground w-[85px] shrink-0 text-right" onClick={() => navigate(`/os/${wo.id}`)}>
+                {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
+              </span>
+
+              {/* Actions */}
+              <div className="w-8 shrink-0" onClick={e => e.stopPropagation()}>
                 {canUpdate && (
-                  <TableHead className="w-10 px-3">
-                    <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
-                  </TableHead>
-                )}
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px] cursor-pointer select-none" onClick={() => handleSort('code')}>
-                  <span className="flex items-center">Código <SortIcon field="code" /></span>
-                </TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground cursor-pointer select-none" onClick={() => handleSort('title')}>
-                  <span className="flex items-center">Título <SortIcon field="title" /></span>
-                </TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px] cursor-pointer select-none" onClick={() => handleSort('priority')}>
-                  <span className="flex items-center">Prioridade <SortIcon field="priority" /></span>
-                </TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[110px] cursor-pointer select-none" onClick={() => handleSort('status')}>
-                  <span className="flex items-center">Status <SortIcon field="status" /></span>
-                </TableHead>
-                {memberships.length > 1 && (
-                  <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Depto</TableHead>
-                )}
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Responsável</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Solicitante</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">SLA</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[95px] cursor-pointer select-none" onClick={() => handleSort('updated_at')}>
-                  <span className="flex items-center">Atualizada <SortIcon field="updated_at" /></span>
-                </TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedData.map((wo: any) => (
-                <TableRow key={wo.id} className="cursor-pointer group">
-                  {canUpdate && (
-                    <TableCell className="px-3" onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
-                    </TableCell>
-                  )}
-                  <TableCell className="font-mono text-xs text-muted-foreground" onClick={() => navigate(`/os/${wo.id}`)}>{wo.code}</TableCell>
-                  <TableCell className="text-sm font-medium max-w-[300px] truncate" onClick={() => navigate(`/os/${wo.id}`)}>{wo.title}</TableCell>
-                  <TableCell onClick={() => navigate(`/os/${wo.id}`)}>
-                    <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
-                      {priorityLabels[wo.priority]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell onClick={() => navigate(`/os/${wo.id}`)}>
-                    <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
-                      {statusLabels[wo.status]}
-                    </Badge>
-                  </TableCell>
-                  {memberships.length > 1 && (
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
-                      {tenantMap[wo.tenant_id] || '—'}
-                    </TableCell>
-                  )}
-                  <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
-                    {canAssign ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent max-w-[120px] truncate ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-                            <UserCheck className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{getAssignedName(wo.assigned_to_id)}</span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
+                        <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {canAssign && (
+                        <>
                           <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                            <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
-                          </DropdownMenuItem>
-                          {wo.assigned_to_id && (
-                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
-                              <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover atribuição
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
-                            <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
-                              {p.name}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <span className="text-muted-foreground truncate max-w-[100px] block" onClick={() => navigate(`/os/${wo.id}`)}>
-                        {getAssignedName(wo.assigned_to_id)}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]" onClick={() => navigate(`/os/${wo.id}`)}>
-                    {getRequesterName(wo)}
-                  </TableCell>
-                  <TableCell onClick={() => navigate(`/os/${wo.id}`)}>
-                    <SlaIndicator workOrder={wo} compact />
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground" onClick={() => navigate(`/os/${wo.id}`)}>
-                    {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    {canUpdate && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
-                            <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
+                            <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {canAssign && (
-                            <>
-                              <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                                <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-                          {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
-                            <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
-                              → {v}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                        </>
+                      )}
+                      {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
+                        <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
+                          → {v}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
