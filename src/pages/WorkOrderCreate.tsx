@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
-  const { currentTenantId, user, profile } = useAuth();
+  const { currentTenantId, user, profile, currentRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -81,7 +81,9 @@ export default function WorkOrderCreate() {
     [assets, unitId]
   );
 
-  // Technicians for assignment (includes analista)
+  // Technicians for assignment (analista cannot assign)
+  const canAssign = currentRole && !['analista', 'solicitante', 'leitura'].includes(currentRole);
+
   const { data: technicians = [] } = useQuery({
     queryKey: ['technicians', currentTenantId],
     queryFn: async () => {
@@ -95,7 +97,7 @@ export default function WorkOrderCreate() {
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!currentTenantId,
+    enabled: !!currentTenantId && !!canAssign,
   });
 
   // Auto-fill contact info when a requester is selected
@@ -361,19 +363,21 @@ export default function WorkOrderCreate() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Wrench className="h-3 w-3" /> Responsável Técnico
-                </Label>
-                {clearableSelect(assignedToId, setAssignedToId, 'Não atribuído',
-                  technicians.map((t: any) => (
-                    <SelectItem key={t.user_id} value={t.user_id}>
-                      {t.profiles?.name || t.profiles?.email}
-                    </SelectItem>
-                  ))
-                )}
-              </div>
+            <div className={`grid grid-cols-1 ${canAssign ? 'sm:grid-cols-2' : ''} gap-4`}>
+              {canAssign && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <Wrench className="h-3 w-3" /> Responsável Técnico
+                  </Label>
+                  {clearableSelect(assignedToId, setAssignedToId, 'Não atribuído',
+                    technicians.map((t: any) => (
+                      <SelectItem key={t.user_id} value={t.user_id}>
+                        {t.profiles?.name || t.profiles?.email}
+                      </SelectItem>
+                    ))
+                  )}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Solicitante</Label>
                 {clearableSelect(requesterId, setRequesterId, 'Nenhum (você será o solicitante)',
