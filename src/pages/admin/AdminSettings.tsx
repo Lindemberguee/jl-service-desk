@@ -16,8 +16,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { priorityLabels } from '@/lib/permissions';
-import { Plus, Settings2, Tag, Clock, Star, Shield } from 'lucide-react';
+import { Plus, Settings2, Tag, Clock, Star, Shield, ScrollText } from 'lucide-react';
 import { lazy, Suspense } from 'react';
+import AuditSettingsTab from '@/components/admin/audit/AuditSettingsTab';
 
 const RolePermissionsMatrix = lazy(() => import('@/components/admin/RolePermissionsMatrix'));
 
@@ -140,6 +141,7 @@ export default function AdminSettings() {
           <TabsTrigger value="categories"><Tag className="h-3 w-3 mr-1" />Categorias</TabsTrigger>
           <TabsTrigger value="sla"><Clock className="h-3 w-3 mr-1" />Políticas SLA</TabsTrigger>
           <TabsTrigger value="permissoes"><Shield className="h-3 w-3 mr-1" />Permissões</TabsTrigger>
+          <TabsTrigger value="auditoria"><ScrollText className="h-3 w-3 mr-1" />Auditoria</TabsTrigger>
           <TabsTrigger value="departamento"><Settings2 className="h-3 w-3 mr-1" />Departamento</TabsTrigger>
         </TabsList>
 
@@ -223,6 +225,10 @@ export default function AdminSettings() {
           <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
             <RolePermissionsMatrix />
           </Suspense>
+        </TabsContent>
+
+        <TabsContent value="auditoria">
+          <AuditSettingsTab />
         </TabsContent>
 
         <TabsContent value="departamento">
