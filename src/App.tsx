@@ -14,6 +14,7 @@ import WorkOrderDetail from "@/pages/WorkOrderDetail";
 import Cadastros from "@/pages/Cadastros";
 import Assets from "@/pages/Assets";
 import Stock from "@/pages/Stock";
+import MaterialControl from "@/pages/MaterialControl";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
 import Ferramentas from "@/pages/Ferramentas";
@@ -155,6 +156,7 @@ const App = () => (
               <Route path="cadastros" element={<Cadastros />} />
               <Route path="ativos" element={<Assets />} />
               <Route path="estoque" element={<Stock />} />
+              <Route path="materiais" element={<MaterialControl />} />
               <Route path="relatorios" element={<Reports />} />
               <Route path="usuarios" element={<UsersPage />} />
               <Route path="ferramentas" element={<Ferramentas />} />
