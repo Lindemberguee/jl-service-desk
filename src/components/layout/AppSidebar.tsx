@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
-  Gauge, ScrollText, Hammer, ChevronRight, CircleDot,
+  Gauge, ScrollText, Hammer, ChevronRight, CircleDot, Activity,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ const adminItems = [
   { label: 'Painel Consolidado', icon: Gauge, path: '/admin' },
   { label: 'Departamentos', icon: Building2, path: '/admin/departamentos' },
   { label: 'Usuários & Acessos', icon: ShieldCheck, path: '/admin/usuarios' },
+  { label: 'Saúde do Sistema', icon: Activity, path: '/admin/saude' },
   { label: 'Auditoria Global', icon: ScrollText, path: '/admin/auditoria' },
   { label: 'Configurações', icon: Settings2, path: '/admin/configuracoes' },
 ];
