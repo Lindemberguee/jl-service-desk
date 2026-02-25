@@ -100,6 +100,15 @@ export default function TechWorkOrderDetail() {
 
   const woTenantId = wo?.tenant_id;
 
+  const { data: tenantSettings } = useQuery({
+    queryKey: ['tenant_settings', woTenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from('tenants').select('show_ratings_to_techs').eq('id', woTenantId!).single();
+      return data;
+    },
+    enabled: !!woTenantId,
+  });
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', woTenantId],
     queryFn: async () => { const { data } = await supabase.from('categories').select('*').eq('tenant_id', woTenantId!); return data || []; },
@@ -466,6 +475,10 @@ export default function TechWorkOrderDetail() {
               [...events].reverse().map((ev: any) => {
                 const isComment = ev.type === 'comment_internal' || ev.type === 'comment_public';
                 const isInternal = ev.type === 'comment_internal';
+                const hasRating = !!(ev.payload as any)?.rating;
+
+                // Hide ratings from tech panel unless tenant setting allows it
+                if (hasRating && !tenantSettings?.show_ratings_to_techs) return null;
 
                 return (
                   <div key={ev.id} className={`border rounded-md p-3 text-sm ${isInternal ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-border'}`}>
@@ -482,7 +495,7 @@ export default function TechWorkOrderDetail() {
                         {statusLabels[(ev.payload as any)?.from] || (ev.payload as any)?.from} → {statusLabels[(ev.payload as any)?.to] || (ev.payload as any)?.to}
                       </p>
                     )}
-                    {(ev.payload as any)?.rating && (
+                    {hasRating && tenantSettings?.show_ratings_to_techs && (
                       <div className="flex items-center gap-1 mt-1">
                         {[1, 2, 3, 4, 5].map(s => (
                           <Star key={s} className={`h-3.5 w-3.5 ${s <= (ev.payload as any).rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />

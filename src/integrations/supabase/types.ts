@@ -492,6 +492,7 @@ export type Database = {
           name: string
           plan: Database["public"]["Enums"]["tenant_plan"]
           primary_color: string | null
+          show_ratings_to_techs: boolean
           slug: string
           updated_at: string
         }
@@ -505,6 +506,7 @@ export type Database = {
           name: string
           plan?: Database["public"]["Enums"]["tenant_plan"]
           primary_color?: string | null
+          show_ratings_to_techs?: boolean
           slug: string
           updated_at?: string
         }
@@ -518,6 +520,7 @@ export type Database = {
           name?: string
           plan?: Database["public"]["Enums"]["tenant_plan"]
           primary_color?: string | null
+          show_ratings_to_techs?: boolean
           slug?: string
           updated_at?: string
         }
