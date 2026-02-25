@@ -126,6 +126,51 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     return colors[edges.length % colors.length];
   }, [edges.length]);
 
+  const connectingFrom = useRef<{ nodeId: string; handleId: string | null } | null>(null);
+
+  const onConnectStart = useCallback((_: any, params: { nodeId: string | null; handleId: string | null }) => {
+    connectingFrom.current = { nodeId: params.nodeId || '', handleId: params.handleId };
+  }, []);
+
+  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+    if (readOnly || !connectingFrom.current) return;
+    // Check if dropped on a node/handle (xyflow adds class to targets)
+    const target = event.target as HTMLElement;
+    const isDroppedOnNode = target.closest('.react-flow__node') || target.closest('.react-flow__handle');
+    if (isDroppedOnNode) return;
+
+    // Get position from mouse or touch
+    const clientX = 'clientX' in event ? event.clientX : event.touches?.[0]?.clientX || 0;
+    const clientY = 'clientY' in event ? event.clientY : event.touches?.[0]?.clientY || 0;
+    const position = screenToFlowPosition({ x: clientX, y: clientY });
+
+    pushHistory();
+    const preset = getPreset('idea');
+    const newId = getNodeId();
+    const newNode: Node = {
+      id: newId,
+      type: 'canvasNode',
+      data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: 'idea' } satisfies CanvasNodeData,
+      position,
+    };
+    setNodes((nds) => [...nds, newNode]);
+
+    // Auto-connect from source to new node
+    const sourceId = connectingFrom.current.nodeId;
+    const sourceHandleId = connectingFrom.current.handleId;
+    setEdges((eds) => addEdge({
+      source: sourceId,
+      sourceHandle: sourceHandleId,
+      target: newId,
+      targetHandle: 'left-target',
+      type: 'custom',
+      data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
+      markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
+    }, eds));
+
+    connectingFrom.current = null;
+  }, [readOnly, screenToFlowPosition, nodes.length, setNodes, setEdges, edgeStyle, edgeColor, pushHistory]);
+
   const onConnect: OnConnect = useCallback((params: Connection) => {
     if (readOnly) return;
     pushHistory();
@@ -135,6 +180,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
       data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
       markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
     }, eds));
+    connectingFrom.current = null;
   }, [setEdges, readOnly, edgeStyle, pushHistory, edgeColor]);
 
   const createNode = useCallback((type: string, position: { x: number; y: number }) => {
@@ -298,6 +344,8 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
             onNodesChange={readOnly ? undefined : onNodesChangeWrapped}
             onEdgesChange={readOnly ? undefined : onEdgesChange}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             onDragOver={onDragOver}
             onDrop={onDrop}
             fitView
