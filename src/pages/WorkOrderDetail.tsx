@@ -10,20 +10,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission, roleLabels } from '@/lib/permissions';
+import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, CalendarDays, Tag, MapPin, Play, Pause, RotateCcw, Lock, Unlock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 import { WorkOrderCosts } from '@/components/WorkOrderCosts';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
-// Lookup data fetched based on WO's tenant_id, not currentTenantId
 
 const eventIcons: Record<string, any> = {
   created: Clock, status_changed: Clock, comment_internal: Lock,
@@ -84,45 +81,29 @@ export default function WorkOrderDetail() {
     },
   });
 
-  // Fetch lookup data based on the WO's tenant, not the current tenant
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', woTenantId],
-    queryFn: async () => {
-      const { data } = await supabase.from('categories').select('*').eq('tenant_id', woTenantId!);
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from('categories').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
   });
   const { data: units = [] } = useQuery({
     queryKey: ['units', woTenantId],
-    queryFn: async () => {
-      const { data } = await supabase.from('units').select('*').eq('tenant_id', woTenantId!);
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from('units').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
   });
   const { data: locations = [] } = useQuery({
     queryKey: ['locations', woTenantId],
-    queryFn: async () => {
-      const { data } = await supabase.from('locations').select('*').eq('tenant_id', woTenantId!);
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from('locations').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
   });
   const { data: assets = [] } = useQuery({
     queryKey: ['assets', woTenantId],
-    queryFn: async () => {
-      const { data } = await supabase.from('assets').select('*').eq('tenant_id', woTenantId!);
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from('assets').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
   });
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', woTenantId],
-    queryFn: async () => {
-      const { data } = await supabase.from('customers').select('*').eq('tenant_id', woTenantId!);
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from('customers').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
   });
 
@@ -152,30 +133,20 @@ export default function WorkOrderDetail() {
       if (status === 'concluida') updates.resolved_at = new Date().toISOString();
       if (status === 'encerrada') updates.closed_at = new Date().toISOString();
       const PAUSE_STATUSES = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'];
-      if (PAUSE_STATUSES.includes(status) && !wo?.paused_at) {
-        updates.paused_at = new Date().toISOString();
-      }
+      if (PAUSE_STATUSES.includes(status) && !wo?.paused_at) updates.paused_at = new Date().toISOString();
       if (!PAUSE_STATUSES.includes(status) && wo?.paused_at) {
-        const pausedMs = Date.now() - new Date(wo.paused_at).getTime();
-        updates.total_paused_ms = (wo.total_paused_ms || 0) + pausedMs;
+        updates.total_paused_ms = (wo.total_paused_ms || 0) + (Date.now() - new Date(wo.paused_at).getTime());
         updates.paused_at = null;
       }
       await updateWO(updates, 'status_changed', { from: wo?.status, to: status });
-      await logAudit({
-        entity: 'work_order', entityId: id,
-        action: 'work_order.status_changed', tenantId: currentTenantId,
-        diff: { from: wo?.status, to: status },
-      });
+      await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: status } });
     },
     onSuccess: () => { invalidateAll(); toast({ title: 'Status atualizado!' }); },
   });
 
   const assignMutation = useMutation({
     mutationFn: async (assignedToId: string | null) => {
-      await updateWO({ assigned_to_id: assignedToId }, 'assigned', {
-        assigned_to: assignedToId,
-        assigned_by: user?.id,
-      });
+      await updateWO({ assigned_to_id: assignedToId }, 'assigned', { assigned_to: assignedToId, assigned_by: user?.id });
     },
     onSuccess: () => { invalidateAll(); toast({ title: 'Responsável atualizado!' }); setAssignTo(''); },
   });
@@ -185,53 +156,38 @@ export default function WorkOrderDetail() {
       await supabase.from('work_order_events').insert({
         tenant_id: currentTenantId!, work_order_id: id!,
         type: (isPublicComment ? 'comment_public' : 'comment_internal') as any,
-        actor_user_id: user?.id,
-        payload: { text: comment },
+        actor_user_id: user?.id, payload: { text: comment },
       });
     },
-    onSuccess: () => {
-      setComment('');
-      qc.invalidateQueries({ queryKey: ['work_order_events', id] });
-      toast({ title: 'Comentário adicionado!' });
-    },
+    onSuccess: () => { setComment(''); qc.invalidateQueries({ queryKey: ['work_order_events', id] }); toast({ title: 'Comentário adicionado!' }); },
   });
 
-  // Quick workflow buttons
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('work_orders').update({ deleted_at: new Date().toISOString() } as any).eq('id', id!);
+      if (error) throw error;
+      await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.deleted', tenantId: currentTenantId, diff: { title: wo?.title, code: wo?.code } });
+    },
+    onSuccess: () => { toast({ title: 'OS excluída com sucesso' }); navigate('/os'); },
+    onError: (err: any) => { toast({ title: 'Erro ao excluir OS', description: err.message, variant: 'destructive' }); },
+  });
+
   const isPaused = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'].includes(wo?.status || '');
   const isActive = wo?.status === 'em_execucao';
   const isClosed = ['concluida', 'aprovada', 'encerrada'].includes(wo?.status || '');
-
   const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
   const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
   const canClose = currentRole && hasPermission(currentRole, 'os:close');
   const canManage = currentRole && hasPermission(currentRole, 'os:manage');
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('work_orders')
-        .update({ deleted_at: new Date().toISOString() } as any)
-        .eq('id', id!);
-      if (error) throw error;
-      await logAudit({
-        entity: 'work_order', entityId: id,
-        action: 'work_order.deleted', tenantId: currentTenantId,
-        diff: { title: wo?.title, code: wo?.code },
-      });
-    },
-    onSuccess: () => {
-      toast({ title: 'OS excluída com sucesso' });
-      navigate('/os');
-    },
-    onError: (err: any) => {
-      toast({ title: 'Erro ao excluir OS', description: err.message, variant: 'destructive' });
-    },
-  });
-
   if (isLoading) {
     return (
-      <div className="space-y-4 max-w-5xl mx-auto">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="space-y-4 max-w-6xl mx-auto">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-96 lg:col-span-2" />
+          <Skeleton className="h-96" />
+        </div>
       </div>
     );
   }
@@ -246,137 +202,123 @@ export default function WorkOrderDetail() {
   }
 
   const sla = calculateSlaStatus(wo);
-
-  const getProfileName = (userId: string | null) => {
-    if (!userId) return null;
-    return profiles.find((p: any) => p.id === userId)?.name || userId.slice(0, 8);
-  };
-
+  const getProfileName = (userId: string | null) => { if (!userId) return null; return profiles.find((p: any) => p.id === userId)?.name || userId.slice(0, 8); };
   const getCategoryName = (catId: string | null) => categories.find((c: any) => c.id === catId)?.name;
   const getUnitName = (unitId: string | null) => units.find((u: any) => u.id === unitId)?.name;
   const getLocationName = (locId: string | null) => locations.find((l: any) => l.id === locId)?.name;
-  const getAssetDisplay = (assetId: string | null) => {
-    const a = assets.find((a: any) => a.id === assetId);
-    if (!a) return undefined;
-    return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`;
-  };
+  const getAssetDisplay = (assetId: string | null) => { const a = assets.find((a: any) => a.id === assetId); if (!a) return undefined; return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`; };
   const getCustomerName = (custId: string | null) => customers.find((c: any) => c.id === custId)?.name;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5" onClick={() => navigate('/os')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-sm font-mono text-muted-foreground">{wo.code}</span>
-            <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
-              {priorityLabels[wo.priority]}
-            </Badge>
-            <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
-              {statusLabels[wo.status]}
-            </Badge>
-            <SlaIndicator workOrder={wo} compact />
-            {wo.visibility === 'customer' && (
-              <Badge variant="outline" className="text-[11px] bg-info/10 text-info border-info/20 gap-1">
-                <Eye className="h-3 w-3" /> Cliente
-              </Badge>
+    <div className="max-w-6xl mx-auto space-y-5">
+      {/* ─── Hero Header ─── */}
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => navigate('/os')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">{wo.code}</span>
+              <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>{priorityLabels[wo.priority]}</Badge>
+              <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>{statusLabels[wo.status]}</Badge>
+              <SlaIndicator workOrder={wo} compact />
+              {wo.visibility === 'customer' && (
+                <Badge variant="outline" className="text-[11px] bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1">
+                  <Eye className="h-3 w-3" /> Cliente
+                </Badge>
+              )}
+            </div>
+            <h1 className="text-lg sm:text-xl font-semibold leading-snug">{wo.title}</h1>
+          </div>
+          {canManage && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
+                  <AlertDialogDescription>Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+
+        {/* Workflow action buttons */}
+        {canUpdate && !isClosed && (
+          <div className="flex gap-2 flex-wrap mt-4 pt-4 border-t border-border">
+            {wo.status === 'aberta' && (
+              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                <Play className="h-3.5 w-3.5" /> Iniciar Execução
+              </Button>
+            )}
+            {isActive && (
+              <>
+                <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('aguardando_peca')} disabled={statusMutation.isPending}>
+                  <Pause className="h-3.5 w-3.5" /> Pausar (Peça)
+                </Button>
+                <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
+                  <Pause className="h-3.5 w-3.5" /> Pausar (Solicitante)
+                </Button>
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white" onClick={() => statusMutation.mutate('concluida')} disabled={statusMutation.isPending}>
+                  <CheckSquare className="h-3.5 w-3.5" /> Resolver
+                </Button>
+              </>
+            )}
+            {isPaused && (
+              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                <Play className="h-3.5 w-3.5" /> Retomar
+              </Button>
+            )}
+            {wo.status === 'concluida' && canClose && (
+              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('encerrada')} disabled={statusMutation.isPending}>
+                <CheckSquare className="h-3.5 w-3.5" /> Encerrar
+              </Button>
+            )}
+            {wo.status === 'reaberta' && (
+              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                <Play className="h-3.5 w-3.5" /> Iniciar Execução
+              </Button>
             )}
           </div>
-          <h1 className="text-lg font-semibold">{wo.title}</h1>
-        </div>
-        {canManage && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteMutation.mutate()}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        )}
+        {isClosed && wo.status !== 'reaberta' && canUpdate && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('reaberta')} disabled={statusMutation.isPending}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reabrir OS
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Quick workflow buttons */}
-      {canUpdate && !isClosed && (
-        <div className="flex gap-2 flex-wrap">
-          {wo.status === 'aberta' && (
-            <Button size="sm" variant="default" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-              <Play className="h-3.5 w-3.5" /> Iniciar Execução
-            </Button>
-          )}
-          {isActive && (
-            <>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('aguardando_peca')} disabled={statusMutation.isPending}>
-                <Pause className="h-3.5 w-3.5" /> Pausar (Peça)
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
-                <Pause className="h-3.5 w-3.5" /> Pausar (Solicitante)
-              </Button>
-              <Button size="sm" variant="default" className="h-8 gap-1.5 text-xs bg-green-600 hover:bg-green-700" onClick={() => statusMutation.mutate('concluida')} disabled={statusMutation.isPending}>
-                <CheckSquare className="h-3.5 w-3.5" /> Resolver
-              </Button>
-            </>
-          )}
-          {isPaused && (
-            <Button size="sm" variant="default" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-              <Play className="h-3.5 w-3.5" /> Retomar
-            </Button>
-          )}
-          {wo.status === 'concluida' && canClose && (
-            <Button size="sm" variant="default" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('encerrada')} disabled={statusMutation.isPending}>
-              <CheckSquare className="h-3.5 w-3.5" /> Encerrar
-            </Button>
-          )}
-          {wo.status === 'reaberta' && (
-            <Button size="sm" variant="default" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-              <Play className="h-3.5 w-3.5" /> Iniciar Execução
-            </Button>
-          )}
-        </div>
-      )}
-      {isClosed && wo.status !== 'reaberta' && canUpdate && (
-        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => statusMutation.mutate('reaberta')} disabled={statusMutation.isPending}>
-          <RotateCcw className="h-3.5 w-3.5" /> Reabrir OS
-        </Button>
-      )}
-
-      {/* Content */}
+      {/* ─── Tabs ─── */}
       <Tabs defaultValue="resumo">
-        <TabsList className="bg-card border border-border h-9">
-          <TabsTrigger value="resumo" className="text-xs h-7">Resumo</TabsTrigger>
-          <TabsTrigger value="timeline" className="text-xs h-7">Timeline ({events.length})</TabsTrigger>
-          <TabsTrigger value="anexos" className="text-xs h-7">Anexos</TabsTrigger>
-          <TabsTrigger value="custos" className="text-xs h-7">Custos</TabsTrigger>
+        <TabsList className="bg-card border border-border h-10 rounded-lg p-1">
+          <TabsTrigger value="resumo" className="text-xs h-8 rounded-md gap-1.5"><Info className="h-3.5 w-3.5" />Resumo</TabsTrigger>
+          <TabsTrigger value="timeline" className="text-xs h-8 rounded-md gap-1.5"><MessageSquare className="h-3.5 w-3.5" />Timeline ({events.length})</TabsTrigger>
+          <TabsTrigger value="anexos" className="text-xs h-8 rounded-md gap-1.5"><Package className="h-3.5 w-3.5" />Anexos</TabsTrigger>
+          <TabsTrigger value="custos" className="text-xs h-8 rounded-md gap-1.5"><Shield className="h-3.5 w-3.5" />Custos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="resumo" className="mt-3">
+        {/* ─── Resumo ─── */}
+        <TabsContent value="resumo" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Main content - 2 cols */}
+            {/* Main content */}
             <div className="lg:col-span-2 space-y-4">
               {/* Description */}
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Descrição</CardTitle>
+              <Card className="border-border shadow-none rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground" />Descrição</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {wo.description ? (
@@ -387,13 +329,13 @@ export default function WorkOrderDetail() {
                 </CardContent>
               </Card>
 
-              {/* Context: Category, Unit, Location, Asset */}
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Contexto</CardTitle>
+              {/* Context */}
+              <Card className="border-border shadow-none rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />Contexto</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
                     <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
                     <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
@@ -402,34 +344,35 @@ export default function WorkOrderDetail() {
                 </CardContent>
               </Card>
 
-              {/* SLA Card */}
+              {/* SLA */}
               {(wo.response_due_at || wo.resolve_due_at) && (
-                <Card className="border-border shadow-none">
-                  <CardHeader className="pb-3">
+                <Card className={`shadow-none rounded-xl ${sla.responseOverdue || sla.resolveOverdue ? 'border-destructive/40 bg-destructive/5' : 'border-border'}`}>
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" /> SLA
-                      {isPaused && <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/20">Pausado</Badge>}
+                      <AlertTriangle className={`h-4 w-4 ${sla.responseOverdue || sla.resolveOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
+                      SLA
+                      {isPaused && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">Pausado</Badge>}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {wo.response_due_at && (
-                        <div>
+                        <div className="bg-muted/40 rounded-lg p-3">
                           <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Resposta até</p>
                           <p className="text-sm font-medium">{new Date(wo.response_due_at).toLocaleString('pt-BR')}</p>
                           {sla.responseRemainingMs !== null && (
-                            <p className={`text-xs mt-0.5 ${sla.responseOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                            <p className={`text-xs mt-1 ${sla.responseOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
                               {sla.responseOverdue ? '⚠ Atrasada: ' : 'Restante: '}{formatRemainingTime(sla.responseRemainingMs)}
                             </p>
                           )}
                         </div>
                       )}
                       {wo.resolve_due_at && (
-                        <div>
+                        <div className="bg-muted/40 rounded-lg p-3">
                           <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Solução até</p>
                           <p className="text-sm font-medium">{new Date(wo.resolve_due_at).toLocaleString('pt-BR')}</p>
                           {sla.resolveRemainingMs !== null && (
-                            <p className={`text-xs mt-0.5 ${sla.resolveOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                            <p className={`text-xs mt-1 ${sla.resolveOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
                               {sla.resolveOverdue ? '⚠ Atrasada: ' : 'Restante: '}{formatRemainingTime(sla.resolveRemainingMs)}
                             </p>
                           )}
@@ -441,49 +384,49 @@ export default function WorkOrderDetail() {
               )}
             </div>
 
-            {/* Sidebar - 1 col */}
+            {/* ─── Sidebar ─── */}
             <div className="space-y-4">
               {/* Requester */}
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Solicitante</CardTitle>
+              <Card className="border-border shadow-none rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />Solicitante</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm space-y-1.5">
-                  {wo.requester_id ? (
-                    <>
-                      <p className="font-medium">{getCustomerName(wo.requester_id)}</p>
-                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1">✉ {(wo.requester_contact as any).email}</p>}
-                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1">📞 {(wo.requester_contact as any).phone}</p>}
-                    </>
-                  ) : (wo as any).requester_user_id ? (
-                    <>
-                      <p className="font-medium">{getProfileName((wo as any).requester_user_id)}</p>
-                      {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1">✉ {(wo.requester_contact as any).email}</p>}
-                      {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1">📞 {(wo.requester_contact as any).phone}</p>}
-                      {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">🕐 Horário: {(wo.requester_contact as any).preferred_time}</p>}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground text-xs">Não informado</p>
-                  )}
+                <CardContent>
+                  <div className="space-y-2">
+                    {wo.requester_id ? (
+                      <>
+                        <p className="text-sm font-medium">{getCustomerName(wo.requester_id)}</p>
+                        {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
+                        {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
+                      </>
+                    ) : (wo as any).requester_user_id ? (
+                      <>
+                        <p className="text-sm font-medium">{getProfileName((wo as any).requester_user_id)}</p>
+                        {(wo.requester_contact as any)?.email && <p className="text-xs text-muted-foreground flex items-center gap-1.5">✉ {(wo.requester_contact as any).email}</p>}
+                        {(wo.requester_contact as any)?.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5">📞 {(wo.requester_contact as any).phone}</p>}
+                        {(wo.requester_contact as any)?.preferred_time && <p className="text-xs text-muted-foreground">🕐 Horário: {(wo.requester_contact as any).preferred_time}</p>}
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-xs italic">Não informado</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Assignment */}
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Atribuição</CardTitle>
+              <Card className="border-border shadow-none rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Atribuição</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Responsável</p>
+                  <div className="bg-muted/40 rounded-lg p-3">
+                    <p className="text-[11px] uppercase font-medium text-muted-foreground mb-0.5">Responsável</p>
                     <p className="text-sm font-medium">{getProfileName(wo.assigned_to_id) || '—'}</p>
                   </div>
                   {canAssign && (
                     <div className="flex gap-2">
                       <Select value={assignTo} onValueChange={setAssignTo}>
-                        <SelectTrigger className="h-8 text-xs flex-1">
-                          <SelectValue placeholder="Atribuir para..." />
-                        </SelectTrigger>
+                        <SelectTrigger className="h-9 text-xs flex-1 rounded-lg"><SelectValue placeholder="Atribuir para..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={user?.id || 'me'}>Para mim</SelectItem>
                           {profiles.filter((p: any) => p.id !== user?.id).map((p: any) => (
@@ -491,7 +434,7 @@ export default function WorkOrderDetail() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" className="h-8 text-xs" disabled={!assignTo || assignMutation.isPending} onClick={() => assignMutation.mutate(assignTo)}>
+                      <Button size="sm" className="h-9 w-9 p-0 rounded-lg" disabled={!assignTo || assignMutation.isPending} onClick={() => assignMutation.mutate(assignTo)}>
                         {assignMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
@@ -501,34 +444,32 @@ export default function WorkOrderDetail() {
 
               {/* Status change */}
               {canUpdate && (
-                <Card className="border-border shadow-none">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold">Alterar Status</CardTitle>
+                <Card className="border-border shadow-none rounded-xl">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" />Alterar Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <Select value={newStatus} onValueChange={setNewStatus}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Novo status" />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs rounded-lg"><SelectValue placeholder="Novo status" /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(statusLabels).map(([k, v]) => (
                           <SelectItem key={k} value={k}>{v}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button size="sm" className="w-full h-8 text-xs" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
+                    <Button size="sm" className="w-full h-9 text-xs rounded-lg" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
                       {statusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
                     </Button>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Info card */}
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Informações</CardTitle>
+              {/* Info */}
+              <Card className="border-border shadow-none rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Informações</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-xs">
+                <CardContent className="space-y-2.5 text-xs">
                   <InfoRow label="ID" value={wo.id.slice(0, 8)} mono />
                   <InfoRow label="Visibilidade" value={wo.visibility === 'internal' ? 'Interna' : 'Cliente'} />
                   <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
@@ -552,14 +493,15 @@ export default function WorkOrderDetail() {
           </div>
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-3">
-          <Card className="border-border shadow-none">
+        {/* ─── Timeline ─── */}
+        <TabsContent value="timeline" className="mt-4">
+          <Card className="border-border shadow-none rounded-xl">
             <CardContent className="pt-5">
               {/* Comment input */}
-              <div className="mb-4 pb-4 border-b border-border">
-                <div className="flex gap-2 mb-2">
-                  <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Escreva um comentário..." rows={2} className="flex-1 text-sm" />
-                  <Button size="icon" className="h-[68px] w-9" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
+              <div className="mb-5 pb-5 border-b border-border">
+                <div className="flex gap-2 mb-2.5">
+                  <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Escreva um comentário..." rows={2} className="flex-1 text-sm rounded-lg" />
+                  <Button size="icon" className="h-[68px] w-10 rounded-lg" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
                     {commentMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
@@ -572,7 +514,7 @@ export default function WorkOrderDetail() {
                 </div>
               </div>
 
-              {/* Events list */}
+              {/* Events */}
               <div className="space-y-0">
                 {events.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento registrado.</p>
@@ -586,7 +528,6 @@ export default function WorkOrderDetail() {
 
                     return (
                       <div key={ev.id} className="flex gap-3 items-start relative">
-                        {/* Vertical line */}
                         {idx < events.length - 1 && (
                           <div className="absolute left-[13px] top-8 bottom-0 w-px bg-border" />
                         )}
@@ -600,9 +541,7 @@ export default function WorkOrderDetail() {
                         <div className="flex-1 min-w-0 pb-4">
                           <div className="flex items-center gap-2 flex-wrap">
                             {actorName && <span className="text-xs font-semibold">{actorName}</span>}
-                            <span className="text-xs text-muted-foreground">
-                              {eventLabels[ev.type] || ev.type.replace(/_/g, ' ')}
-                            </span>
+                            <span className="text-xs text-muted-foreground">{eventLabels[ev.type] || ev.type.replace(/_/g, ' ')}</span>
                             {isInternal && (
                               <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
                                 <Lock className="h-2.5 w-2.5 mr-0.5" /> Interno
@@ -611,24 +550,22 @@ export default function WorkOrderDetail() {
                             <span className="text-[11px] text-muted-foreground ml-auto">{new Date(ev.created_at).toLocaleString('pt-BR')}</span>
                           </div>
                           {payload?.text && (
-                            <p className={`text-sm mt-1 rounded-md p-2 ${
+                            <p className={`text-sm mt-1.5 rounded-lg p-3 ${
                               isInternal ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800' : 'bg-muted/50'
                             }`}>{payload.text}</p>
                           )}
                           {payload?.from && payload?.to && (
-                            <p className="text-[11px] text-muted-foreground mt-1">
+                            <p className="text-[11px] text-muted-foreground mt-1.5">
                               <Badge variant="outline" className={`text-[10px] mr-1 ${statusColors[payload.from] || ''}`}>{statusLabels[payload.from] || payload.from}</Badge>
                               →
                               <Badge variant="outline" className={`text-[10px] ml-1 ${statusColors[payload.to] || ''}`}>{statusLabels[payload.to] || payload.to}</Badge>
                             </p>
                           )}
                           {payload?.assigned_to && (
-                            <p className="text-[11px] text-muted-foreground mt-1">
-                              Atribuído para: <strong>{getProfileName(payload.assigned_to)}</strong>
-                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-1">Atribuído para: <strong>{getProfileName(payload.assigned_to)}</strong></p>
                           )}
                           {payload?.rating && (
-                            <div className="flex items-center gap-1 mt-1">
+                            <div className="flex items-center gap-1 mt-1.5">
                               {[1, 2, 3, 4, 5].map(s => (
                                 <Star key={s} className={`h-3.5 w-3.5 ${s <= payload.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
                               ))}
@@ -645,11 +582,11 @@ export default function WorkOrderDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="anexos" className="mt-3">
+        <TabsContent value="anexos" className="mt-4">
           <WorkOrderAttachments workOrderId={wo.id} resolvedAt={wo.resolved_at} />
         </TabsContent>
 
-        <TabsContent value="custos" className="mt-3">
+        <TabsContent value="custos" className="mt-4">
           <WorkOrderCosts workOrder={wo} canManage={!!canUpdate} />
         </TabsContent>
       </Tabs>
@@ -659,11 +596,11 @@ export default function WorkOrderDetail() {
 
 function InfoField({ icon: Icon, label, value }: { icon: any; label: string; value: string | undefined | null }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 bg-muted/40 rounded-lg p-3">
+      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
       <div>
         <p className="text-[11px] uppercase font-medium text-muted-foreground">{label}</p>
-        <p className="text-sm">{value || '—'}</p>
+        <p className="text-sm font-medium">{value || '—'}</p>
       </div>
     </div>
   );
@@ -671,9 +608,9 @@ function InfoField({ icon: Icon, label, value }: { icon: any; label: string; val
 
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? 'font-mono text-[11px]' : ''}>{value}</span>
+      <span className={`text-foreground ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</span>
     </div>
   );
 }
