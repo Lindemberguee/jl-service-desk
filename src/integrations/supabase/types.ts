@@ -135,6 +135,30 @@ export type Database = {
           },
         ]
       }
+      audit_settings: {
+        Row: {
+          enabled_entities: string[]
+          id: string
+          retention_days: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled_entities?: string[]
+          id?: string
+          retention_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled_entities?: string[]
+          id?: string
+          retention_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
