@@ -72,41 +72,66 @@ function applyThemeToDOM(theme: PersonalTheme) {
   const root = document.documentElement;
   const isDark = root.classList.contains('dark');
 
-  // Primary color
   const primaryParts = hexToHslParts(theme.primary);
+  const accentParts = hexToHslParts(theme.accent);
+
   if (primaryParts) {
     const { h, s } = primaryParts;
     const pl = isDark ? 55 : 38;
+
+    // Core primary
     root.style.setProperty('--primary', `${h} ${s}% ${pl}%`);
-    root.style.setProperty('--primary-foreground', `${h} ${Math.min(s, 30)}% ${isDark ? 98 : 98}%`);
+    root.style.setProperty('--primary-foreground', `${h} ${Math.min(s, 30)}% 98%`);
     root.style.setProperty('--ring', `${h} ${s}% ${pl}%`);
+
+    // Tint backgrounds/cards/borders with primary hue for cohesion
+    if (isDark) {
+      root.style.setProperty('--background', `${h} 40% 4%`);
+      root.style.setProperty('--foreground', `${h} 20% 91%`);
+      root.style.setProperty('--card', `${h} 30% 7%`);
+      root.style.setProperty('--card-foreground', `${h} 20% 91%`);
+      root.style.setProperty('--popover', `${h} 30% 7%`);
+      root.style.setProperty('--popover-foreground', `${h} 20% 91%`);
+      root.style.setProperty('--secondary', `${h} 25% 14%`);
+      root.style.setProperty('--secondary-foreground', `${h} 20% 91%`);
+      root.style.setProperty('--muted', `${h} 20% 11%`);
+      root.style.setProperty('--muted-foreground', `${h} 10% 55%`);
+      root.style.setProperty('--border', `${h} 25% 14%`);
+      root.style.setProperty('--input', `${h} 25% 14%`);
+    } else {
+      root.style.setProperty('--background', `${h} 20% 98%`);
+      root.style.setProperty('--foreground', `${h} 30% 11%`);
+      root.style.setProperty('--card', `${h} 10% 100%`);
+      root.style.setProperty('--card-foreground', `${h} 30% 11%`);
+      root.style.setProperty('--popover', `${h} 10% 100%`);
+      root.style.setProperty('--popover-foreground', `${h} 30% 11%`);
+      root.style.setProperty('--secondary', `${h} 16% 93%`);
+      root.style.setProperty('--secondary-foreground', `${h} 30% 20%`);
+      root.style.setProperty('--muted', `${h} 15% 96%`);
+      root.style.setProperty('--muted-foreground', `${h} 10% 46%`);
+      root.style.setProperty('--border', `${h} 18% 90%`);
+      root.style.setProperty('--input', `${h} 18% 90%`);
+    }
+
+    // Charts
     root.style.setProperty('--chart-1', `${h} ${s}% ${pl}%`);
     root.style.setProperty('--chart-2', `${h} ${Math.max(s - 20, 20)}% ${isDark ? 45 : 48}%`);
   }
 
-  // Accent color — used in badges, highlights, secondary elements
-  const accentParts = hexToHslParts(theme.accent);
+  // Accent
   if (accentParts) {
     const { h, s } = accentParts;
-    root.style.setProperty('--accent', `${h} ${Math.max(s - 60, 8)}% ${isDark ? 17 : 95}%`);
-    root.style.setProperty('--accent-foreground', `${h} ${s}% ${isDark ? 90 : 15}%`);
+    root.style.setProperty('--accent', `${h} ${Math.max(s - 50, 10)}% ${isDark ? 14 : 93}%`);
+    root.style.setProperty('--accent-foreground', `${h} ${s}% ${isDark ? 91 : 11}%`);
     root.style.setProperty('--chart-3', `${h} ${s}% ${isDark ? 55 : 45}%`);
     root.style.setProperty('--chart-4', `${h} ${Math.max(s - 15, 20)}% ${isDark ? 40 : 55}%`);
   }
 
-  // Muted — derives from primary for cohesive look
-  if (primaryParts) {
-    const { h } = primaryParts;
-    root.style.setProperty('--muted', `${h} 10% ${isDark ? 15 : 95}%`);
-    root.style.setProperty('--muted-foreground', `${h} 8% ${isDark ? 55 : 45}%`);
-  }
-
-  // Sidebar colors from sidebar hex
+  // Sidebar
   const sidebarParts = hexToHslParts(theme.sidebar);
-  const sidebarPrimaryParts = hexToHslParts(theme.primary);
-  if (sidebarParts && sidebarPrimaryParts) {
+  if (sidebarParts && primaryParts) {
     const sh = sidebarParts.h;
-    const ph = sidebarPrimaryParts.h;
+    const ph = primaryParts.h;
     root.style.setProperty('--sidebar-background', `${sh} 47% ${sidebarParts.l}%`);
     root.style.setProperty('--sidebar-foreground', `${sh} 31% 91%`);
     root.style.setProperty('--sidebar-primary', `${ph} 94% 55%`);
@@ -122,9 +147,15 @@ function applyThemeToDOM(theme: PersonalTheme) {
 function clearThemeFromDOM() {
   const root = document.documentElement;
   const vars = [
-    '--primary', '--primary-foreground', '--ring', '--chart-1', '--chart-2', '--chart-3', '--chart-4',
-    '--accent', '--accent-foreground',
+    '--primary', '--primary-foreground', '--ring',
+    '--background', '--foreground',
+    '--card', '--card-foreground',
+    '--popover', '--popover-foreground',
+    '--secondary', '--secondary-foreground',
     '--muted', '--muted-foreground',
+    '--accent', '--accent-foreground',
+    '--border', '--input',
+    '--chart-1', '--chart-2', '--chart-3', '--chart-4',
     '--sidebar-background', '--sidebar-foreground', '--sidebar-primary',
     '--sidebar-primary-foreground', '--sidebar-accent', '--sidebar-accent-foreground',
     '--sidebar-border', '--sidebar-ring', '--sidebar-muted-foreground',
