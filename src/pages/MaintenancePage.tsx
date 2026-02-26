@@ -171,7 +171,7 @@ export default function MaintenancePage() {
     queryFn: async () => {
       if (!currentTenantId) return [];
       const h = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/stock_items?tenant_id=eq.${currentTenantId}&select=id,name,sku,current_level&order=name`, { headers: h });
+      const res = await fetch(`${BASE_URL}/rest/v1/stock_items?tenant_id=eq.${currentTenantId}&select=id,name,sku,current_level,brand,model,component_type,patrimony_code,serial_number,description&order=name`, { headers: h });
       return res.ok ? res.json() : [];
     },
     enabled: !!currentTenantId,
@@ -897,7 +897,24 @@ export default function MaintenancePage() {
               </Label>
               <Select
                 value={cForm.stock_item_id || 'none'}
-                onValueChange={v => setCForm(p => ({ ...p, stock_item_id: v === 'none' ? '' : v }))}
+                onValueChange={v => {
+                  const selectedId = v === 'none' ? '' : v;
+                  setCForm(p => ({ ...p, stock_item_id: selectedId }));
+                  // Auto-fill brand, model, type, serial from stock item
+                  if (selectedId) {
+                    const si = stockItems.find((s: any) => s.id === selectedId);
+                    if (si) {
+                      setCForm(p => ({
+                        ...p,
+                        stock_item_id: selectedId,
+                        brand: si.brand || p.brand,
+                        model: si.model || p.model,
+                        component_type: si.component_type || p.component_type,
+                        serial_number: si.serial_number || p.serial_number,
+                      }));
+                    }
+                  }
+                }}
               >
                 <SelectTrigger className={!cForm.stock_item_id && !editingComponent ? 'border-amber-500/50' : ''}>
                   <SelectValue placeholder="Selecione o item de estoque" />
@@ -915,7 +932,8 @@ export default function MaintenancePage() {
                       <SelectItem key={s.id} value={s.id}>
                         <div className="flex items-center gap-2">
                           <span>{s.name}</span>
-                          {s.sku && <span className="text-muted-foreground text-xs">({s.sku})</span>}
+                          {s.brand && <span className="text-muted-foreground text-[10px]">{s.brand}</span>}
+                          {s.sku && <span className="text-muted-foreground text-[10px]">({s.sku})</span>}
                           <Badge variant="outline" className="ml-auto text-[10px] h-5">
                             Qtd: {s.current_level}
                           </Badge>

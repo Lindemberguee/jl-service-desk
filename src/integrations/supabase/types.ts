@@ -931,33 +931,51 @@ export type Database = {
       }
       stock_items: {
         Row: {
+          brand: string | null
+          component_type: string | null
           created_at: string
           current_level: number | null
+          description: string | null
           id: string
           min_level: number | null
+          model: string | null
           name: string
+          patrimony_code: string | null
+          serial_number: string | null
           sku: string | null
           tenant_id: string
           unit: string | null
           updated_at: string
         }
         Insert: {
+          brand?: string | null
+          component_type?: string | null
           created_at?: string
           current_level?: number | null
+          description?: string | null
           id?: string
           min_level?: number | null
+          model?: string | null
           name: string
+          patrimony_code?: string | null
+          serial_number?: string | null
           sku?: string | null
           tenant_id: string
           unit?: string | null
           updated_at?: string
         }
         Update: {
+          brand?: string | null
+          component_type?: string | null
           created_at?: string
           current_level?: number | null
+          description?: string | null
           id?: string
           min_level?: number | null
+          model?: string | null
           name?: string
+          patrimony_code?: string | null
+          serial_number?: string | null
           sku?: string | null
           tenant_id?: string
           unit?: string | null

@@ -55,11 +55,23 @@ export default function Stock() {
   const [editUnit, setEditUnit] = useState('');
   const [editMinLevel, setEditMinLevel] = useState('');
   const [editCurrentLevel, setEditCurrentLevel] = useState('');
+  const [editBrand, setEditBrand] = useState('');
+  const [editModel, setEditModel] = useState('');
+  const [editComponentType, setEditComponentType] = useState('');
+  const [editPatrimonyCode, setEditPatrimonyCode] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSerialNumber, setEditSerialNumber] = useState('');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
   const [minLevel, setMinLevel] = useState('0');
   const [initialQty, setInitialQty] = useState('0');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [componentType, setComponentType] = useState('');
+  const [patrimonyCode, setPatrimonyCode] = useState('');
+  const [description, setDescription] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
@@ -98,7 +110,7 @@ export default function Stock() {
   const filteredItems = useMemo(() => {
     const result = items.filter((item: any) => {
       const s = debouncedSearch.toLowerCase();
-      const matchSearch = !debouncedSearch || item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s);
+      const matchSearch = !debouncedSearch || item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s) || item.brand?.toLowerCase().includes(s) || item.model?.toLowerCase().includes(s) || item.patrimony_code?.toLowerCase().includes(s);
       const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
       const matchStatus = statusFilter === 'all' || (statusFilter === 'low' && isLow) || (statusFilter === 'normal' && !isLow);
       return matchSearch && matchStatus;
@@ -171,11 +183,17 @@ export default function Stock() {
     e.preventDefault();
     try {
       const qty = parseInt(initialQty) || 0;
-      const result = await insertItem.mutateAsync({ name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty });
+      const result = await insertItem.mutateAsync({
+        name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty,
+        brand: brand || null, model: model || null, component_type: componentType || null,
+        patrimony_code: patrimonyCode || null, description: description || null,
+        serial_number: serialNumber || null,
+      });
       await logAudit({ entity: 'stock', entityId: (result as any)?.id, action: 'stock.created', tenantId: currentTenantId, diff: { name, sku, unit, initial_qty: qty } });
       toast({ title: 'Item criado!' });
       setOpen(false);
       setName(''); setSku(''); setUnit('un'); setMinLevel('0'); setInitialQty('0');
+      setBrand(''); setModel(''); setComponentType(''); setPatrimonyCode(''); setDescription(''); setSerialNumber('');
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -503,18 +521,48 @@ export default function Stock() {
             <DialogTrigger asChild>
               <Button size="sm" className="h-8 gap-1.5 text-xs"><Plus className="h-3.5 w-3.5" />Novo Item</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Novo Item de Estoque</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} required className="h-9" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={name} onChange={e => setName(e.target.value)} required className="h-9" placeholder="Ex: Memória RAM DDR4 8GB" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={sku} onChange={e => setSku(e.target.value)} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={sku} onChange={e => setSku(e.target.value)} className="h-9" placeholder="Ex: SKU-001" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Patrimônio</Label><Input value={patrimonyCode} onChange={e => setPatrimonyCode(e.target.value)} className="h-9" placeholder="Ex: PAT-2024-001" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label className="text-xs">Marca</Label><Input value={brand} onChange={e => setBrand(e.target.value)} className="h-9" placeholder="Ex: Kingston, Intel" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} className="h-9" placeholder="Ex: KVR32N22S8/8" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tipo / Categoria</Label>
+                    <Select value={componentType} onValueChange={setComponentType}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cpu">Processador (CPU)</SelectItem>
+                        <SelectItem value="ram">Memória RAM</SelectItem>
+                        <SelectItem value="hd">HD / Disco Rígido</SelectItem>
+                        <SelectItem value="ssd">SSD</SelectItem>
+                        <SelectItem value="monitor">Monitor</SelectItem>
+                        <SelectItem value="mouse">Mouse</SelectItem>
+                        <SelectItem value="teclado">Teclado</SelectItem>
+                        <SelectItem value="fonte">Fonte de Alimentação</SelectItem>
+                        <SelectItem value="placa_mae">Placa-Mãe</SelectItem>
+                        <SelectItem value="placa_video">Placa de Vídeo</SelectItem>
+                        <SelectItem value="notebook">Notebook</SelectItem>
+                        <SelectItem value="impressora">Impressora</SelectItem>
+                        <SelectItem value="outros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label className="text-xs">Nº de Série</Label><Input value={serialNumber} onChange={e => setSerialNumber(e.target.value)} className="h-9" placeholder="S/N do item" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={unit} onChange={e => setUnit(e.target.value)} className="h-9" placeholder="un, pc, m..." /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Qtd. Inicial</Label><Input type="number" min="0" value={initialQty} onChange={e => setInitialQty(e.target.value)} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Nível Mín.</Label><Input type="number" min="0" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label className="text-xs">Quantidade inicial</Label><Input type="number" min="0" value={initialQty} onChange={e => setInitialQty(e.target.value)} className="h-9" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" min="0" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
-                </div>
+                <div className="space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={description} onChange={e => setDescription(e.target.value)} className="h-9" placeholder="Detalhes adicionais do item..." /></div>
                 <Button type="submit" className="w-full h-8 text-sm" disabled={insertItem.isPending}>
                   {insertItem.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   Salvar
@@ -654,6 +702,8 @@ export default function Stock() {
                     </TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[90px]">SKU</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Patrimônio</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">Marca / Modelo</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Unid.</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Atual</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Mín.</TableHead>
@@ -672,6 +722,10 @@ export default function Stock() {
                         </TableCell>
                         <TableCell className="text-sm font-medium" onClick={() => setDetailItem(item)}>{item.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.sku || '-'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">{item.patrimony_code || '-'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {item.brand || item.model ? `${item.brand || ''} ${item.model || ''}`.trim() : '-'}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.unit || 'un'}</TableCell>
                         <TableCell className="text-sm font-medium">{item.current_level}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.min_level}</TableCell>
@@ -856,7 +910,16 @@ export default function Stock() {
                   <p className="text-lg font-bold">{detailItem.min_level}</p>
                 </div>
               </div>
-              {detailItem.sku && <p className="text-xs text-muted-foreground">SKU: {detailItem.sku}</p>}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                {detailItem.sku && <div><span className="text-muted-foreground">SKU:</span> {detailItem.sku}</div>}
+                {detailItem.patrimony_code && <div><span className="text-muted-foreground">Patrimônio:</span> <span className="font-mono">{detailItem.patrimony_code}</span></div>}
+                {detailItem.brand && <div><span className="text-muted-foreground">Marca:</span> {detailItem.brand}</div>}
+                {detailItem.model && <div><span className="text-muted-foreground">Modelo:</span> {detailItem.model}</div>}
+                {detailItem.serial_number && <div><span className="text-muted-foreground">Nº Série:</span> <span className="font-mono">{detailItem.serial_number}</span></div>}
+                {detailItem.component_type && <div><span className="text-muted-foreground">Tipo:</span> {detailItem.component_type}</div>}
+              </div>
+              {detailItem.description && <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">{detailItem.description}</p>}
+              <p className="text-[10px] text-muted-foreground/60 font-mono">ID: {detailItem.id}</p>
 
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => {
@@ -865,6 +928,12 @@ export default function Stock() {
                   setEditUnit(detailItem.unit || 'un');
                   setEditMinLevel(String(detailItem.min_level || 0));
                   setEditCurrentLevel(String(detailItem.current_level || 0));
+                  setEditBrand(detailItem.brand || '');
+                  setEditModel(detailItem.model || '');
+                  setEditComponentType(detailItem.component_type || '');
+                  setEditPatrimonyCode(detailItem.patrimony_code || '');
+                  setEditDescription(detailItem.description || '');
+                  setEditSerialNumber(detailItem.serial_number || '');
                   setEditMode(true);
                 }}>
                   <Pencil className="h-3 w-3" /> Editar
@@ -938,24 +1007,36 @@ export default function Stock() {
                   id: detailItem.id, name: editName, sku: editSku || null,
                   unit: editUnit || 'un', min_level: parseInt(editMinLevel) || 0,
                   current_level: parseInt(editCurrentLevel) || 0,
+                  brand: editBrand || null, model: editModel || null,
+                  component_type: editComponentType || null, patrimony_code: editPatrimonyCode || null,
+                  description: editDescription || null, serial_number: editSerialNumber || null,
                 });
                 await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.updated', tenantId: currentTenantId, diff: { name: editName, sku: editSku, min_level: editMinLevel } });
                 toast({ title: 'Item atualizado!' });
-                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0 });
+                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0, brand: editBrand, model: editModel, component_type: editComponentType, patrimony_code: editPatrimonyCode, description: editDescription, serial_number: editSerialNumber });
                 setEditMode(false);
               } catch (err: any) {
                 toast({ title: 'Erro', description: err.message, variant: 'destructive' });
               }
-            }} className="space-y-3">
+            }} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={editName} onChange={e => setEditName(e.target.value)} required className="h-9" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label className="text-xs">SKU</Label><Input value={editSku} onChange={e => setEditSku(e.target.value)} className="h-9" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Patrimônio</Label><Input value={editPatrimonyCode} onChange={e => setEditPatrimonyCode(e.target.value)} className="h-9" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Marca</Label><Input value={editBrand} onChange={e => setEditBrand(e.target.value)} className="h-9" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Modelo</Label><Input value={editModel} onChange={e => setEditModel(e.target.value)} className="h-9" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Nº Série</Label><Input value={editSerialNumber} onChange={e => setEditSerialNumber(e.target.value)} className="h-9" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Unidade</Label><Input value={editUnit} onChange={e => setEditUnit(e.target.value)} className="h-9" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label className="text-xs">Quantidade atual</Label><Input type="number" min="0" value={editCurrentLevel} onChange={e => setEditCurrentLevel(e.target.value)} className="h-9" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" min="0" value={editMinLevel} onChange={e => setEditMinLevel(e.target.value)} className="h-9" /></div>
               </div>
+              <div className="space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={editDescription} onChange={e => setEditDescription(e.target.value)} className="h-9" /></div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" className="flex-1 h-8 text-sm" onClick={() => setEditMode(false)}>Cancelar</Button>
                 <Button type="submit" className="flex-1 h-8 text-sm gap-1.5" disabled={updateItem.isPending}>
