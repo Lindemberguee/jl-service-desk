@@ -84,18 +84,17 @@ async function getHeaders() {
 /* ─── Stat Card ─── */
 function StatCard({ label, value, icon: Icon, color, sub }: { label: string; value: number; icon: React.ElementType; color: string; sub?: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <Card className="border-border/40 hover:border-border/80 transition-colors group overflow-hidden relative">
-        <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-gradient-to-br ${color.includes('primary') ? 'from-primary' : color.includes('blue') ? 'from-blue-500' : color.includes('amber') ? 'from-amber-500' : color.includes('green') ? 'from-green-500' : color.includes('purple') ? 'from-purple-500' : 'from-destructive'} to-transparent`} />
-        <CardContent className="p-4 relative">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
-              <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
-              {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+      <Card className="border-border/40 hover:border-border/80 transition-colors group overflow-hidden relative h-full">
+        <CardContent className="p-3 relative">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-muted/60 border border-border/40 shrink-0">
+              <Icon className={`h-3.5 w-3.5 ${color}`} />
             </div>
-            <div className={`p-2 rounded-lg bg-background border border-border/50`}>
-              <Icon className={`h-4 w-4 ${color}`} />
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-foreground">{value}</p>
+              <p className="text-[11px] font-medium text-muted-foreground truncate">{label}</p>
+              {sub && <p className="text-[9px] text-muted-foreground/50 truncate">{sub}</p>}
             </div>
           </div>
         </CardContent>
