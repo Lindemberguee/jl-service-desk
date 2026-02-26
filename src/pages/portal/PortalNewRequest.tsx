@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Send, Paperclip, X, Eye, ChevronLeft, CheckCircle, Building2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Paperclip, X, Eye, ChevronLeft, CheckCircle, Building2, Link } from 'lucide-react';
 import { priorityLabels } from '@/lib/permissions';
 
 type Step = 'form' | 'preview' | 'success';
@@ -36,6 +36,7 @@ export default function PortalNewRequest() {
   const [contactEmail, setContactEmail] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [externalLink, setExternalLink] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,10 +133,21 @@ export default function PortalNewRequest() {
     },
   });
 
+  const ALLOWED_TYPES = [
+    'image/png', 'image/jpeg', 'image/jpg',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ];
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+      const MAX_SIZE = 10 * 1024 * 1024;
       const newFiles = Array.from(e.target.files).filter(f => {
+        if (!ALLOWED_TYPES.includes(f.type)) {
+          toast({ title: 'Tipo não permitido', description: `${f.name}: apenas imagens (PNG/JPG), PDF, Word e Excel.`, variant: 'destructive' });
+          return false;
+        }
         if (f.size > MAX_SIZE) {
           toast({ title: 'Arquivo muito grande', description: `${f.name} excede o limite de 10 MB.`, variant: 'destructive' });
           return false;
@@ -175,6 +187,7 @@ export default function PortalNewRequest() {
         code: '',
         visibility: 'customer',
         requester_user_id: user?.id || null,
+        external_link: externalLink.trim() || null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
 
@@ -229,7 +242,7 @@ export default function PortalNewRequest() {
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
           <Button variant="outline" onClick={() => navigate('/portal')}>Ver Minhas OS</Button>
-          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setFiles([]); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
+          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setFiles([]); setExternalLink(''); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
             Abrir Outra
           </Button>
         </div>
@@ -317,6 +330,12 @@ export default function PortalNewRequest() {
                 {files.map((f, i) => (
                   <p key={i} className="text-xs text-muted-foreground">📎 {f.name}</p>
                 ))}
+              </div>
+            )}
+            {externalLink && (
+              <div>
+                <p className="text-[11px] uppercase font-medium text-muted-foreground">Link Externo</p>
+                <a href={externalLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{externalLink}</a>
               </div>
             )}
           </CardContent>
@@ -505,14 +524,29 @@ export default function PortalNewRequest() {
                   </div>
                 </div>
 
+                {/* External Link */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <Link className="h-3 w-3" /> Link Externo
+                  </Label>
+                  <Input
+                    value={externalLink}
+                    onChange={e => setExternalLink(e.target.value)}
+                    type="url"
+                    placeholder="https://exemplo.com/documento"
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Opcional. Link para referência externa (documento, sistema, etc.)</p>
+                </div>
+
                 {/* Attachments */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Anexos (fotos, prints — até 5)</Label>
+                  <Label className="text-xs font-medium">Anexos (até 5 — PNG, JPG, PDF, Word, Excel)</Label>
                   <input
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx"
+                    accept="image/png,image/jpeg,.pdf,.doc,.docx,.xls,.xlsx"
                     className="hidden"
                     onChange={handleFileChange}
                   />
