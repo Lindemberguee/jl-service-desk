@@ -18,6 +18,7 @@ export interface CustomEdgeData {
   color?: string;
   animated?: boolean;
   strokeWidth?: number;
+  neon?: boolean;
   [key: string]: unknown;
 }
 
@@ -84,7 +85,9 @@ function CustomEdge({
         style={{
           stroke: selected ? 'hsl(213, 94%, 65%)' : color,
           strokeWidth: selected || hovered ? strokeWidth + 1 : strokeWidth,
-          filter: selected ? `drop-shadow(0 0 6px ${color})` : undefined,
+          filter: edgeData.neon
+            ? `drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`
+            : selected ? `drop-shadow(0 0 6px ${color})` : undefined,
           transition: 'stroke-width 0.15s, stroke 0.15s, filter 0.2s',
         }}
       />

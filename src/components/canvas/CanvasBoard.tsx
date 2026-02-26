@@ -26,6 +26,7 @@ import CanvasPresence from './CanvasPresence';
 import CanvasToolbar from './CanvasToolbar';
 import CanvasContextMenu from './CanvasContextMenu';
 import QuickNodeMenu from './QuickNodeMenu';
+import EdgeSettingsPanel from './EdgeSettingsPanel';
 import { useCanvasHistory } from '@/hooks/useCanvasHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,6 +60,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
   const [showPalette, setShowPalette] = useState(true);
   const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<{ id: string; position: { x: number; y: number } } | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const contextMenuPos = useRef({ x: 0, y: 0 });
   const { screenToFlowPosition, getViewport } = useReactFlow();
@@ -300,6 +302,15 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     }
   }, [quickMenu, createNode]);
 
+  const handleEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    if (readOnly) return;
+    setSelectedEdge({ id: edge.id, position: { x: _event.clientX, y: _event.clientY - 200 } });
+  }, [readOnly]);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedEdge(null);
+  }, []);
+
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative">
       {!readOnly && showPalette && <NodePalette onDragStart={handleDragStart} onClose={() => setShowPalette(false)} />}
@@ -348,6 +359,8 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
             onConnect={onConnect}
             onConnectStart={onConnectStart}
             onConnectEnd={onConnectEnd}
+            onEdgeClick={handleEdgeClick}
+            onPaneClick={handlePaneClick}
             onDragOver={onDragOver}
             onDrop={onDrop}
             fitView
@@ -425,6 +438,14 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
           </ReactFlow>
         </div>
       </CanvasContextMenu>
+
+      {/* Edge settings panel */}
+      {!readOnly && (
+        <EdgeSettingsPanel
+          selectedEdgeId={selectedEdge?.id || null}
+          position={selectedEdge?.position || null}
+        />
+      )}
     </div>
   );
 }
