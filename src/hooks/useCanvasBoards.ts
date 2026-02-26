@@ -156,6 +156,7 @@ export function useCanvasBoards() {
       ));
     }
     setSaving(false);
+    return now;
   }, []);
 
   const deleteBoard = useCallback(async (id: string) => {
