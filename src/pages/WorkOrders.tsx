@@ -121,6 +121,7 @@ export default function WorkOrders() {
 
   const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
+  const canCreate = currentRole && hasPermission(currentRole, 'os:create');
   const canUpdate = currentRole && hasPermission(currentRole, 'os:update');
   const canAssign = currentRole && hasPermission(currentRole, 'os:assign');
 
@@ -328,11 +329,13 @@ export default function WorkOrders() {
             <Download className="h-3.5 w-3.5" />
             CSV
           </Button>
-          <Button size="sm" onClick={() => navigate('/os/nova')} className="h-8 gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Nova OS</span>
-            <span className="sm:hidden">Nova</span>
-          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={() => navigate('/os/nova')} className="h-8 gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nova OS</span>
+              <span className="sm:hidden">Nova</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -749,34 +752,36 @@ export default function WorkOrders() {
 
               {/* Actions */}
               <div className="w-8 shrink-0" onClick={e => e.stopPropagation()}>
-                {canUpdate && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
-                        <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {canAssign && (
-                        <>
-                          <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                            <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
+                      <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
+                    </DropdownMenuItem>
+                    {canUpdate && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {canAssign && (
+                          <>
+                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                              <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
+                          <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
+                            → {v}
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
-                        <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
-                          → {v}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                        ))}
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           ))}
