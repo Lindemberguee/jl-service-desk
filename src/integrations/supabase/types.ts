@@ -14,6 +14,164 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_components: {
+        Row: {
+          asset_id: string
+          brand: string | null
+          component_type: string
+          created_at: string
+          id: string
+          installed_at: string | null
+          model: string | null
+          notes: string | null
+          serial_number: string | null
+          specifications: Json | null
+          status: string
+          stock_item_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          asset_id: string
+          brand?: string | null
+          component_type: string
+          created_at?: string
+          id?: string
+          installed_at?: string | null
+          model?: string | null
+          notes?: string | null
+          serial_number?: string | null
+          specifications?: Json | null
+          status?: string
+          stock_item_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string
+          brand?: string | null
+          component_type?: string
+          created_at?: string
+          id?: string
+          installed_at?: string | null
+          model?: string | null
+          notes?: string | null
+          serial_number?: string | null
+          specifications?: Json | null
+          status?: string
+          stock_item_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_components_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_components_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_components_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_maintenance_records: {
+        Row: {
+          asset_id: string
+          completed_at: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          observations: string | null
+          parts_used: Json | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["maintenance_status"]
+          technician_id: string | null
+          tenant_id: string
+          title: string
+          type: Database["public"]["Enums"]["maintenance_type"]
+          updated_at: string
+          work_order_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          completed_at?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          observations?: string | null
+          parts_used?: Json | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          technician_id?: string | null
+          tenant_id: string
+          title: string
+          type?: Database["public"]["Enums"]["maintenance_type"]
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          completed_at?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          observations?: string | null
+          parts_used?: Json | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          technician_id?: string | null
+          tenant_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["maintenance_type"]
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_maintenance_records_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_maintenance_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_maintenance_records_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           category_id: string | null
@@ -1459,6 +1617,18 @@ export type Database = {
         | "leitura"
       asset_status: "ativo" | "inativo" | "em_manutencao" | "descartado"
       customer_type: "internal" | "external"
+      maintenance_status:
+        | "agendada"
+        | "em_andamento"
+        | "concluida"
+        | "cancelada"
+        | "atrasada"
+      maintenance_type:
+        | "preventiva"
+        | "corretiva"
+        | "preditiva"
+        | "instalacao"
+        | "substituicao"
       os_event_type:
         | "created"
         | "assigned"
@@ -1626,6 +1796,20 @@ export const Constants = {
       ],
       asset_status: ["ativo", "inativo", "em_manutencao", "descartado"],
       customer_type: ["internal", "external"],
+      maintenance_status: [
+        "agendada",
+        "em_andamento",
+        "concluida",
+        "cancelada",
+        "atrasada",
+      ],
+      maintenance_type: [
+        "preventiva",
+        "corretiva",
+        "preditiva",
+        "instalacao",
+        "substituicao",
+      ],
       os_event_type: [
         "created",
         "assigned",

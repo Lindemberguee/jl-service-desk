@@ -18,6 +18,7 @@ import Cadastros from "@/pages/Cadastros";
 import Assets from "@/pages/Assets";
 import Stock from "@/pages/Stock";
 import MaterialControl from "@/pages/MaterialControl";
+import MaintenancePage from "@/pages/MaintenancePage";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
 import Ferramentas from "@/pages/Ferramentas";
@@ -170,6 +171,7 @@ const App = () => (
               <Route path="cadastros" element={<PermissionGuard permission="cadastros:read"><Cadastros /></PermissionGuard>} />
               <Route path="ativos" element={<PermissionGuard permission="assets:read"><Assets /></PermissionGuard>} />
               <Route path="estoque" element={<PermissionGuard permission="stock:read"><Stock /></PermissionGuard>} />
+              <Route path="manutencao" element={<PermissionGuard permission="manutencao:read"><MaintenancePage /></PermissionGuard>} />
               <Route path="materiais" element={<PermissionGuard permission="materiais:read"><MaterialControl /></PermissionGuard>} />
               <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
               <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />

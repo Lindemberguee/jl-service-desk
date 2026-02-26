@@ -35,6 +35,7 @@ function getFallbackPath(role: string, rolePermMap: Record<string, boolean>): st
     { perm: 'dashboard:read', path: '/dashboard' },
     { perm: 'my_os:read', path: '/minhas-os' },
     { perm: 'os:read', path: '/os' },
+    { perm: 'manutencao:read', path: '/manutencao' },
     { perm: 'stock:read', path: '/estoque' },
     { perm: 'reports:read', path: '/relatorios' },
     { perm: 'cadastros:read', path: '/cadastros' },
