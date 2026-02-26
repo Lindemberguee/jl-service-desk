@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
-  MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle
+  MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
@@ -39,6 +39,7 @@ export default function WorkOrderCreate() {
   const [contactEmail, setContactEmail] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [externalLink, setExternalLink] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   // Auto-fill email from profile (only if no requester selected)
@@ -166,6 +167,7 @@ export default function WorkOrderCreate() {
         visibility,
         tags: tags.length > 0 ? tags : null,
         code: '',
+        external_link: externalLink.trim() || null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
       await logAudit({
@@ -250,6 +252,20 @@ export default function WorkOrderCreate() {
                 placeholder="Detalhes adicionais sobre o serviço..."
                 className="text-sm"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="externalLink" className="text-xs font-medium flex items-center gap-1.5">
+                <Link className="h-3 w-3" /> Link Externo
+              </Label>
+              <Input
+                id="externalLink"
+                value={externalLink}
+                onChange={e => setExternalLink(e.target.value)}
+                type="url"
+                placeholder="https://exemplo.com/documento"
+                className="h-9 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">Opcional. Adicione um link para referência externa (documento, sistema, etc.)</p>
             </div>
           </CardContent>
         </Card>
