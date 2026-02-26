@@ -19,9 +19,11 @@ interface CanvasInspectorProps {
   selectedNodeId: string | null;
   onClose: () => void;
   readOnly?: boolean;
+  onNodeUpdate?: (nodeId: string, data: Record<string, unknown>) => void;
+  onNodeMove?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
-export default function CanvasInspector({ selectedNodeId, onClose, readOnly }: CanvasInspectorProps) {
+export default function CanvasInspector({ selectedNodeId, onClose, readOnly, onNodeUpdate, onNodeMove }: CanvasInspectorProps) {
   const { getNode, setNodes } = useReactFlow();
 
   const node = selectedNodeId ? getNode(selectedNodeId) : null;
@@ -42,7 +44,8 @@ export default function CanvasInspector({ selectedNodeId, onClose, readOnly }: C
     setNodes(nds => nds.map(n =>
       n.id === selectedNodeId ? { ...n, data: { ...n.data, ...updates } } : n
     ));
-  }, [selectedNodeId, readOnly, setNodes]);
+    onNodeUpdate?.(selectedNodeId, updates as Record<string, unknown>);
+  }, [selectedNodeId, readOnly, setNodes, onNodeUpdate]);
 
   const commitLabel = useCallback(() => {
     if (label.trim()) updateNodeData({ label: label.trim() });
@@ -165,6 +168,7 @@ export default function CanvasInspector({ selectedNodeId, onClose, readOnly }: C
                     setNodes(nds => nds.map(n =>
                       n.id === selectedNodeId ? { ...n, position: { ...n.position, x } } : n
                     ));
+                    onNodeMove?.(selectedNodeId!, { x, y: node.position.y });
                   }}
                   className="h-7 text-[11px]"
                   disabled={readOnly}
@@ -181,6 +185,7 @@ export default function CanvasInspector({ selectedNodeId, onClose, readOnly }: C
                     setNodes(nds => nds.map(n =>
                       n.id === selectedNodeId ? { ...n, position: { ...n.position, y } } : n
                     ));
+                    onNodeMove?.(selectedNodeId!, { x: node.position.x, y });
                   }}
                   className="h-7 text-[11px]"
                   disabled={readOnly}
