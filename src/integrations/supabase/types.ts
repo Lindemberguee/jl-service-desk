@@ -565,6 +565,78 @@ export type Database = {
         }
         Relationships: []
       }
+      reminders: {
+        Row: {
+          category: string
+          completed_at: string | null
+          created_at: string
+          description: string
+          due_at: string | null
+          id: string
+          is_completed: boolean
+          priority: string
+          recurrence_end_at: string | null
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          tags: string[]
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_at?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          recurrence_end_at?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          tags?: string[]
+          tenant_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_at?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          recurrence_end_at?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          tags?: string[]
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           granted: boolean

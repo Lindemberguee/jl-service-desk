@@ -23,6 +23,7 @@ import UsersPage from "@/pages/UsersPage";
 import Ferramentas from "@/pages/Ferramentas";
 import CanvasPage from "@/pages/CanvasPage";
 import NotesPage from "@/pages/NotesPage";
+import RemindersPage from "@/pages/RemindersPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -170,6 +171,7 @@ const App = () => (
               <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
               <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
               <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
+              <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />
               <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
               <Route path="admin" element={<PermissionGuard permission="settings:manage"><AdminDashboard /></PermissionGuard>} />
