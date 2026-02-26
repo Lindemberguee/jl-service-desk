@@ -71,8 +71,8 @@ const TEXT_COLORS = [
 ];
 
 const BG_COLORS = [
-  '#fef2f2', '#fff7ed', '#fefce8', '#f0fdf4', '#ecfeff',
-  '#eff6ff', '#f5f3ff', '#fdf2f8', '#fef9c3', '#e2e8f0',
+  '#fca5a5', '#fdba74', '#fde047', '#86efac', '#67e8f9',
+  '#93c5fd', '#c4b5fd', '#f9a8d4', '#fbbf24', '#cbd5e1',
 ];
 
 const FOLDER_COLORS: Record<string, string> = {
