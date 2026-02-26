@@ -152,11 +152,9 @@ export function useCanvasBoards() {
     if (error) {
       toast.error('Erro ao salvar');
     } else {
-      // Update local state immediately so listing reflects saved data
       setBoards(prev => prev.map(b =>
         b.id === id ? { ...b, nodes, edges, viewport, updated_at: now } : b
       ));
-      toast.success('Canvas salvo!');
     }
     setSaving(false);
   }, []);
