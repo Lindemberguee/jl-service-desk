@@ -95,7 +95,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
       invalidateCosts();
       setShowLaborDialog(false);
       setLaborDesc(''); setLaborHours(''); setLaborRate(''); setLaborObs('');
-      toast({ title: 'Mão de obra lançada' });
+      toast({ title: 'Serviço de terceiro lançado' });
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -187,7 +187,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
       <div className="grid grid-cols-3 gap-3">
         <Card className="border-border shadow-none">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Mão de Obra</p>
+            <p className="text-xs text-muted-foreground mb-1">Serviços de Terceiros</p>
             <p className="text-lg font-semibold">R$ {totalLabor.toFixed(2)}</p>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
       <Card className="border-border shadow-none">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Wrench className="h-4 w-4" /> Mão de Obra ({laborItems.length})
+            <Wrench className="h-4 w-4" /> Serviços de Terceiros ({laborItems.length})
           </CardTitle>
           {canManage && (
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowLaborDialog(true)}>
@@ -219,7 +219,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
         </CardHeader>
         <CardContent className="p-0">
           {laborItems.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6 text-xs">Nenhum lançamento de mão de obra.</p>
+            <p className="text-center text-muted-foreground py-6 text-xs">Nenhum lançamento de serviço de terceiro.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -314,7 +314,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
       <Dialog open={showLaborDialog} onOpenChange={setShowLaborDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base">Lançar Mão de Obra</DialogTitle>
+            <DialogTitle className="text-base">Lançar Serviço de Terceiro</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>

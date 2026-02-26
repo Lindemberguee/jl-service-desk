@@ -46,7 +46,12 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
   });
 
   const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-  const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+  const ALLOWED_TYPES = [
+    'image/png', 'image/jpeg', 'image/jpg',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ];
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -55,12 +60,11 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        // Validate size for image files
-        if (ALLOWED_IMAGE_TYPES.includes(file.type) && file.size > MAX_SIZE_BYTES) {
-          toast({ title: 'Arquivo muito grande', description: `${file.name} excede o limite de 10 MB para imagens.`, variant: 'destructive' });
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          toast({ title: 'Tipo não permitido', description: `${file.name}: apenas imagens (PNG/JPG), PDF, Word e Excel.`, variant: 'destructive' });
           continue;
         }
-        if (!ALLOWED_IMAGE_TYPES.includes(file.type) && file.size > MAX_SIZE_BYTES) {
+        if (file.size > MAX_SIZE_BYTES) {
           toast({ title: 'Arquivo muito grande', description: `${file.name} excede o limite de 10 MB.`, variant: 'destructive' });
           continue;
         }
@@ -169,6 +173,7 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
           <input
             type="file"
             multiple
+            accept="image/png,image/jpeg,.pdf,.doc,.docx,.xls,.xlsx"
             className="hidden"
             onChange={handleUpload}
             disabled={uploading}
@@ -201,7 +206,7 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
           }
           return null;
         })()}
-        <p className="text-[10px] text-muted-foreground mb-3">Limite: 10 MB por arquivo (PNG/JPG)</p>
+        <p className="text-[10px] text-muted-foreground mb-3">Limite: 10 MB por arquivo (PNG, JPG, PDF, Word, Excel)</p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : attachments.length === 0 ? (

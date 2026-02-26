@@ -10,11 +10,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -48,6 +50,11 @@ export default function WorkOrderDetail() {
   const [isPublicComment, setIsPublicComment] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [assignTo, setAssignTo] = useState('');
+  // Resolution fields
+  const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [technicalNote, setTechnicalNote] = useState('');
+  const [resolutionQuality, setResolutionQuality] = useState(0);
+  const [resolutionTimeRating, setResolutionTimeRating] = useState(0);
 
   // Data queries
   const { data: wo, isLoading } = useQuery({
@@ -270,7 +277,7 @@ export default function WorkOrderDetail() {
                 <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
                   <Pause className="h-3.5 w-3.5" /> Pausar (Solicitante)
                 </Button>
-                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white" onClick={() => statusMutation.mutate('concluida')} disabled={statusMutation.isPending}>
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowResolveDialog(true)} disabled={statusMutation.isPending}>
                   <CheckSquare className="h-3.5 w-3.5" /> Resolver
                 </Button>
               </>
@@ -366,6 +373,48 @@ export default function WorkOrderDetail() {
                 <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
                 <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
               </div>
+              {(wo as any).external_link && (
+                <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-lg p-3">
+                  <Link className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase font-medium text-muted-foreground">Link Externo</p>
+                    <a
+                      href={(wo as any).external_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-primary hover:underline flex items-center gap-1 truncate"
+                    >
+                      {(wo as any).external_link}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+              )}
+              {/* Technical Note */}
+              {(wo as any).technical_note && (
+                <div className="mt-4 bg-muted/40 rounded-lg p-3 space-y-2">
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Nota Técnica</p>
+                  <p className="text-sm whitespace-pre-wrap">{(wo as any).technical_note}</p>
+                  <div className="flex gap-4">
+                    {(wo as any).resolution_quality > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground mr-1">Qualidade:</span>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo as any).resolution_quality ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                        ))}
+                      </div>
+                    )}
+                    {(wo as any).resolution_time_rating > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground mr-1">Tempo:</span>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo as any).resolution_time_rating ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -589,6 +638,84 @@ export default function WorkOrderDetail() {
           <WorkOrderCosts workOrder={wo} canManage={!!canUpdate} />
         </TabsContent>
       </Tabs>
+
+      {/* Resolve Dialog */}
+      <Dialog open={showResolveDialog} onOpenChange={setShowResolveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Resolver Ordem de Serviço</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Nota Técnica</Label>
+              <Textarea
+                value={technicalNote}
+                onChange={e => setTechnicalNote(e.target.value)}
+                rows={3}
+                placeholder="Descreva a solução aplicada..."
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Qualidade da Resolução</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} type="button" onClick={() => setResolutionQuality(s)} className="p-0.5">
+                    <Star className={`h-5 w-5 transition-colors ${s <= resolutionQuality ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-400'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Tempo de Resolução</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} type="button" onClick={() => setResolutionTimeRating(s)} className="p-0.5">
+                    <Star className={`h-5 w-5 transition-colors ${s <= resolutionTimeRating ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground hover:text-blue-400'}`} />
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">1 = Demorou muito • 5 = Rápido</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowResolveDialog(false)}>Cancelar</Button>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={statusMutation.isPending}
+              onClick={async () => {
+                const updates: any = {
+                  status: 'concluida',
+                  resolved_at: new Date().toISOString(),
+                  technical_note: technicalNote.trim() || null,
+                  resolution_quality: resolutionQuality || null,
+                  resolution_time_rating: resolutionTimeRating || null,
+                };
+                if (!wo?.started_at) updates.started_at = new Date().toISOString();
+                if (wo?.paused_at) {
+                  updates.total_paused_ms = (wo.total_paused_ms || 0) + (Date.now() - new Date(wo.paused_at).getTime());
+                  updates.paused_at = null;
+                }
+                try {
+                  await updateWO(updates, 'resolved', { technical_note: technicalNote.trim(), resolution_quality: resolutionQuality, resolution_time_rating: resolutionTimeRating });
+                  await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: 'concluida' } });
+                  invalidateAll();
+                  toast({ title: 'OS resolvida!' });
+                  setShowResolveDialog(false);
+                  setTechnicalNote('');
+                  setResolutionQuality(0);
+                  setResolutionTimeRating(0);
+                } catch (err: any) {
+                  toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                }
+              }}
+            >
+              {statusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Resolver'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

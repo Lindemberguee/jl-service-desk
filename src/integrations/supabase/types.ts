@@ -1465,6 +1465,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           description: string | null
+          external_link: string | null
           id: string
           labor_cost: number | null
           location_id: string | null
@@ -1474,6 +1475,8 @@ export type Database = {
           requester_contact: Json | null
           requester_id: string | null
           requester_user_id: string | null
+          resolution_quality: number | null
+          resolution_time_rating: number | null
           resolve_due_at: string | null
           resolved_at: string | null
           response_due_at: string | null
@@ -1481,6 +1484,7 @@ export type Database = {
           started_at: string | null
           status: Database["public"]["Enums"]["os_status"]
           tags: string[] | null
+          technical_note: string | null
           tenant_id: string
           title: string
           total_cost: number | null
@@ -1499,6 +1503,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          external_link?: string | null
           id?: string
           labor_cost?: number | null
           location_id?: string | null
@@ -1508,6 +1513,8 @@ export type Database = {
           requester_contact?: Json | null
           requester_id?: string | null
           requester_user_id?: string | null
+          resolution_quality?: number | null
+          resolution_time_rating?: number | null
           resolve_due_at?: string | null
           resolved_at?: string | null
           response_due_at?: string | null
@@ -1515,6 +1522,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tags?: string[] | null
+          technical_note?: string | null
           tenant_id: string
           title: string
           total_cost?: number | null
@@ -1533,6 +1541,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          external_link?: string | null
           id?: string
           labor_cost?: number | null
           location_id?: string | null
@@ -1542,6 +1551,8 @@ export type Database = {
           requester_contact?: Json | null
           requester_id?: string | null
           requester_user_id?: string | null
+          resolution_quality?: number | null
+          resolution_time_rating?: number | null
           resolve_due_at?: string | null
           resolved_at?: string | null
           response_due_at?: string | null
@@ -1549,6 +1560,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tags?: string[] | null
+          technical_note?: string | null
           tenant_id?: string
           title?: string
           total_cost?: number | null
