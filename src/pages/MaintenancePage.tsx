@@ -6,6 +6,7 @@ import { hasPermission } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -791,7 +792,7 @@ export default function MaintenancePage() {
               </div>
               <div className="grid gap-2">
                 <Label>Custo (R$)</Label>
-                <Input type="number" step="0.01" min="0" value={mForm.cost} onChange={e => setMForm(p => ({ ...p, cost: e.target.value }))} placeholder="0.00" />
+                <CurrencyInput value={mForm.cost} onValueChange={v => setMForm(p => ({ ...p, cost: v }))} />
               </div>
             </div>
             <div className="grid gap-2">

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -327,7 +328,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
               </div>
               <div>
                 <Label className="text-xs">Valor/hora (R$) *</Label>
-                <Input type="number" step="0.01" min="0" value={laborRate} onChange={e => setLaborRate(e.target.value)} placeholder="80.00" className="h-9 text-sm" />
+                <CurrencyInput value={laborRate} onValueChange={setLaborRate} className="h-9 text-sm" />
               </div>
             </div>
             <div>
@@ -383,7 +384,7 @@ export function WorkOrderCosts({ workOrder, canManage }: Props) {
               </div>
               <div>
                 <Label className="text-xs">Valor unitário (R$) *</Label>
-                <Input type="number" step="0.01" min="0" value={partPrice} onChange={e => setPartPrice(e.target.value)} placeholder="25.00" className="h-9 text-sm" />
+                <CurrencyInput value={partPrice} onValueChange={setPartPrice} className="h-9 text-sm" />
               </div>
             </div>
             <div>
