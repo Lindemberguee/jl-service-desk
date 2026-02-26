@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Building2, Sun, Moon } from 'lucide-react';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function TopBar() {
   const { memberships, currentTenantId, switchTenant, currentRole } = useAuth();
@@ -45,6 +46,8 @@ export function TopBar() {
           {roleLabels[currentRole] || currentRole}
         </Badge>
       )}
+
+      <NotificationBell />
 
       <Tooltip>
         <TooltipTrigger asChild>

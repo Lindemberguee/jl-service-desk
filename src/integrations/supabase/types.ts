@@ -535,6 +535,66 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          icon: string | null
+          id: string
+          is_read: boolean
+          link: string | null
+          metadata: Json | null
+          read_at: string | null
+          tenant_id: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          tenant_id: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          tenant_id?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
