@@ -15,8 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import {
   User, KeyRound, Loader2, Eye, EyeOff, Save, Camera,
-  Linkedin, Phone, Shield, Building2, Globe, CheckCircle2, Clock, XCircle, Coffee
+  Linkedin, Phone, Shield, Building2, Globe, CheckCircle2, Clock, XCircle, Coffee, Palette, Check, RotateCcw
 } from 'lucide-react';
+import { usePersonalTheme, THEME_PRESETS, type ThemePreset } from '@/hooks/usePersonalTheme';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const STATUS_OPTIONS = [
   { value: 'disponivel', label: 'Disponível', icon: CheckCircle2, color: 'text-green-500' },
@@ -304,6 +307,9 @@ export default function ProfilePage() {
         </Card>
       )}
 
+      {/* Theme */}
+      <ThemeCard />
+
       {/* Password */}
       <Card>
         <CardHeader className="pb-3">
@@ -348,5 +354,110 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ThemeCard() {
+  const { currentPresetId, setTheme, setCustomColors, currentTheme } = usePersonalTheme();
+  const [customMode, setCustomMode] = useState(false);
+  const [customPrimary, setCustomPrimary] = useState(currentTheme?.primary || '#3B82F6');
+  const [customSidebar, setCustomSidebar] = useState(currentTheme?.sidebar || '#1E293B');
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Palette className="h-4 w-4" /> Tema Pessoal
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">Escolha um tema ou personalize as cores. Suas preferências são salvas localmente.</p>
+
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {THEME_PRESETS.map((preset) => {
+            const isActive = currentPresetId === preset.id;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => setTheme(preset)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all duration-200 hover:scale-105",
+                  isActive
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border hover:border-muted-foreground/30"
+                )}
+              >
+                <div className="relative">
+                  <div
+                    className="h-8 w-8 rounded-lg shadow-inner"
+                    style={{
+                      background: `linear-gradient(135deg, ${preset.sidebar} 50%, ${preset.primary} 50%)`,
+                    }}
+                  />
+                  {isActive && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Check className="h-3.5 w-3.5 text-white drop-shadow-md" />
+                    </motion.div>
+                  )}
+                </div>
+                <span className="text-[9px] font-medium leading-tight text-center">{preset.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setCustomMode(!customMode)}>
+            <Palette className="h-3 w-3" />
+            {customMode ? 'Ocultar' : 'Cores personalizadas'}
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setTheme(null)}>
+            <RotateCcw className="h-3 w-3" />
+            Restaurar padrão
+          </Button>
+        </div>
+
+        {customMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-hidden"
+          >
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cor Primária</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={customPrimary}
+                  onChange={e => setCustomPrimary(e.target.value)}
+                  className="w-9 h-9 rounded-md border border-border cursor-pointer"
+                />
+                <Input value={customPrimary} onChange={e => setCustomPrimary(e.target.value)} className="h-9 font-mono text-xs" maxLength={7} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Fundo do Menu</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={customSidebar}
+                  onChange={e => setCustomSidebar(e.target.value)}
+                  className="w-9 h-9 rounded-md border border-border cursor-pointer"
+                />
+                <Input value={customSidebar} onChange={e => setCustomSidebar(e.target.value)} className="h-9 font-mono text-xs" maxLength={7} />
+              </div>
+            </div>
+            <Button size="sm" className="sm:col-span-2" onClick={() => setCustomColors(customPrimary, customPrimary, customSidebar)}>
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+              Aplicar Cores Personalizadas
+            </Button>
+          </motion.div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
