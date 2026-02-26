@@ -52,6 +52,15 @@ interface CanvasBoardProps {
 let nodeId = 0;
 const getNodeId = () => `node_${Date.now()}_${nodeId++}`;
 
+const createEdgeMarker = (color: string) => ({
+  type: MarkerType.ArrowClosed,
+  color,
+  width: 16,
+  height: 16,
+});
+
+const isEqualJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
 function CanvasBoardInner({
   boardId, boardName, initialNodes, initialEdges, initialViewport,
   onSave, saving, readOnly = false, isFullscreen, onToggleFullscreen,
@@ -71,6 +80,9 @@ function CanvasBoardInner({
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   const isApplyingRemoteRef = useRef(false);
+  const prevNodesSnapshotRef = useRef<Node[]>(initialNodes);
+  const prevEdgesSnapshotRef = useRef<Edge[]>(initialEdges);
+  const hasSyncedSnapshotRef = useRef(false);
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
@@ -125,9 +137,16 @@ function CanvasBoardInner({
           setEdges(eds => eds.filter(e => e.id !== op.edgeId));
           break;
         case 'edge:update':
-          setEdges(eds => eds.map(e =>
-            e.id === op.edgeId ? { ...e, data: { ...e.data, ...op.data } } : e
-          ));
+          setEdges(eds => eds.map(e => {
+            if (e.id !== op.edgeId) return e;
+            const mergedData = { ...(e.data as CustomEdgeData), ...op.data };
+            const nextColor = typeof mergedData.color === 'string' ? mergedData.color : undefined;
+            return {
+              ...e,
+              data: mergedData,
+              markerEnd: op.markerEnd ?? (nextColor ? createEdgeMarker(nextColor) : e.markerEnd),
+            };
+          }));
           break;
         case 'full:sync':
           setNodes(op.nodes);
@@ -150,6 +169,76 @@ function CanvasBoardInner({
     readOnly,
     onRemoteOp: handleRemoteOp,
   });
+
+  // ── Sync local structural/data changes to collaborators ──
+  useEffect(() => {
+    if (!hasSyncedSnapshotRef.current) {
+      prevNodesSnapshotRef.current = nodes;
+      prevEdgesSnapshotRef.current = edges;
+      hasSyncedSnapshotRef.current = true;
+      return;
+    }
+
+    const prevNodes = prevNodesSnapshotRef.current;
+    const prevEdges = prevEdgesSnapshotRef.current;
+    prevNodesSnapshotRef.current = nodes;
+    prevEdgesSnapshotRef.current = edges;
+
+    if (readOnly || isApplyingRemoteRef.current) return;
+
+    const prevNodeMap = new Map(prevNodes.map((n) => [n.id, n]));
+    const nextNodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+    nodes.forEach((node) => {
+      if (!prevNodeMap.has(node.id)) {
+        broadcastOp({ type: 'node:add', node });
+      }
+    });
+
+    prevNodes.forEach((node) => {
+      if (!nextNodeMap.has(node.id)) {
+        broadcastOp({ type: 'node:remove', nodeId: node.id });
+      }
+    });
+
+    nodes.forEach((node) => {
+      const prevNode = prevNodeMap.get(node.id);
+      if (!prevNode) return;
+      if (!isEqualJson(prevNode.data, node.data)) {
+        broadcastOp({ type: 'node:update', nodeId: node.id, data: (node.data ?? {}) as Record<string, unknown> });
+      }
+    });
+
+    const prevEdgeMap = new Map(prevEdges.map((e) => [e.id, e]));
+    const nextEdgeMap = new Map(edges.map((e) => [e.id, e]));
+
+    edges.forEach((edge) => {
+      if (!prevEdgeMap.has(edge.id)) {
+        broadcastOp({ type: 'edge:add', edge });
+      }
+    });
+
+    prevEdges.forEach((edge) => {
+      if (!nextEdgeMap.has(edge.id)) {
+        broadcastOp({ type: 'edge:remove', edgeId: edge.id });
+      }
+    });
+
+    edges.forEach((edge) => {
+      const prevEdge = prevEdgeMap.get(edge.id);
+      if (!prevEdge) return;
+      const dataChanged = !isEqualJson(prevEdge.data, edge.data);
+      const markerChanged = !isEqualJson(prevEdge.markerEnd, edge.markerEnd);
+      if (dataChanged || markerChanged) {
+        broadcastOp({
+          type: 'edge:update',
+          edgeId: edge.id,
+          data: (edge.data ?? {}) as Record<string, unknown>,
+          markerEnd: edge.markerEnd,
+        });
+      }
+    });
+  }, [nodes, edges, readOnly, broadcastOp]);
 
   // ── Track local changes ──
   useEffect(() => {
@@ -280,32 +369,34 @@ function CanvasBoardInner({
     const sourceId = connectingFrom.current.nodeId;
     const sourceHandleId = connectingFrom.current.handleId;
     const edgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const newEdgeParams = {
+    const newEdge: Edge = {
+      id: edgeId,
       source: sourceId,
       sourceHandle: sourceHandleId,
       target: newId,
       targetHandle: 'left-target',
       type: 'custom',
       data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
-      markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
+      markerEnd: createEdgeMarker(edgeColor),
     };
-    setEdges(eds => addEdge(newEdgeParams, eds));
-    // Get the edge after addEdge creates it with an id
-    broadcastOp({ type: 'edge:add', edge: { id: edgeId, ...newEdgeParams } as unknown as Edge });
+    setEdges(eds => addEdge(newEdge, eds));
+    broadcastOp({ type: 'edge:add', edge: newEdge });
     connectingFrom.current = null;
   }, [readOnly, screenToFlowPosition, nodes.length, setNodes, setEdges, edgeStyle, edgeColor, pushHistory, broadcastOp]);
 
   const onConnect: OnConnect = useCallback((params: Connection) => {
     if (readOnly) return;
     pushHistory();
-    const edgeParams = {
+    const edgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const edgeToAdd: Edge = {
+      id: edgeId,
       ...params,
       type: 'custom',
       data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
-      markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
+      markerEnd: createEdgeMarker(edgeColor),
     };
-    setEdges(eds => addEdge(edgeParams, eds));
-    broadcastOp({ type: 'edge:add', edge: { id: `edge_${Date.now()}`, ...edgeParams } as unknown as Edge });
+    setEdges(eds => addEdge(edgeToAdd, eds));
+    broadcastOp({ type: 'edge:add', edge: edgeToAdd });
     connectingFrom.current = null;
   }, [setEdges, readOnly, edgeStyle, pushHistory, edgeColor, broadcastOp]);
 
@@ -322,6 +413,16 @@ function CanvasBoardInner({
     setNodes(nds => [...nds, newNode]);
     broadcastOp({ type: 'node:add', node: newNode });
   }, [nodes.length, setNodes, readOnly, pushHistory, broadcastOp]);
+
+  const createNodeAtViewportCenter = useCallback((type: string) => {
+    if (!reactFlowWrapper.current) return;
+    const bounds = reactFlowWrapper.current.getBoundingClientRect();
+    const center = screenToFlowPosition({
+      x: bounds.left + (bounds.width / 2),
+      y: bounds.top + (bounds.height / 2),
+    });
+    createNode(type, center);
+  }, [createNode, screenToFlowPosition]);
 
   // ── Drag & drop ──
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -571,7 +672,7 @@ function CanvasBoardInner({
             defaultEdgeOptions={{
               type: 'custom',
               data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
-              markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 16, height: 16 },
+              markerEnd: createEdgeMarker(edgeColor),
             }}
             className="canvas-flow"
             onContextMenu={(e) => { contextMenuPos.current = { x: e.clientX, y: e.clientY }; }}
@@ -631,6 +732,7 @@ function CanvasBoardInner({
                 onTogglePalette={() => setShowPalette(p => !p)}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={onToggleFullscreen}
+                onQuickAdd={createNodeAtViewportCenter}
               />
             </Panel>
 

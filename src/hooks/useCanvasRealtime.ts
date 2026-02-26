@@ -28,7 +28,7 @@ export type CanvasOp =
   | { type: 'node:remove'; nodeId: string }
   | { type: 'edge:add'; edge: Edge }
   | { type: 'edge:remove'; edgeId: string }
-  | { type: 'edge:update'; edgeId: string; data: Record<string, unknown> }
+  | { type: 'edge:update'; edgeId: string; data: Record<string, unknown>; markerEnd?: Edge['markerEnd'] }
   | { type: 'full:sync'; nodes: Node[]; edges: Edge[] };
 
 interface UseCanvasRealtimeOpts {
@@ -46,6 +46,8 @@ export function useCanvasRealtime({
 }: UseCanvasRealtimeOpts) {
   const [remoteUsers, setRemoteUsers] = useState<RemoteUser[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const isSubscribedRef = useRef(false);
+  const pendingOpsRef = useRef<CanvasOp[]>([]);
   const cursorThrottle = useRef<number>(0);
   const selectionThrottle = useRef<number>(0);
   const onRemoteOpRef = useRef(onRemoteOp);
@@ -113,17 +115,36 @@ export function useCanvasRealtime({
 
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
+        isSubscribedRef.current = true;
         await channel.track({
           user_id: userId,
           name: userName,
           avatar: userAvatar,
           online_at: new Date().toISOString(),
         });
+
+        if (pendingOpsRef.current.length > 0) {
+          const queued = [...pendingOpsRef.current];
+          pendingOpsRef.current = [];
+          queued.forEach((op) => {
+            channel.send({
+              type: 'broadcast',
+              event: 'doc:op',
+              payload: { senderId: userId, op },
+            });
+          });
+        }
+      }
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        isSubscribedRef.current = false;
       }
     });
 
     channelRef.current = channel;
     return () => {
+      isSubscribedRef.current = false;
+      pendingOpsRef.current = [];
       channel.untrack();
       supabase.removeChannel(channel);
       channelRef.current = null;
@@ -135,7 +156,8 @@ export function useCanvasRealtime({
     const now = Date.now();
     if (now - cursorThrottle.current < 50) return;
     cursorThrottle.current = now;
-    channelRef.current?.send({
+    if (!isSubscribedRef.current || !channelRef.current) return;
+    channelRef.current.send({
       type: 'broadcast',
       event: 'cursor',
       payload: { userId, x, y },
@@ -147,7 +169,8 @@ export function useCanvasRealtime({
     const now = Date.now();
     if (now - selectionThrottle.current < 100) return;
     selectionThrottle.current = now;
-    channelRef.current?.send({
+    if (!isSubscribedRef.current || !channelRef.current) return;
+    channelRef.current.send({
       type: 'broadcast',
       event: 'selection',
       payload: { userId, selectedIds },
@@ -156,8 +179,15 @@ export function useCanvasRealtime({
 
   // ── Broadcast document op ──
   const broadcastOp = useCallback((op: CanvasOp) => {
-    if (readOnly) return;
-    channelRef.current?.send({
+    if (readOnly || !channelRef.current) return;
+
+    if (!isSubscribedRef.current) {
+      pendingOpsRef.current.push(op);
+      if (pendingOpsRef.current.length > 200) pendingOpsRef.current.shift();
+      return;
+    }
+
+    channelRef.current.send({
       type: 'broadcast',
       event: 'doc:op',
       payload: { senderId: userId, op },
