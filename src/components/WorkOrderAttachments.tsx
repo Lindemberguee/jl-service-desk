@@ -123,13 +123,14 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
     if (!attachment.storage_key) return;
     const { data } = await supabase.storage
       .from('work-order-attachments')
-      .createSignedUrl(attachment.storage_key, 300);
-    if (data?.signedUrl) {
+      .download(attachment.storage_key);
+    if (data) {
+      const url = URL.createObjectURL(data);
       const a = document.createElement('a');
-      a.href = data.signedUrl;
+      a.href = url;
       a.download = attachment.file_name;
-      a.target = '_blank';
       a.click();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -137,13 +138,15 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
     if (!attachment.storage_key) return;
     const { data } = await supabase.storage
       .from('work-order-attachments')
-      .createSignedUrl(attachment.storage_key, 300);
-    if (data?.signedUrl) {
+      .download(attachment.storage_key);
+    if (data) {
+      const url = URL.createObjectURL(data);
       if (attachment.mime_type?.startsWith('image')) {
         setPreviewName(attachment.file_name);
-        setPreviewUrl(data.signedUrl);
+        setPreviewUrl(url);
       } else {
-        window.open(data.signedUrl, '_blank');
+        // Open blob URL - bypasses SmartScreen/browser blocking
+        window.open(url, '_blank');
       }
     }
   };
