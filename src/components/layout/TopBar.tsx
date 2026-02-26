@@ -11,6 +11,7 @@ import { Building2, Sun, Moon } from 'lucide-react';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { ThemeCustomizer } from '@/components/ThemeCustomizer';
 
 export function TopBar() {
   const { memberships, currentTenantId, switchTenant, currentRole } = useAuth();
@@ -48,6 +49,7 @@ export function TopBar() {
       )}
 
       <NotificationBell />
+      <ThemeCustomizer />
 
       <Tooltip>
         <TooltipTrigger asChild>

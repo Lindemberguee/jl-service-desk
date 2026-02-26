@@ -3,11 +3,11 @@ import { AppSidebar } from './AppSidebar';
 import { TopBar } from './TopBar';
 import { Outlet } from 'react-router-dom';
 import { useRealtimeWorkOrders } from '@/hooks/useRealtimeWorkOrders';
-import { useTenantBranding } from '@/hooks/useTenantBranding';
+import { usePersonalTheme } from '@/hooks/usePersonalTheme';
 
 export function AppLayout() {
   useRealtimeWorkOrders();
-  useTenantBranding(); // Apply tenant theme colors globally
+  usePersonalTheme(); // Apply personal theme colors globally
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
