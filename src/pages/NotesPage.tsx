@@ -7,18 +7,17 @@ import {
   ArrowLeft, Loader2, Tag, Bold, Italic, List, ListOrdered,
   Heading1, Heading2, Quote, Code, Minus, X, FolderPlus,
   ChevronRight, Sparkles, Clock, FileText, Strikethrough,
-  Underline, AlignLeft, AlignCenter, Share2, Paintbrush,
+  Underline, AlignLeft, AlignCenter, Share2,
   Highlighter, Eye, Pencil, ToggleLeft, ToggleRight,
-  Palette,
+  Palette, CheckCircle2, AlertCircle, Cloud,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useNotes, type Note } from '@/hooks/useNotes';
+import { useNotesEngine, type Note, type SyncStatus } from '@/hooks/useNotesEngine';
 import { useNavigate } from 'react-router-dom';
-import { useDebounce } from '@/hooks/useDebounce';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,11 +50,9 @@ function ToolbarBtn({ icon: Icon, label, onClick, active, className }: any) {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="ghost"
-          size="icon"
+          variant="ghost" size="icon"
           className={cn('h-7 w-7 rounded-lg', active && 'bg-accent text-accent-foreground', className)}
-          onClick={onClick}
-          type="button"
+          onClick={onClick} type="button"
         >
           <Icon className="h-3.5 w-3.5" />
         </Button>
@@ -65,15 +62,8 @@ function ToolbarBtn({ icon: Icon, label, onClick, active, className }: any) {
   );
 }
 
-const TEXT_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#22c55e', '#06b6d4',
-  '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff', '#000000',
-];
-
-const BG_COLORS = [
-  '#fca5a5', '#fdba74', '#fde047', '#86efac', '#67e8f9',
-  '#93c5fd', '#c4b5fd', '#f9a8d4', '#fbbf24', '#cbd5e1',
-];
+const TEXT_COLORS = ['#ef4444','#f97316','#f59e0b','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ffffff','#000000'];
+const BG_COLORS = ['#fca5a5','#fdba74','#fde047','#86efac','#67e8f9','#93c5fd','#c4b5fd','#f9a8d4','#fbbf24','#cbd5e1'];
 
 const FOLDER_COLORS: Record<string, string> = {
   'Geral': 'bg-blue-500/10 text-blue-500',
@@ -81,218 +71,363 @@ const FOLDER_COLORS: Record<string, string> = {
   'Trabalho': 'bg-emerald-500/10 text-emerald-500',
   'Ideias': 'bg-amber-500/10 text-amber-500',
 };
-
 function getFolderColor(folder: string) {
   return FOLDER_COLORS[folder] || 'bg-primary/10 text-primary';
 }
 
-// ─── Color Picker Popover ───
-
 function ColorPickerBtn({ colors, icon: Icon, label, onSelect }: {
-  colors: string[];
-  icon: any;
-  label: string;
-  onSelect: (color: string) => void;
+  colors: string[]; icon: any; label: string; onSelect: (color: string) => void;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <div>
-          <ToolbarBtn icon={Icon} label={label} onClick={() => {}} />
-        </div>
+        <div><ToolbarBtn icon={Icon} label={label} onClick={() => {}} /></div>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" side="top" align="start">
         <p className="text-[10px] font-medium text-muted-foreground mb-1.5">{label}</p>
         <div className="flex flex-wrap gap-1 max-w-[140px]">
           {colors.map(c => (
-            <button
-              key={c}
-              className="h-5 w-5 rounded border border-border/50 hover:scale-110 transition-transform"
-              style={{ backgroundColor: c }}
-              onClick={() => onSelect(c)}
-            />
+            <button key={c} className="h-5 w-5 rounded border border-border/50 hover:scale-110 transition-transform"
+              style={{ backgroundColor: c }} onClick={() => onSelect(c)} />
           ))}
         </div>
-        <Button
-          variant="ghost" size="sm"
-          className="w-full h-6 text-[10px] mt-1 text-muted-foreground"
-          onClick={() => onSelect('')}
-        >
-          Remover
-        </Button>
+        <Button variant="ghost" size="sm" className="w-full h-6 text-[10px] mt-1 text-muted-foreground"
+          onClick={() => onSelect('')}>Remover</Button>
       </PopoverContent>
     </Popover>
+  );
+}
+
+// ─── Sync Status Indicator ───
+
+function SyncIndicator({ status }: { status: SyncStatus }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={status}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        className="flex items-center gap-1.5"
+      >
+        {status === 'saving' && (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">Salvando...</span>
+          </>
+        )}
+        {status === 'saved' && (
+          <>
+            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            <span className="text-[10px] text-emerald-500">Salvo</span>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <AlertCircle className="h-3 w-3 text-destructive" />
+            <span className="text-[10px] text-destructive">Erro</span>
+          </>
+        )}
+        {status === 'idle' && (
+          <>
+            <Cloud className="h-3 w-3 text-muted-foreground/40" />
+          </>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ─── Rich Text Editor (keyed by noteId to force remount) ───
+
+function RichTextEditor({ initialContent, onChange }: {
+  initialContent: string;
+  onChange: (html: string) => void;
+}) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const isUserInputRef = useRef(false);
+
+  // Set initial content only once on mount
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = initialContent;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty - only on mount
+
+  const handleInput = useCallback(() => {
+    isUserInputRef.current = true;
+    const html = editorRef.current?.innerHTML || '';
+    onChange(html);
+  }, [onChange]);
+
+  const execCommand = useCallback((cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value);
+    editorRef.current?.focus();
+    handleInput();
+  }, [handleInput]);
+
+  const handleTextColor = (color: string) => {
+    if (color) execCommand('foreColor', color);
+    else execCommand('removeFormat');
+  };
+  const handleBgColor = (color: string) => {
+    if (color) execCommand('hiliteColor', color);
+    else execCommand('removeFormat');
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 px-4 py-1.5 border-y bg-muted/20 flex-wrap shrink-0">
+        <ToolbarBtn icon={Bold} label="Negrito" onClick={() => execCommand('bold')} />
+        <ToolbarBtn icon={Italic} label="Itálico" onClick={() => execCommand('italic')} />
+        <ToolbarBtn icon={Underline} label="Sublinhado" onClick={() => execCommand('underline')} />
+        <ToolbarBtn icon={Strikethrough} label="Riscado" onClick={() => execCommand('strikeThrough')} />
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <ToolbarBtn icon={Heading1} label="Título 1" onClick={() => execCommand('formatBlock', 'H1')} />
+        <ToolbarBtn icon={Heading2} label="Título 2" onClick={() => execCommand('formatBlock', 'H2')} />
+        <ToolbarBtn icon={Quote} label="Citação" onClick={() => execCommand('formatBlock', 'BLOCKQUOTE')} />
+        <ToolbarBtn icon={Code} label="Código" onClick={() => execCommand('formatBlock', 'PRE')} />
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <ToolbarBtn icon={List} label="Lista" onClick={() => execCommand('insertUnorderedList')} />
+        <ToolbarBtn icon={ListOrdered} label="Lista numerada" onClick={() => execCommand('insertOrderedList')} />
+        <ToolbarBtn icon={Minus} label="Separador" onClick={() => execCommand('insertHorizontalRule')} />
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <ToolbarBtn icon={AlignLeft} label="Alinhar esquerda" onClick={() => execCommand('justifyLeft')} />
+        <ToolbarBtn icon={AlignCenter} label="Centralizar" onClick={() => execCommand('justifyCenter')} />
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <ColorPickerBtn colors={TEXT_COLORS} icon={Palette} label="Cor do texto" onSelect={handleTextColor} />
+        <ColorPickerBtn colors={BG_COLORS} icon={Highlighter} label="Cor de fundo" onSelect={handleBgColor} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          className="min-h-full px-6 py-4 outline-none prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
+                     [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-4
+                     [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3
+                     [&_blockquote]:border-l-3 [&_blockquote]:border-amber-500/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:bg-amber-500/5 [&_blockquote]:py-2 [&_blockquote]:rounded-r-lg
+                     [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:border [&_pre]:border-border
+                     [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                     [&_hr]:border-border [&_hr]:my-4"
+          onInput={handleInput}
+          data-placeholder="Comece a escrever..."
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Markdown Editor ───
+
+function MarkdownEditor({ initialContent, onChange }: {
+  initialContent: string;
+  onChange: (text: string) => void;
+}) {
+  const [text, setText] = useState(initialContent);
+
+  const handleChange = useCallback((val: string) => {
+    setText(val);
+    onChange(val);
+  }, [onChange]);
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col border-r overflow-hidden">
+        <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
+          <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground font-medium">Editor</span>
+        </div>
+        <textarea
+          value={text}
+          onChange={e => handleChange(e.target.value)}
+          placeholder="Escreva em Markdown..."
+          className="flex-1 px-4 py-3 bg-transparent border-0 outline-none resize-none font-mono text-sm leading-relaxed placeholder:text-muted-foreground/30"
+          spellCheck={false}
+        />
+      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
+          <Eye className="h-2.5 w-2.5 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground font-medium">Preview</span>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="px-4 py-3 prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
+                          prose-headings:font-bold prose-h1:text-xl prose-h2:text-lg
+                          prose-blockquote:border-l-3 prose-blockquote:border-amber-500/40 prose-blockquote:bg-amber-500/5 prose-blockquote:py-1 prose-blockquote:rounded-r-lg
+                          prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg
+                          prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+                          prose-table:border prose-th:bg-muted/50 prose-th:px-3 prose-th:py-1.5 prose-td:px-3 prose-td:py-1.5 prose-td:border">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {text || '*Nada para exibir...*'}
+            </ReactMarkdown>
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+// ─── Note Card ───
+
+function NoteCard({ note, active, onClick, onDelete, compact }: {
+  note: Note; active: boolean; onClick: () => void; onDelete: (id: string) => void; compact: boolean;
+}) {
+  const preview = getPlainText(note.content).slice(0, compact ? 60 : 120);
+  return (
+    <motion.div
+      layout whileHover={{ x: 2 }}
+      className={cn(
+        'group relative rounded-lg px-3 py-2.5 cursor-pointer transition-all border border-transparent',
+        active ? 'bg-primary/8 border-primary/20 shadow-sm' : 'hover:bg-muted/60'
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {note.is_pinned && <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
+            <h3 className={cn('text-xs font-medium truncate', active ? 'text-primary' : 'text-foreground')}>
+              {note.title || 'Sem título'}
+            </h3>
+          </div>
+          {preview && <p className="text-[11px] text-muted-foreground/70 line-clamp-2 leading-relaxed">{preview}</p>}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-[9px] text-muted-foreground/50">{formatRelative(note.updated_at)}</span>
+            {!compact && note.tags.slice(0, 2).map(t => (
+              <Badge key={t} variant="outline" className="text-[8px] h-3.5 px-1 border-muted-foreground/20">{t}</Badge>
+            ))}
+          </div>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive shrink-0 mt-0.5"
+              onClick={e => e.stopPropagation()}>
+              <Trash2 className="h-2.5 w-2.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent onClick={e => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir nota?</AlertDialogTitle>
+              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onDelete(note.id)}>Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </motion.div>
   );
 }
 
 // ─── Main Component ───
 
 export default function NotesPage() {
-  const { notes, loading, saving, createNote, updateNote, deleteNote, folders, allTags } = useNotes();
+  const { notes, loading, syncStatus, createNote, updateNote, deleteNote, flush, folders, allTags } = useNotesEngine();
   const navigate = useNavigate();
 
-  const [activeNote, setActiveNote] = useState<string | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-
-  // Editor state
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editorMode, setEditorMode] = useState<'richtext' | 'markdown'>('richtext');
   const [newTag, setNewTag] = useState('');
   const [newFolder, setNewFolder] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
 
-  const editorRef = useRef<HTMLDivElement>(null);
-  const markdownRef = useRef<HTMLTextAreaElement>(null);
-  const debouncedTitleDraft = useDebounce({ noteId: activeNote, title: editTitle }, 800);
-  const debouncedContentDraft = useDebounce({ noteId: activeNote, content: editContent }, 1000);
-  const pendingSaveRef = useRef<{ noteId: string | null; title: string; content: string } | null>(null);
+  // Title is tracked locally for instant feedback, then enqueued
+  const [editTitle, setEditTitle] = useState('');
+  const titleTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const note = notes.find(n => n.id === activeNote);
+  const note = notes.find(n => n.id === activeNoteId);
 
-  useEffect(() => {
-    if (note) {
-      pendingSaveRef.current = { noteId: note.id, title: editTitle, content: editContent };
-    }
-  }, [editTitle, editContent, note]);
-
-  // Flush pending save when leaving a note
-  const flushSave = useCallback(async () => {
-    const pending = pendingSaveRef.current;
-    if (!pending?.noteId) return;
-
-    const currentNote = notes.find(n => n.id === pending.noteId);
-    if (!currentNote) return;
-
-    const updates: Partial<Pick<Note, 'title' | 'content'>> = {};
-    if (pending.title.trim() && pending.title !== currentNote.title) updates.title = pending.title;
-    if (pending.content !== currentNote.content) updates.content = pending.content;
-
-    if (Object.keys(updates).length > 0) {
-      await updateNote(pending.noteId, updates);
-    }
-
-    pendingSaveRef.current = null;
-  }, [notes, updateNote]);
-
-  // Override setActiveNote to flush first
-  const switchNote = useCallback(async (id: string | null) => {
-    await flushSave();
-    setActiveNote(id);
-  }, [flushSave]);
-
-  const handleBackToTools = useCallback(async () => {
-    await flushSave();
-    navigate('/ferramentas');
-  }, [flushSave, navigate]);
-
-  const handleSelectFolder = useCallback(async (folder: string | null) => {
-    await flushSave();
-    setActiveFolder(folder);
-    setActiveTag(null);
-  }, [flushSave]);
-
-  // Sync editor when switching notes
+  // Sync title from note when switching
   useEffect(() => {
     if (note) {
       setEditTitle(note.title);
-      setEditContent(note.content);
-      setEditorMode((note as any).editor_mode === 'markdown' ? 'markdown' : 'richtext');
-      if (editorRef.current && (note as any).editor_mode !== 'markdown') {
-        editorRef.current.innerHTML = note.content;
+    }
+  }, [activeNoteId]); // eslint-disable-line -- only on switch
+
+  // Debounced title save
+  const handleTitleChange = useCallback((val: string) => {
+    setEditTitle(val);
+    if (!activeNoteId) return;
+    clearTimeout(titleTimerRef.current);
+    titleTimerRef.current = setTimeout(() => {
+      if (val.trim()) updateNote(activeNoteId, { title: val });
+    }, 600);
+  }, [activeNoteId, updateNote]);
+
+  // Content change handler (called by editor components)
+  const handleContentChange = useCallback((content: string) => {
+    if (!activeNoteId) return;
+    updateNote(activeNoteId, { content });
+  }, [activeNoteId, updateNote]);
+
+  // Switch note with flush
+  const switchNote = useCallback(async (id: string | null) => {
+    clearTimeout(titleTimerRef.current);
+    // Flush pending title if changed
+    if (activeNoteId && editTitle.trim()) {
+      const currentNote = notes.find(n => n.id === activeNoteId);
+      if (currentNote && editTitle !== currentNote.title) {
+        updateNote(activeNoteId, { title: editTitle });
       }
     }
-  }, [activeNote]); // intentionally only on activeNote change
+    await flush();
+    setActiveNoteId(id);
+  }, [activeNoteId, editTitle, notes, flush, updateNote]);
 
-  // Auto-save title
-  useEffect(() => {
-    const noteId = debouncedTitleDraft.noteId;
-    if (!noteId) return;
-    const targetNote = notes.find(n => n.id === noteId);
-    if (!targetNote) return;
+  const handleBackToTools = useCallback(async () => {
+    await flush();
+    navigate('/ferramentas');
+  }, [flush, navigate]);
 
-    if (debouncedTitleDraft.title.trim() && debouncedTitleDraft.title !== targetNote.title) {
-      void updateNote(noteId, { title: debouncedTitleDraft.title });
-    }
-  }, [debouncedTitleDraft, notes, updateNote]);
-
-  // Auto-save content
-  useEffect(() => {
-    const noteId = debouncedContentDraft.noteId;
-    if (!noteId) return;
-    const targetNote = notes.find(n => n.id === noteId);
-    if (!targetNote) return;
-
-    if (debouncedContentDraft.content !== targetNote.content) {
-      void updateNote(noteId, { content: debouncedContentDraft.content });
-    }
-  }, [debouncedContentDraft, notes, updateNote]);
-
-  // Flush on unmount / page leave
-  useEffect(() => {
-    return () => { void flushSave(); };
-  }, [flushSave]);
-
-  const execCommand = (cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
-    editorRef.current?.focus();
-    setEditContent(editorRef.current?.innerHTML || '');
-  };
-
-  const handleTextColor = (color: string) => {
-    if (color) execCommand('foreColor', color);
-    else execCommand('removeFormat');
-  };
-
-  const handleBgColor = (color: string) => {
-    if (color) execCommand('hiliteColor', color);
-    else execCommand('removeFormat');
-  };
-
-  const toggleEditorMode = () => {
-    const newMode = editorMode === 'richtext' ? 'markdown' : 'richtext';
-    setEditorMode(newMode);
-    if (note) {
-      updateNote(note.id, { editor_mode: newMode } as any);
-    }
-    // When switching to richtext, load content into contentEditable
-    if (newMode === 'richtext' && editorRef.current) {
-      setTimeout(() => {
-        if (editorRef.current) editorRef.current.innerHTML = editContent;
-      }, 50);
-    }
-  };
+  const handleSelectFolder = useCallback(async (folder: string | null) => {
+    await flush();
+    setActiveFolder(folder);
+    setActiveTag(null);
+  }, [flush]);
 
   const handleCreate = async () => {
-    await flushSave();
+    await flush();
     const folder = activeFolder || 'Geral';
     const result = await createNote(folder);
-    if (result) setActiveNote(result.id);
+    if (result) setActiveNoteId(result.id);
   };
 
   const handleAddTag = () => {
     if (!note || !newTag.trim()) return;
-    const tags = [...note.tags, newTag.trim().toLowerCase()];
-    void updateNote(note.id, { tags: [...new Set(tags)] });
+    const tags = [...new Set([...note.tags, newTag.trim().toLowerCase()])];
+    updateNote(note.id, { tags });
     setNewTag('');
   };
 
   const handleRemoveTag = (tag: string) => {
     if (!note) return;
-    const tags = note.tags.filter(t => t !== tag);
-    void updateNote(note.id, { tags });
+    updateNote(note.id, { tags: note.tags.filter(t => t !== tag) });
   };
 
   const togglePin = () => {
     if (!note) return;
-    void updateNote(note.id, { is_pinned: !note.is_pinned });
+    updateNote(note.id, { is_pinned: !note.is_pinned });
   };
 
-  // Filtered notes
+  const toggleEditorMode = () => {
+    if (!note) return;
+    const newMode = note.editor_mode === 'markdown' ? 'richtext' : 'markdown';
+    updateNote(note.id, { editor_mode: newMode });
+  };
+
+  // ─── Filtered notes ───
   const filtered = useMemo(() => notes.filter(n => {
     if (activeFolder && n.folder !== activeFolder) return false;
     if (activeTag && !n.tags.includes(activeTag)) return false;
@@ -308,15 +443,20 @@ export default function NotesPage() {
 
   const wordCount = useMemo(() => {
     if (!note) return 0;
-    const text = editorMode === 'markdown' ? editContent : getPlainText(editContent);
+    const text = note.editor_mode === 'markdown' ? note.content : getPlainText(note.content);
     return text.split(/\s+/).filter(Boolean).length;
-  }, [editContent, note, editorMode]);
+  }, [note]);
 
-  // ====================== RENDER ======================
+  // Flush on unmount
+  useEffect(() => {
+    return () => { void flush(); };
+  }, [flush]);
+
+  // ─── RENDER ───
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      {/* ─── LEFT: Sidebar ─── */}
+      {/* LEFT: Sidebar */}
       <motion.div
         animate={{ width: sidebarCollapsed ? 48 : 240 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -329,10 +469,8 @@ export default function NotesPage() {
             </Button>
           )}
           <div className="flex-1" />
-          <Button
-            variant="ghost" size="icon" className="h-7 w-7 shrink-0"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
             <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', !sidebarCollapsed && 'rotate-180')} />
           </Button>
         </div>
@@ -354,8 +492,7 @@ export default function NotesPage() {
                   <span className="text-[10px] opacity-60">{notes.length}</span>
                 </button>
                 {folders.map(f => (
-                  <button
-                    key={f}
+                  <button key={f}
                     className={cn(
                       'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors',
                       activeFolder === f ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -369,26 +506,17 @@ export default function NotesPage() {
                 ))}
                 {showNewFolder ? (
                   <div className="px-1 pt-1">
-                    <Input
-                      autoFocus value={newFolder} onChange={e => setNewFolder(e.target.value)}
+                    <Input autoFocus value={newFolder} onChange={e => setNewFolder(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === 'Enter' && newFolder.trim()) {
-                          setActiveFolder(newFolder.trim());
-                          setShowNewFolder(false);
-                          setNewFolder('');
-                        }
+                        if (e.key === 'Enter' && newFolder.trim()) { setActiveFolder(newFolder.trim()); setShowNewFolder(false); setNewFolder(''); }
                         if (e.key === 'Escape') setShowNewFolder(false);
                       }}
                       onBlur={() => setShowNewFolder(false)}
-                      className="h-7 text-xs"
-                      placeholder="Nome da pasta..."
-                    />
+                      className="h-7 text-xs" placeholder="Nome da pasta..." />
                   </div>
                 ) : (
-                  <button
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors"
-                    onClick={() => setShowNewFolder(true)}
-                  >
+                  <button className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors"
+                    onClick={() => setShowNewFolder(true)}>
                     <FolderPlus className="h-3.5 w-3.5" /> Nova pasta
                   </button>
                 )}
@@ -400,12 +528,9 @@ export default function NotesPage() {
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-2">Tags</p>
                 <div className="flex flex-wrap gap-1 px-1">
                   {allTags.map(t => (
-                    <Badge
-                      key={t}
-                      variant={activeTag === t ? 'default' : 'outline'}
+                    <Badge key={t} variant={activeTag === t ? 'default' : 'outline'}
                       className={cn('text-[10px] cursor-pointer transition-all', activeTag === t && 'shadow-sm')}
-                      onClick={() => setActiveTag(activeTag === t ? null : t)}
-                    >
+                      onClick={() => setActiveTag(activeTag === t ? null : t)}>
                       {t}
                     </Badge>
                   ))}
@@ -418,11 +543,8 @@ export default function NotesPage() {
         <div className="p-2 border-t">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                onClick={handleCreate}
-                size={sidebarCollapsed ? 'icon' : 'sm'}
-                className={cn('gap-1.5 w-full', sidebarCollapsed && 'h-8 w-8')}
-              >
+              <Button onClick={handleCreate} size={sidebarCollapsed ? 'icon' : 'sm'}
+                className={cn('gap-1.5 w-full', sidebarCollapsed && 'h-8 w-8')}>
                 <Plus className="h-4 w-4" />
                 {!sidebarCollapsed && <span className="text-xs">Nova Nota</span>}
               </Button>
@@ -432,10 +554,10 @@ export default function NotesPage() {
         </div>
       </motion.div>
 
-      {/* ─── CENTER: Note list ─── */}
+      {/* CENTER: Note list */}
       <div className={cn(
         'shrink-0 border-r flex flex-col overflow-hidden transition-all',
-        activeNote ? 'w-72' : 'flex-1 max-w-full'
+        activeNoteId ? 'w-72' : 'flex-1 max-w-full'
       )}>
         <div className="p-3 space-y-2 shrink-0 border-b">
           <div className="flex items-center gap-2">
@@ -448,11 +570,8 @@ export default function NotesPage() {
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar notas..."
-              className="pl-8 h-8 text-xs bg-muted/50 border-transparent focus:border-border"
-            />
+            <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar notas..." className="pl-8 h-8 text-xs bg-muted/50 border-transparent focus:border-border" />
           </div>
         </div>
 
@@ -479,20 +598,20 @@ export default function NotesPage() {
                     <Pin className="h-2.5 w-2.5" /> Fixadas
                   </p>
                   {pinnedNotes.map(n => (
-                    <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
+                    <NoteCard key={n.id} note={n} active={activeNoteId === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNoteId} />
                   ))}
                   <Separator className="my-1" />
                 </>
               )}
               {otherNotes.map(n => (
-                <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
+                <NoteCard key={n.id} note={n} active={activeNoteId === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNoteId} />
               ))}
             </div>
           )}
         </ScrollArea>
       </div>
 
-      {/* ─── RIGHT: Editor ─── */}
+      {/* RIGHT: Editor */}
       <AnimatePresence mode="wait">
         {note && (
           <motion.div
@@ -503,29 +622,25 @@ export default function NotesPage() {
             transition={{ duration: 0.2 }}
             className="flex-1 flex flex-col overflow-hidden min-w-0"
           >
-            {/* Editor header */}
+            {/* Header */}
             <div className="flex items-center gap-2 px-4 py-2.5 border-b shrink-0">
               <Button variant="ghost" size="icon" className="h-7 w-7 md:hidden" onClick={() => switchNote(null)}>
                 <ArrowLeft className="h-3.5 w-3.5" />
               </Button>
 
               <Badge variant="outline" className={cn('text-[10px] h-5 gap-1 border-0', getFolderColor(note.folder))}>
-                <FolderOpen className="h-2.5 w-2.5" />
-                {note.folder}
+                <FolderOpen className="h-2.5 w-2.5" /> {note.folder}
               </Badge>
 
-              {/* Editor mode toggle */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost" size="sm"
+                  <Button variant="ghost" size="sm"
                     className={cn('h-6 text-[10px] gap-1 px-2 rounded-full',
-                      editorMode === 'markdown' ? 'bg-violet-500/10 text-violet-600' : 'text-muted-foreground'
+                      note.editor_mode === 'markdown' ? 'bg-violet-500/10 text-violet-600' : 'text-muted-foreground'
                     )}
-                    onClick={toggleEditorMode}
-                  >
-                    {editorMode === 'markdown' ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
-                    {editorMode === 'markdown' ? 'Markdown' : 'Rich Text'}
+                    onClick={toggleEditorMode}>
+                    {note.editor_mode === 'markdown' ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
+                    {note.editor_mode === 'markdown' ? 'Markdown' : 'Rich Text'}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Alternar modo de edição</TooltipContent>
@@ -533,19 +648,7 @@ export default function NotesPage() {
 
               <div className="flex-1" />
 
-              <AnimatePresence>
-                {saving && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="flex items-center gap-1.5 text-muted-foreground"
-                  >
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span className="text-[10px]">Salvando...</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <SyncIndicator status={syncStatus} />
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -570,121 +673,24 @@ export default function NotesPage() {
             <div className="px-6 pt-4 pb-1">
               <input
                 value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
+                onChange={e => handleTitleChange(e.target.value)}
                 placeholder="Sem título"
                 className="w-full text-xl font-bold bg-transparent border-0 outline-none placeholder:text-muted-foreground/30"
               />
               <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <Clock className="h-2.5 w-2.5" />
-                  {formatRelative(note.updated_at)}
+                  <Clock className="h-2.5 w-2.5" /> {formatRelative(note.updated_at)}
                 </span>
                 <span>{wordCount} palavra{wordCount !== 1 ? 's' : ''}</span>
               </div>
             </div>
 
-            {/* Formatting toolbar (rich text mode only) */}
-            {editorMode === 'richtext' && (
-              <div className="flex items-center gap-0.5 px-4 py-1.5 border-y bg-muted/20 flex-wrap">
-                <ToolbarBtn icon={Bold} label="Negrito" onClick={() => execCommand('bold')} />
-                <ToolbarBtn icon={Italic} label="Itálico" onClick={() => execCommand('italic')} />
-                <ToolbarBtn icon={Underline} label="Sublinhado" onClick={() => execCommand('underline')} />
-                <ToolbarBtn icon={Strikethrough} label="Riscado" onClick={() => execCommand('strikeThrough')} />
-
-                <Separator orientation="vertical" className="h-4 mx-1" />
-
-                <ToolbarBtn icon={Heading1} label="Título 1" onClick={() => execCommand('formatBlock', 'H1')} />
-                <ToolbarBtn icon={Heading2} label="Título 2" onClick={() => execCommand('formatBlock', 'H2')} />
-                <ToolbarBtn icon={Quote} label="Citação" onClick={() => execCommand('formatBlock', 'BLOCKQUOTE')} />
-                <ToolbarBtn icon={Code} label="Código" onClick={() => execCommand('formatBlock', 'PRE')} />
-
-                <Separator orientation="vertical" className="h-4 mx-1" />
-
-                <ToolbarBtn icon={List} label="Lista" onClick={() => execCommand('insertUnorderedList')} />
-                <ToolbarBtn icon={ListOrdered} label="Lista numerada" onClick={() => execCommand('insertOrderedList')} />
-                <ToolbarBtn icon={Minus} label="Separador" onClick={() => execCommand('insertHorizontalRule')} />
-
-                <Separator orientation="vertical" className="h-4 mx-1" />
-
-                <ToolbarBtn icon={AlignLeft} label="Alinhar esquerda" onClick={() => execCommand('justifyLeft')} />
-                <ToolbarBtn icon={AlignCenter} label="Centralizar" onClick={() => execCommand('justifyCenter')} />
-
-                <Separator orientation="vertical" className="h-4 mx-1" />
-
-                {/* Color pickers */}
-                <ColorPickerBtn
-                  colors={TEXT_COLORS}
-                  icon={Palette}
-                  label="Cor do texto"
-                  onSelect={handleTextColor}
-                />
-                <ColorPickerBtn
-                  colors={BG_COLORS}
-                  icon={Highlighter}
-                  label="Cor de fundo"
-                  onSelect={handleBgColor}
-                />
-              </div>
-            )}
-
-            {/* Content area */}
+            {/* Editor - keyed by note.id to force fresh mount */}
             <div className="flex-1 overflow-hidden flex">
-              {editorMode === 'markdown' ? (
-                /* ─── Markdown: split view ─── */
-                <div className="flex-1 flex overflow-hidden">
-                  {/* Editor */}
-                  <div className="flex-1 flex flex-col border-r overflow-hidden">
-                    <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
-                      <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground font-medium">Editor</span>
-                    </div>
-                    <textarea
-                      ref={markdownRef}
-                      value={editContent}
-                      onChange={e => setEditContent(e.target.value)}
-                      placeholder="Escreva em Markdown..."
-                      className="flex-1 px-4 py-3 bg-transparent border-0 outline-none resize-none font-mono text-sm leading-relaxed placeholder:text-muted-foreground/30"
-                      spellCheck={false}
-                    />
-                  </div>
-                  {/* Preview */}
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
-                      <Eye className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground font-medium">Preview</span>
-                    </div>
-                    <ScrollArea className="flex-1">
-                      <div className="px-4 py-3 prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
-                                      prose-headings:font-bold prose-h1:text-xl prose-h2:text-lg
-                                      prose-blockquote:border-l-3 prose-blockquote:border-amber-500/40 prose-blockquote:bg-amber-500/5 prose-blockquote:py-1 prose-blockquote:rounded-r-lg
-                                      prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg
-                                      prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
-                                      prose-table:border prose-th:bg-muted/50 prose-th:px-3 prose-th:py-1.5 prose-td:px-3 prose-td:py-1.5 prose-td:border">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {editContent || '*Nada para exibir...*'}
-                        </ReactMarkdown>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
+              {note.editor_mode === 'markdown' ? (
+                <MarkdownEditor key={note.id} initialContent={note.content} onChange={handleContentChange} />
               ) : (
-                /* ─── Rich Text editor ─── */
-                <div className="flex-1 overflow-auto">
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    className="min-h-full px-6 py-4 outline-none prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
-                               [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-4
-                               [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3
-                               [&_blockquote]:border-l-3 [&_blockquote]:border-amber-500/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:bg-amber-500/5 [&_blockquote]:py-2 [&_blockquote]:rounded-r-lg
-                               [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:border [&_pre]:border-border
-                               [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
-                               [&_hr]:border-border [&_hr]:my-4"
-                    onInput={() => setEditContent(editorRef.current?.innerHTML || '')}
-                    data-placeholder="Comece a escrever..."
-                  />
-                </div>
+                <RichTextEditor key={note.id} initialContent={note.content} onChange={handleContentChange} />
               )}
             </div>
 
@@ -693,36 +699,26 @@ export default function NotesPage() {
               <Tag className="h-3 w-3 text-muted-foreground/50 shrink-0" />
               <AnimatePresence>
                 {note.tags.map(tag => (
-                  <motion.div
-                    key={tag}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                  >
-                    <Badge
-                      variant="secondary"
+                  <motion.div key={tag} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                    <Badge variant="secondary"
                       className="text-[10px] h-5 gap-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      onClick={() => handleRemoveTag(tag)}
-                    >
+                      onClick={() => handleRemoveTag(tag)}>
                       {tag} <X className="h-2.5 w-2.5" />
                     </Badge>
                   </motion.div>
                 ))}
               </AnimatePresence>
-              <Input
-                value={newTag}
-                onChange={e => setNewTag(e.target.value)}
+              <Input value={newTag} onChange={e => setNewTag(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddTag()}
                 placeholder="+ tag"
-                className="h-5 text-[10px] w-20 border-0 bg-transparent px-1 focus-visible:ring-0 placeholder:text-muted-foreground/30"
-              />
+                className="h-5 text-[10px] w-20 border-0 bg-transparent px-1 focus-visible:ring-0 placeholder:text-muted-foreground/30" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Empty state */}
-      {!activeNote && !loading && filtered.length > 0 && (
+      {!activeNoteId && !loading && filtered.length > 0 && (
         <div className="hidden lg:flex flex-1 items-center justify-center text-center border-l">
           <div className="space-y-3">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 flex items-center justify-center mx-auto">
@@ -734,78 +730,10 @@ export default function NotesPage() {
         </div>
       )}
 
-      {/* Share dialog */}
       <NoteShareDialog
-        open={shareDialogOpen}
-        onOpenChange={setShareDialogOpen}
-        noteId={activeNote}
-        noteTitle={note?.title || 'Sem título'}
+        open={shareDialogOpen} onOpenChange={setShareDialogOpen}
+        noteId={activeNoteId} noteTitle={note?.title || 'Sem título'}
       />
     </div>
-  );
-}
-
-// ─── Note Card Component ───
-
-function NoteCard({ note, active, onClick, onDelete, compact }: {
-  note: Note;
-  active: boolean;
-  onClick: () => void;
-  onDelete: (id: string) => void;
-  compact: boolean;
-}) {
-  const preview = getPlainText(note.content).slice(0, compact ? 60 : 120);
-
-  return (
-    <motion.div
-      layout
-      whileHover={{ x: 2 }}
-      className={cn(
-        'group relative rounded-lg px-3 py-2.5 cursor-pointer transition-all border border-transparent',
-        active ? 'bg-primary/8 border-primary/20 shadow-sm' : 'hover:bg-muted/60'
-      )}
-      onClick={onClick}
-    >
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            {note.is_pinned && <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
-            <h3 className={cn('text-xs font-medium truncate', active ? 'text-primary' : 'text-foreground')}>
-              {note.title || 'Sem título'}
-            </h3>
-          </div>
-          {preview && (
-            <p className="text-[11px] text-muted-foreground/70 line-clamp-2 leading-relaxed">{preview}</p>
-          )}
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[9px] text-muted-foreground/50">{formatRelative(note.updated_at)}</span>
-            {!compact && note.tags.slice(0, 2).map(t => (
-              <Badge key={t} variant="outline" className="text-[8px] h-3.5 px-1 border-muted-foreground/20">{t}</Badge>
-            ))}
-          </div>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost" size="icon"
-              className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive shrink-0 mt-0.5"
-              onClick={e => e.stopPropagation()}
-            >
-              <Trash2 className="h-2.5 w-2.5" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent onClick={e => e.stopPropagation()}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir nota?</AlertDialogTitle>
-              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(note.id)}>Excluir</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </motion.div>
   );
 }
