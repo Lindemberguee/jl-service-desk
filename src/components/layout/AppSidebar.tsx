@@ -4,6 +4,7 @@ import {
   SidebarHeader, SidebarFooter,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenantBranding } from '@/hooks/useTenantBranding';
 import { hasPermission } from '@/lib/permissions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -113,6 +114,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function AppSidebar() {
   const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions } = useAuth();
+  const { tenantName, tenantLogo } = useTenantBranding();
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
@@ -141,11 +143,15 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b border-sidebar-border/50 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent pointer-events-none" />
         <div className="flex items-center gap-3 relative">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 flex items-center justify-center shadow-lg shadow-sidebar-primary/20">
-            <Wrench className="h-4 w-4 text-sidebar-primary-foreground" />
-          </div>
+          {tenantLogo ? (
+            <img src={tenantLogo} alt={tenantName} className="h-9 w-9 rounded-xl object-contain bg-white/10 p-0.5" />
+          ) : (
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 flex items-center justify-center shadow-lg shadow-sidebar-primary/20">
+              <Wrench className="h-4 w-4 text-sidebar-primary-foreground" />
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">ServiceOS</span>
+            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">{tenantName}</span>
             <div className="flex items-center gap-1.5">
               <CircleDot className="h-2 w-2 text-emerald-400" />
               <span className="text-[11px] text-sidebar-foreground/40 truncate max-w-[120px]">
