@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { playNotificationSound } from '@/lib/notificationSound';
 
 export interface Notification {
   id: string;
@@ -77,7 +78,8 @@ export function useNotifications(): UseNotificationsReturn {
           const newNotif = payload.new as unknown as Notification;
           setNotifications((prev) => [newNotif, ...prev]);
           
-          // Show toast for new notification
+          // Play sound + show toast for new notification
+          playNotificationSound();
           toast(newNotif.title, {
             description: newNotif.body,
             duration: 5000,
