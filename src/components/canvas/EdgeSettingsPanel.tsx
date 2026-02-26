@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useReactFlow, type Edge } from '@xyflow/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,8 @@ interface EdgeSettingsPanelProps {
 export default function EdgeSettingsPanel({ selectedEdgeId, position }: EdgeSettingsPanelProps) {
   const { getEdge, setEdges } = useReactFlow();
   const [open, setOpen] = useState(false);
+  const [localLabel, setLocalLabel] = useState('');
+  const labelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const edge = selectedEdgeId ? getEdge(selectedEdgeId) : null;
   const data = (edge?.data || {}) as CustomEdgeData;
@@ -31,10 +33,11 @@ export default function EdgeSettingsPanel({ selectedEdgeId, position }: EdgeSett
   useEffect(() => {
     if (selectedEdgeId && position) {
       setOpen(true);
+      setLocalLabel(((getEdge(selectedEdgeId)?.data as CustomEdgeData)?.label) || '');
     } else {
       setOpen(false);
     }
-  }, [selectedEdgeId, position]);
+  }, [selectedEdgeId, position, getEdge]);
 
   const updateEdgeData = useCallback((updates: Partial<CustomEdgeData>) => {
     if (!selectedEdgeId) return;
@@ -155,8 +158,14 @@ export default function EdgeSettingsPanel({ selectedEdgeId, position }: EdgeSett
         <div className="space-y-1.5">
           <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Rótulo</Label>
           <Input
-            value={data.label || ''}
-            onChange={(e) => updateEdgeData({ label: e.target.value })}
+            value={localLabel}
+            onChange={(e) => {
+              const val = e.target.value;
+              setLocalLabel(val);
+              if (labelTimeoutRef.current) clearTimeout(labelTimeoutRef.current);
+              labelTimeoutRef.current = setTimeout(() => updateEdgeData({ label: val }), 400);
+            }}
+            onBlur={() => updateEdgeData({ label: localLabel })}
             placeholder="Texto na conexão..."
             className="h-7 text-xs"
           />
