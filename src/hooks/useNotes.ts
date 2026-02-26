@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useDebounce } from './useDebounce';
 
 export interface Note {
   id: string;
@@ -21,9 +20,12 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const fetchNotes = useCallback(async () => {
     if (!user || !currentTenantId) return;
+    // Don't fetch while a save is in-flight to avoid overwriting local state
+    if (savingRef.current) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('notes')
@@ -49,25 +51,36 @@ export function useNotes() {
       .single();
 
     if (error) { toast.error('Erro ao criar nota'); return null; }
-    await fetchNotes();
-    return data as Note;
-  }, [user, currentTenantId, fetchNotes]);
+    const note = data as Note;
+    // Update local state immediately
+    setNotes(prev => [note, ...prev]);
+    return note;
+  }, [user, currentTenantId]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'folder' | 'tags' | 'is_pinned' | 'editor_mode'>>) => {
+    const now = new Date().toISOString();
+    
+    // Optimistic: update local state immediately
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates, updated_at: now } : n));
+
     setSaving(true);
+    savingRef.current = true;
     const { error } = await supabase
       .from('notes')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updates, updated_at: now })
       .eq('id', id);
 
     if (error) toast.error('Erro ao salvar');
     setSaving(false);
+    savingRef.current = false;
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
+    // Optimistic removal
+    setNotes(prev => prev.filter(n => n.id !== id));
     const { error } = await supabase.from('notes').delete().eq('id', id);
-    if (error) toast.error('Erro ao excluir');
-    else { toast.success('Nota excluída'); await fetchNotes(); }
+    if (error) { toast.error('Erro ao excluir'); fetchNotes(); }
+    else toast.success('Nota excluída');
   }, [fetchNotes]);
 
   const folders = [...new Set(notes.map(n => n.folder))].sort();

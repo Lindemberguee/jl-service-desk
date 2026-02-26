@@ -148,10 +148,41 @@ export default function NotesPage() {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const markdownRef = useRef<HTMLTextAreaElement>(null);
-  const debouncedTitle = useDebounce(editTitle, 1000);
-  const debouncedContent = useDebounce(editContent, 1500);
+  const debouncedTitle = useDebounce(editTitle, 800);
+  const debouncedContent = useDebounce(editContent, 1000);
+  const pendingSaveRef = useRef<{ title: string; content: string } | null>(null);
 
   const note = notes.find(n => n.id === activeNote);
+
+  // Track pending changes for flush-on-leave
+  useEffect(() => {
+    if (note) {
+      pendingSaveRef.current = { title: editTitle, content: editContent };
+    }
+  }, [editTitle, editContent, note]);
+
+  // Flush pending save when leaving a note
+  const flushSave = useCallback(() => {
+    if (!activeNote || !pendingSaveRef.current) return;
+    const pending = pendingSaveRef.current;
+    const currentNote = notes.find(n => n.id === activeNote);
+    if (!currentNote) return;
+
+    const updates: any = {};
+    if (pending.title !== currentNote.title && pending.title.trim()) updates.title = pending.title;
+    if (pending.content !== currentNote.content) updates.content = pending.content;
+
+    if (Object.keys(updates).length > 0) {
+      updateNote(activeNote, updates);
+    }
+    pendingSaveRef.current = null;
+  }, [activeNote, notes, updateNote]);
+
+  // Override setActiveNote to flush first
+  const switchNote = useCallback((id: string | null) => {
+    flushSave();
+    setActiveNote(id);
+  }, [flushSave]);
 
   // Sync editor when switching notes
   useEffect(() => {
@@ -178,6 +209,11 @@ export default function NotesPage() {
       updateNote(note.id, { content: debouncedContent });
     }
   }, [debouncedContent]);
+
+  // Flush on unmount / page leave
+  useEffect(() => {
+    return () => { flushSave(); };
+  }, [flushSave]);
 
   const execCommand = (cmd: string, value?: string) => {
     document.execCommand(cmd, false, value);
@@ -212,7 +248,7 @@ export default function NotesPage() {
   const handleCreate = async () => {
     const folder = activeFolder || 'Geral';
     const result = await createNote(folder);
-    if (result) setActiveNote(result.id);
+    if (result) switchNote(result.id);
   };
 
   const handleAddTag = () => {
@@ -423,13 +459,13 @@ export default function NotesPage() {
                     <Pin className="h-2.5 w-2.5" /> Fixadas
                   </p>
                   {pinnedNotes.map(n => (
-                    <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => setActiveNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
+                    <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
                   ))}
                   <Separator className="my-1" />
                 </>
               )}
               {otherNotes.map(n => (
-                <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => setActiveNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
+                <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => switchNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
               ))}
             </div>
           )}
@@ -449,7 +485,7 @@ export default function NotesPage() {
           >
             {/* Editor header */}
             <div className="flex items-center gap-2 px-4 py-2.5 border-b shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7 md:hidden" onClick={() => setActiveNote(null)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 md:hidden" onClick={() => switchNote(null)}>
                 <ArrowLeft className="h-3.5 w-3.5" />
               </Button>
 
