@@ -55,6 +55,7 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hasChanges, setHasChanges] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
   const [showPalette, setShowPalette] = useState(true);
   const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
@@ -85,15 +86,16 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
     return () => { supabase.removeChannel(channel); };
   }, [boardId, currentTenantId, user?.id, readOnly, setNodes, setEdges]);
 
-  // Auto-save every 20s
+  // Auto-save on every change (debounced 1.5s)
   useEffect(() => {
     if (!hasChanges || readOnly) return;
-    const timer = setTimeout(async () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
       skipRealtimeRef.current = true;
       await onSave(nodes, edges, getViewport());
       setHasChanges(false);
-    }, 20000);
-    return () => clearTimeout(timer);
+    }, 1500);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [nodes, edges, hasChanges, getViewport, onSave, readOnly]);
 
   // Keyboard shortcuts
@@ -391,10 +393,8 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
               <CanvasToolbar
                 saving={saving}
                 readOnly={readOnly}
-                hasChanges={hasChanges}
                 edgeStyle={edgeStyle}
                 onEdgeStyleChange={setEdgeStyle}
-                onSave={handleSave}
                 onDelete={deleteSelected}
                 onUndo={handleUndo}
                 onRedo={handleRedo}

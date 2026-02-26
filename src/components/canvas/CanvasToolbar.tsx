@@ -14,10 +14,8 @@ import type { EdgeStyle } from './CustomEdge';
 interface CanvasToolbarProps {
   saving: boolean;
   readOnly: boolean;
-  hasChanges: boolean;
   edgeStyle: EdgeStyle;
   onEdgeStyleChange: (style: EdgeStyle) => void;
-  onSave: () => void;
   onDelete: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -50,8 +48,8 @@ function Btn({ icon: Icon, label, onClick, disabled, active, className = '' }: a
 }
 
 export default function CanvasToolbar({
-  saving, readOnly, hasChanges, edgeStyle, onEdgeStyleChange,
-  onSave, onDelete, onUndo, onRedo, canUndo, canRedo, onExport,
+  saving, readOnly, edgeStyle, onEdgeStyleChange,
+  onDelete, onUndo, onRedo, canUndo, canRedo, onExport,
   showPalette, onTogglePalette, isFullscreen, onToggleFullscreen,
 }: CanvasToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
@@ -114,18 +112,12 @@ export default function CanvasToolbar({
           <Btn icon={Trash2} label="Excluir selecionados (Del)" onClick={onDelete} className="text-destructive hover:text-destructive" />
           <Btn icon={Download} label="Exportar como PNG" onClick={onExport} />
 
-          <Separator orientation="vertical" className="h-5 mx-0.5" />
-          <div className="flex items-center gap-2">
-            {hasChanges && (
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground border-warning/30 bg-warning/10">
-                Alterado
-              </Badge>
-            )}
-            <Button size="sm" onClick={onSave} disabled={saving} className="h-7 text-xs gap-1.5 px-3 rounded-lg">
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              Salvar
-            </Button>
-          </div>
+          {saving && (
+            <div className="flex items-center gap-1.5 text-muted-foreground ml-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span className="text-[10px]">Salvando...</span>
+            </div>
+          )}
         </>
       )}
 
