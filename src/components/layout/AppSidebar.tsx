@@ -37,6 +37,7 @@ const operationalItems: MenuItem[] = [
 const managementItems: MenuItem[] = [
   { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' },
   { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
+  { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read' },
   { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
   { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
   { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' },

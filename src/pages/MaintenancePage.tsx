@@ -1,0 +1,780 @@
+import React, { useState, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { hasPermission } from '@/lib/permissions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/useDebounce';
+import {
+  Wrench, Plus, Search, Monitor, Cpu, HardDrive, Mouse,
+  Keyboard, MemoryStick, Cable, CircuitBoard, Eye, Pencil,
+  Trash2, Link2, Package, Calendar, AlertTriangle, CheckCircle2,
+  Clock, XCircle, Activity, Settings2, Laptop,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const COMPONENT_TYPES = [
+  { value: 'cpu', label: 'Processador (CPU)', icon: Cpu },
+  { value: 'ram', label: 'Memória RAM', icon: MemoryStick },
+  { value: 'hd', label: 'HD / Disco Rígido', icon: HardDrive },
+  { value: 'ssd', label: 'SSD', icon: HardDrive },
+  { value: 'monitor', label: 'Monitor', icon: Monitor },
+  { value: 'mouse', label: 'Mouse', icon: Mouse },
+  { value: 'teclado', label: 'Teclado', icon: Keyboard },
+  { value: 'fonte', label: 'Fonte de Alimentação', icon: Cable },
+  { value: 'placa_mae', label: 'Placa-Mãe', icon: CircuitBoard },
+  { value: 'placa_video', label: 'Placa de Vídeo', icon: Monitor },
+  { value: 'notebook', label: 'Notebook', icon: Laptop },
+  { value: 'impressora', label: 'Impressora', icon: Settings2 },
+  { value: 'outros', label: 'Outros', icon: Package },
+];
+
+const MAINTENANCE_TYPES: Record<string, { label: string; color: string }> = {
+  preventiva: { label: 'Preventiva', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  corretiva: { label: 'Corretiva', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
+  preditiva: { label: 'Preditiva', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+  instalacao: { label: 'Instalação', color: 'bg-green-500/10 text-green-500 border-green-500/20' },
+  substituicao: { label: 'Substituição', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+};
+
+const MAINTENANCE_STATUS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  agendada: { label: 'Agendada', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: Calendar },
+  em_andamento: { label: 'Em Andamento', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', icon: Activity },
+  concluida: { label: 'Concluída', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: CheckCircle2 },
+  cancelada: { label: 'Cancelada', color: 'bg-muted text-muted-foreground', icon: XCircle },
+  atrasada: { label: 'Atrasada', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertTriangle },
+};
+
+const COMPONENT_STATUS: Record<string, { label: string; color: string }> = {
+  ativo: { label: 'Ativo', color: 'bg-green-500/10 text-green-500 border-green-500/20' },
+  defeito: { label: 'Defeito', color: 'bg-destructive/10 text-destructive border-destructive/20' },
+  substituido: { label: 'Substituído', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  descartado: { label: 'Descartado', color: 'bg-muted text-muted-foreground' },
+};
+
+const BASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+async function getHeaders() {
+  const { data } = await supabase.auth.getSession();
+  return {
+    apikey: ANON_KEY,
+    Authorization: `Bearer ${data.session?.access_token}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  };
+}
+
+export default function MaintenancePage() {
+  const { currentTenantId, currentRole, rolePermissions, user } = useAuth();
+  const qc = useQueryClient();
+  const canManage = currentRole ? hasPermission(currentRole, 'manutencao:manage', undefined, rolePermissions) : false;
+
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [tab, setTab] = useState('manutencoes');
+
+  // Dialogs
+  const [maintenanceDialog, setMaintenanceDialog] = useState(false);
+  const [componentDialog, setComponentDialog] = useState(false);
+  const [detailDialog, setDetailDialog] = useState<string | null>(null);
+  const [editingMaintenance, setEditingMaintenance] = useState<any>(null);
+  const [editingComponent, setEditingComponent] = useState<any>(null);
+
+  // Form states
+  const [mForm, setMForm] = useState({
+    asset_id: '', type: 'corretiva', status: 'agendada', title: '',
+    description: '', scheduled_at: '', observations: '',
+  });
+  const [cForm, setCForm] = useState({
+    asset_id: '', component_type: 'cpu', brand: '', model: '',
+    serial_number: '', stock_item_id: '', status: 'ativo', notes: '',
+  });
+
+  // Fetch assets
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/assets?tenant_id=eq.${currentTenantId}&select=id,name,patrimony_code,status,serial_number&order=name`, { headers: h });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!currentTenantId,
+  });
+
+  // Fetch maintenance records
+  const { data: maintenances = [], isLoading: loadingM } = useQuery({
+    queryKey: ['maintenance_records', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/asset_maintenance_records?tenant_id=eq.${currentTenantId}&select=*&order=created_at.desc`, { headers: h });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!currentTenantId,
+  });
+
+  // Fetch components
+  const { data: components = [], isLoading: loadingC } = useQuery({
+    queryKey: ['asset_components', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/asset_components?tenant_id=eq.${currentTenantId}&select=*&order=created_at.desc`, { headers: h });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!currentTenantId,
+  });
+
+  // Fetch stock items for linking
+  const { data: stockItems = [] } = useQuery({
+    queryKey: ['stock_items_for_link', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/stock_items?tenant_id=eq.${currentTenantId}&select=id,name,sku,current_level&order=name`, { headers: h });
+      return res.ok ? res.json() : [];
+    },
+    enabled: !!currentTenantId,
+  });
+
+  // Fetch profiles for technician names
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['profiles_maintenance'],
+    queryFn: async () => {
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/profiles?select=id,name&is_active=eq.true`, { headers: h });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const assetMap = useMemo(() => Object.fromEntries(assets.map((a: any) => [a.id, a])), [assets]);
+  const profileMap = useMemo(() => Object.fromEntries(profiles.map((p: any) => [p.id, p])), [profiles]);
+  const stockMap = useMemo(() => Object.fromEntries(stockItems.map((s: any) => [s.id, s])), [stockItems]);
+
+  // Filtered data
+  const filteredMaintenances = useMemo(() => {
+    return maintenances.filter((m: any) => {
+      const asset = assetMap[m.asset_id];
+      const matchSearch = !debouncedSearch ||
+        m.title?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        asset?.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        asset?.patrimony_code?.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchStatus = filterStatus === 'all' || m.status === filterStatus;
+      const matchType = filterType === 'all' || m.type === filterType;
+      return matchSearch && matchStatus && matchType;
+    });
+  }, [maintenances, debouncedSearch, filterStatus, filterType, assetMap]);
+
+  const filteredComponents = useMemo(() => {
+    return components.filter((c: any) => {
+      const asset = assetMap[c.asset_id];
+      return !debouncedSearch ||
+        c.brand?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        c.model?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        c.serial_number?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        asset?.name?.toLowerCase().includes(debouncedSearch.toLowerCase());
+    });
+  }, [components, debouncedSearch, assetMap]);
+
+  // Mutations
+  const saveMaintenance = useMutation({
+    mutationFn: async (data: any) => {
+      const h = await getHeaders();
+      const body = { ...data, tenant_id: currentTenantId, created_by: user?.id };
+      if (editingMaintenance) {
+        const res = await fetch(`${BASE_URL}/rest/v1/asset_maintenance_records?id=eq.${editingMaintenance.id}`, {
+          method: 'PATCH', headers: h, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Erro ao atualizar');
+      } else {
+        const res = await fetch(`${BASE_URL}/rest/v1/asset_maintenance_records`, {
+          method: 'POST', headers: h, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Erro ao criar');
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['maintenance_records'] });
+      setMaintenanceDialog(false);
+      setEditingMaintenance(null);
+      resetMForm();
+      toast.success(editingMaintenance ? 'Manutenção atualizada!' : 'Manutenção registrada!');
+    },
+    onError: () => toast.error('Erro ao salvar manutenção'),
+  });
+
+  const deleteMaintenance = useMutation({
+    mutationFn: async (id: string) => {
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/asset_maintenance_records?id=eq.${id}`, { method: 'DELETE', headers: h });
+      if (!res.ok) throw new Error('Erro');
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['maintenance_records'] }); toast.success('Removido!'); },
+    onError: () => toast.error('Erro ao remover'),
+  });
+
+  const saveComponent = useMutation({
+    mutationFn: async (data: any) => {
+      const h = await getHeaders();
+      const body = { ...data, tenant_id: currentTenantId };
+      if (!body.stock_item_id) delete body.stock_item_id;
+      if (editingComponent) {
+        const res = await fetch(`${BASE_URL}/rest/v1/asset_components?id=eq.${editingComponent.id}`, {
+          method: 'PATCH', headers: h, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Erro');
+      } else {
+        const res = await fetch(`${BASE_URL}/rest/v1/asset_components`, {
+          method: 'POST', headers: h, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Erro');
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['asset_components'] });
+      setComponentDialog(false);
+      setEditingComponent(null);
+      resetCForm();
+      toast.success(editingComponent ? 'Componente atualizado!' : 'Componente registrado!');
+    },
+    onError: () => toast.error('Erro ao salvar componente'),
+  });
+
+  const deleteComponent = useMutation({
+    mutationFn: async (id: string) => {
+      const h = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/asset_components?id=eq.${id}`, { method: 'DELETE', headers: h });
+      if (!res.ok) throw new Error('Erro');
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['asset_components'] }); toast.success('Componente removido!'); },
+    onError: () => toast.error('Erro ao remover'),
+  });
+
+  function resetMForm() {
+    setMForm({ asset_id: '', type: 'corretiva', status: 'agendada', title: '', description: '', scheduled_at: '', observations: '' });
+  }
+  function resetCForm() {
+    setCForm({ asset_id: '', component_type: 'cpu', brand: '', model: '', serial_number: '', stock_item_id: '', status: 'ativo', notes: '' });
+  }
+
+  function openEditMaintenance(m: any) {
+    setEditingMaintenance(m);
+    setMForm({
+      asset_id: m.asset_id, type: m.type, status: m.status, title: m.title,
+      description: m.description || '', scheduled_at: m.scheduled_at?.slice(0, 16) || '', observations: m.observations || '',
+    });
+    setMaintenanceDialog(true);
+  }
+
+  function openEditComponent(c: any) {
+    setEditingComponent(c);
+    setCForm({
+      asset_id: c.asset_id, component_type: c.component_type, brand: c.brand || '',
+      model: c.model || '', serial_number: c.serial_number || '', stock_item_id: c.stock_item_id || '',
+      status: c.status, notes: c.notes || '',
+    });
+    setComponentDialog(true);
+  }
+
+  // Stats
+  const stats = useMemo(() => ({
+    total: maintenances.length,
+    agendadas: maintenances.filter((m: any) => m.status === 'agendada').length,
+    em_andamento: maintenances.filter((m: any) => m.status === 'em_andamento').length,
+    concluidas: maintenances.filter((m: any) => m.status === 'concluida').length,
+    componentes: components.length,
+    defeitos: components.filter((c: any) => c.status === 'defeito').length,
+  }), [maintenances, components]);
+
+  const getComponentIcon = (type: string) => {
+    const ct = COMPONENT_TYPES.find(t => t.value === type);
+    return ct?.icon || Package;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Wrench className="h-6 w-6 text-primary" />
+            Controle de Manutenção
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie manutenções de equipamentos e componentes vinculados aos ativos</p>
+        </div>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: 'Total', value: stats.total, icon: Wrench, color: 'text-primary' },
+          { label: 'Agendadas', value: stats.agendadas, icon: Calendar, color: 'text-blue-500' },
+          { label: 'Em Andamento', value: stats.em_andamento, icon: Activity, color: 'text-amber-500' },
+          { label: 'Concluídas', value: stats.concluidas, icon: CheckCircle2, color: 'text-green-500' },
+          { label: 'Componentes', value: stats.componentes, icon: CircuitBoard, color: 'text-purple-500' },
+          { label: 'Com Defeito', value: stats.defeitos, icon: AlertTriangle, color: 'text-destructive' },
+        ].map(s => (
+          <Card key={s.label} className="border-border/50">
+            <CardContent className="p-4 flex items-center gap-3">
+              <s.icon className={`h-5 w-5 ${s.color}`} />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                <p className="text-[11px] text-muted-foreground">{s.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="manutencoes" className="gap-1.5">
+              <Wrench className="h-3.5 w-3.5" /> Manutenções
+            </TabsTrigger>
+            <TabsTrigger value="componentes" className="gap-1.5">
+              <CircuitBoard className="h-3.5 w-3.5" /> Componentes
+            </TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 w-56"
+              />
+            </div>
+            {tab === 'manutencoes' && (
+              <>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Status</SelectItem>
+                    {Object.entries(MAINTENANCE_STATUS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Tipos</SelectItem>
+                    {Object.entries(MAINTENANCE_TYPES).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+            {canManage && (
+              <Button
+                onClick={() => {
+                  if (tab === 'manutencoes') { resetMForm(); setEditingMaintenance(null); setMaintenanceDialog(true); }
+                  else { resetCForm(); setEditingComponent(null); setComponentDialog(true); }
+                }}
+                size="sm"
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                {tab === 'manutencoes' ? 'Nova Manutenção' : 'Novo Componente'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Manutenções Tab */}
+        <TabsContent value="manutencoes" className="mt-4">
+          <Card className="border-border/50">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Agendada</TableHead>
+                    <TableHead>Técnico</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingM ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  ) : filteredMaintenances.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma manutenção encontrada</TableCell></TableRow>
+                  ) : filteredMaintenances.map((m: any) => {
+                    const asset = assetMap[m.asset_id];
+                    const tech = m.technician_id ? profileMap[m.technician_id] : null;
+                    const statusInfo = MAINTENANCE_STATUS[m.status] || MAINTENANCE_STATUS.agendada;
+                    const typeInfo = MAINTENANCE_TYPES[m.type] || MAINTENANCE_TYPES.corretiva;
+                    const StatusIcon = statusInfo.icon;
+                    return (
+                      <TableRow key={m.id} className="group">
+                        <TableCell className="font-medium">{m.title}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{asset?.name || '—'}</span>
+                            {asset?.patrimony_code && <span className="text-[11px] text-muted-foreground">{asset.patrimony_code}</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell><Badge variant="outline" className={typeInfo.color}>{typeInfo.label}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`${statusInfo.color} gap-1`}>
+                            <StatusIcon className="h-3 w-3" />{statusInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {m.scheduled_at ? format(new Date(m.scheduled_at), 'dd/MM/yy HH:mm', { locale: ptBR }) : '—'}
+                        </TableCell>
+                        <TableCell className="text-sm">{tech?.name || '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailDialog(m.id)}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {canManage && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMaintenance(m)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMaintenance.mutate(m.id)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Componentes Tab */}
+        <TabsContent value="componentes" className="mt-4">
+          <Card className="border-border/50">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Componente</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead>Marca / Modelo</TableHead>
+                    <TableHead>Nº Série</TableHead>
+                    <TableHead>Vínculo Estoque</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingC ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  ) : filteredComponents.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum componente encontrado</TableCell></TableRow>
+                  ) : filteredComponents.map((c: any) => {
+                    const asset = assetMap[c.asset_id];
+                    const stock = c.stock_item_id ? stockMap[c.stock_item_id] : null;
+                    const statusInfo = COMPONENT_STATUS[c.status] || COMPONENT_STATUS.ativo;
+                    const CompIcon = getComponentIcon(c.component_type);
+                    const typeLabel = COMPONENT_TYPES.find(t => t.value === c.component_type)?.label || c.component_type;
+                    return (
+                      <TableRow key={c.id} className="group">
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <CompIcon className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{typeLabel}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{asset?.name || '—'}</span>
+                            {asset?.patrimony_code && <span className="text-[11px] text-muted-foreground">{asset.patrimony_code}</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {c.brand || c.model ? `${c.brand || ''} ${c.model || ''}`.trim() : '—'}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono text-muted-foreground">{c.serial_number || '—'}</TableCell>
+                        <TableCell>
+                          {stock ? (
+                            <Badge variant="outline" className="gap-1 bg-primary/5 text-primary border-primary/20">
+                              <Link2 className="h-3 w-3" />{stock.name}
+                            </Badge>
+                          ) : <span className="text-muted-foreground text-sm">—</span>}
+                        </TableCell>
+                        <TableCell><Badge variant="outline" className={statusInfo.color}>{statusInfo.label}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {canManage && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditComponent(c)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteComponent.mutate(c.id)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Maintenance Dialog */}
+      <Dialog open={maintenanceDialog} onOpenChange={v => { if (!v) { setMaintenanceDialog(false); setEditingMaintenance(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingMaintenance ? 'Editar Manutenção' : 'Nova Manutenção'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Ativo *</Label>
+              <Select value={mForm.asset_id} onValueChange={v => setMForm(p => ({ ...p, asset_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o ativo" /></SelectTrigger>
+                <SelectContent>
+                  {assets.map((a: any) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name} {a.patrimony_code ? `(${a.patrimony_code})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Título *</Label>
+              <Input value={mForm.title} onChange={e => setMForm(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Troca de fonte queimada" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Tipo</Label>
+                <Select value={mForm.type} onValueChange={v => setMForm(p => ({ ...p, type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(MAINTENANCE_TYPES).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select value={mForm.status} onValueChange={v => setMForm(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(MAINTENANCE_STATUS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Data Agendada</Label>
+              <Input type="datetime-local" value={mForm.scheduled_at} onChange={e => setMForm(p => ({ ...p, scheduled_at: e.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Descrição</Label>
+              <Textarea value={mForm.description} onChange={e => setMForm(p => ({ ...p, description: e.target.value }))} rows={3} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Observações</Label>
+              <Textarea value={mForm.observations} onChange={e => setMForm(p => ({ ...p, observations: e.target.value }))} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaintenanceDialog(false)}>Cancelar</Button>
+            <Button
+              disabled={!mForm.asset_id || !mForm.title || saveMaintenance.isPending}
+              onClick={() => saveMaintenance.mutate({
+                asset_id: mForm.asset_id, type: mForm.type, status: mForm.status, title: mForm.title,
+                description: mForm.description || null, scheduled_at: mForm.scheduled_at || null,
+                observations: mForm.observations || null,
+              })}
+            >
+              {saveMaintenance.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Component Dialog */}
+      <Dialog open={componentDialog} onOpenChange={v => { if (!v) { setComponentDialog(false); setEditingComponent(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingComponent ? 'Editar Componente' : 'Novo Componente'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Ativo *</Label>
+              <Select value={cForm.asset_id} onValueChange={v => setCForm(p => ({ ...p, asset_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o ativo" /></SelectTrigger>
+                <SelectContent>
+                  {assets.map((a: any) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name} {a.patrimony_code ? `(${a.patrimony_code})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Tipo de Componente *</Label>
+                <Select value={cForm.component_type} onValueChange={v => setCForm(p => ({ ...p, component_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COMPONENT_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select value={cForm.status} onValueChange={v => setCForm(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(COMPONENT_STATUS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Marca</Label>
+                <Input value={cForm.brand} onChange={e => setCForm(p => ({ ...p, brand: e.target.value }))} placeholder="Ex: Intel, Kingston" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Modelo</Label>
+                <Input value={cForm.model} onChange={e => setCForm(p => ({ ...p, model: e.target.value }))} placeholder="Ex: i7-12700, 16GB DDR4" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Nº de Série</Label>
+              <Input value={cForm.serial_number} onChange={e => setCForm(p => ({ ...p, serial_number: e.target.value }))} placeholder="Número de série do componente" />
+            </div>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5"><Link2 className="h-3.5 w-3.5" /> Vincular ao Estoque</Label>
+              <Select value={cForm.stock_item_id} onValueChange={v => setCForm(p => ({ ...p, stock_item_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Opcional — vincular item de estoque" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum</SelectItem>
+                  {stockItems.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name} {s.sku ? `(${s.sku})` : ''} — Qtd: {s.current_level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Observações</Label>
+              <Textarea value={cForm.notes} onChange={e => setCForm(p => ({ ...p, notes: e.target.value }))} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setComponentDialog(false)}>Cancelar</Button>
+            <Button
+              disabled={!cForm.asset_id || saveComponent.isPending}
+              onClick={() => saveComponent.mutate({
+                asset_id: cForm.asset_id, component_type: cForm.component_type, brand: cForm.brand || null,
+                model: cForm.model || null, serial_number: cForm.serial_number || null,
+                stock_item_id: cForm.stock_item_id || null, status: cForm.status, notes: cForm.notes || null,
+              })}
+            >
+              {saveComponent.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailDialog} onOpenChange={() => setDetailDialog(null)}>
+        <DialogContent className="max-w-lg">
+          {(() => {
+            const m = maintenances.find((x: any) => x.id === detailDialog);
+            if (!m) return null;
+            const asset = assetMap[m.asset_id];
+            const tech = m.technician_id ? profileMap[m.technician_id] : null;
+            const statusInfo = MAINTENANCE_STATUS[m.status] || MAINTENANCE_STATUS.agendada;
+            const typeInfo = MAINTENANCE_TYPES[m.type] || MAINTENANCE_TYPES.corretiva;
+            const assetComponents = components.filter((c: any) => c.asset_id === m.asset_id);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-primary" />
+                    {m.title}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className={typeInfo.color}>{typeInfo.label}</Badge>
+                    <Badge variant="outline" className={statusInfo.color}>{statusInfo.label}</Badge>
+                  </div>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Ativo:</span> <strong>{asset?.name || '—'}</strong></div>
+                    <div><span className="text-muted-foreground">Patrimônio:</span> {asset?.patrimony_code || '—'}</div>
+                    <div><span className="text-muted-foreground">Técnico:</span> {tech?.name || '—'}</div>
+                    <div><span className="text-muted-foreground">Custo:</span> {m.cost ? `R$ ${Number(m.cost).toFixed(2)}` : '—'}</div>
+                    <div><span className="text-muted-foreground">Agendada:</span> {m.scheduled_at ? format(new Date(m.scheduled_at), 'dd/MM/yy HH:mm') : '—'}</div>
+                    <div><span className="text-muted-foreground">Concluída:</span> {m.completed_at ? format(new Date(m.completed_at), 'dd/MM/yy HH:mm') : '—'}</div>
+                  </div>
+                  {m.description && <div><p className="text-sm text-muted-foreground">Descrição:</p><p className="text-sm">{m.description}</p></div>}
+                  {m.observations && <div><p className="text-sm text-muted-foreground">Observações:</p><p className="text-sm">{m.observations}</p></div>}
+                  {assetComponents.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2 flex items-center gap-1.5"><CircuitBoard className="h-4 w-4" /> Componentes deste Ativo ({assetComponents.length})</p>
+                      <div className="space-y-1.5">
+                        {assetComponents.map((c: any) => {
+                          const CompIcon = getComponentIcon(c.component_type);
+                          const cStatus = COMPONENT_STATUS[c.status] || COMPONENT_STATUS.ativo;
+                          return (
+                            <div key={c.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm">
+                              <CompIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-medium">{COMPONENT_TYPES.find(t => t.value === c.component_type)?.label}</span>
+                              {c.brand && <span className="text-muted-foreground">— {c.brand} {c.model}</span>}
+                              <Badge variant="outline" className={`ml-auto text-[10px] ${cStatus.color}`}>{cStatus.label}</Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

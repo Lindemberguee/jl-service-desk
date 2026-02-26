@@ -10,6 +10,7 @@ export type Permission =
   | 'users:read' | 'users:manage'
   | 'reports:read' | 'settings:manage'
   | 'cadastros:read' | 'cadastros:manage'
+  | 'manutencao:read' | 'manutencao:manage'
   | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
@@ -18,7 +19,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
-    'materiais:read', 'materiais:manage',
+    'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
@@ -27,7 +28,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
-    'materiais:read', 'materiais:manage',
+    'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
@@ -36,12 +37,12 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'dashboard:read', 'my_os:read',
     'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:comment',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
-    'materiais:read', 'materiais:manage',
+    'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
   ],
-  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
-  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'stock:manage', 'materiais:read', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
+  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read'],
 };
