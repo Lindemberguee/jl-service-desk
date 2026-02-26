@@ -45,19 +45,26 @@ export default function WorkOrderCreate() {
   const [submitted, setSubmitted] = useState(false);
 
   const MAX_SIZE_BYTES = 10 * 1024 * 1024;
-  const ALLOWED_TYPES = [
+  const ALLOWED_MIME_TYPES = [
     'image/png', 'image/jpeg', 'image/jpg',
     'application/pdf',
     'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ];
+  const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
+
+  const isFileAllowed = (file: File) => {
+    if (ALLOWED_MIME_TYPES.includes(file.type)) return true;
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    return ALLOWED_EXTENSIONS.includes(ext);
+  };
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     const valid: File[] = [];
     for (const file of Array.from(files)) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      if (!isFileAllowed(file)) {
         toast({ title: 'Tipo não permitido', description: `${file.name}: apenas imagens (PNG/JPG), PDF, Word e Excel.`, variant: 'destructive' });
         continue;
       }
