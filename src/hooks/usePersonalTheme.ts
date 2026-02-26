@@ -76,9 +76,29 @@ function applyThemeToDOM(theme: PersonalTheme) {
   const primaryParts = hexToHslParts(theme.primary);
   if (primaryParts) {
     const { h, s } = primaryParts;
-    root.style.setProperty('--primary', `${h} ${s}% ${isDark ? 55 : 38}%`);
-    root.style.setProperty('--ring', `${h} ${s}% ${isDark ? 55 : 38}%`);
-    root.style.setProperty('--chart-1', `${h} ${s}% ${isDark ? 55 : 38}%`);
+    const pl = isDark ? 55 : 38;
+    root.style.setProperty('--primary', `${h} ${s}% ${pl}%`);
+    root.style.setProperty('--primary-foreground', `${h} ${Math.min(s, 30)}% ${isDark ? 98 : 98}%`);
+    root.style.setProperty('--ring', `${h} ${s}% ${pl}%`);
+    root.style.setProperty('--chart-1', `${h} ${s}% ${pl}%`);
+    root.style.setProperty('--chart-2', `${h} ${Math.max(s - 20, 20)}% ${isDark ? 45 : 48}%`);
+  }
+
+  // Accent color — used in badges, highlights, secondary elements
+  const accentParts = hexToHslParts(theme.accent);
+  if (accentParts) {
+    const { h, s } = accentParts;
+    root.style.setProperty('--accent', `${h} ${Math.max(s - 60, 8)}% ${isDark ? 17 : 95}%`);
+    root.style.setProperty('--accent-foreground', `${h} ${s}% ${isDark ? 90 : 15}%`);
+    root.style.setProperty('--chart-3', `${h} ${s}% ${isDark ? 55 : 45}%`);
+    root.style.setProperty('--chart-4', `${h} ${Math.max(s - 15, 20)}% ${isDark ? 40 : 55}%`);
+  }
+
+  // Muted — derives from primary for cohesive look
+  if (primaryParts) {
+    const { h } = primaryParts;
+    root.style.setProperty('--muted', `${h} 10% ${isDark ? 15 : 95}%`);
+    root.style.setProperty('--muted-foreground', `${h} 8% ${isDark ? 55 : 45}%`);
   }
 
   // Sidebar colors from sidebar hex
@@ -102,7 +122,9 @@ function applyThemeToDOM(theme: PersonalTheme) {
 function clearThemeFromDOM() {
   const root = document.documentElement;
   const vars = [
-    '--primary', '--ring', '--chart-1',
+    '--primary', '--primary-foreground', '--ring', '--chart-1', '--chart-2', '--chart-3', '--chart-4',
+    '--accent', '--accent-foreground',
+    '--muted', '--muted-foreground',
     '--sidebar-background', '--sidebar-foreground', '--sidebar-primary',
     '--sidebar-primary-foreground', '--sidebar-accent', '--sidebar-accent-foreground',
     '--sidebar-border', '--sidebar-ring', '--sidebar-muted-foreground',
