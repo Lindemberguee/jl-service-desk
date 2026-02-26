@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Save, Trash2, Loader2, ZoomIn, ZoomOut, Maximize,
   Undo2, Redo2, Lock, Download, PanelLeftClose, PanelLeftOpen,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, Lightbulb, AlertTriangle, CheckSquare,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { EdgeStyle } from './CustomEdge';
@@ -26,6 +26,7 @@ interface CanvasToolbarProps {
   onTogglePalette?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  onQuickAdd?: (type: string) => void;
 }
 
 function Btn({ icon: Icon, label, onClick, disabled, active, className = '' }: any) {
@@ -50,7 +51,7 @@ function Btn({ icon: Icon, label, onClick, disabled, active, className = '' }: a
 export default function CanvasToolbar({
   saving, readOnly, edgeStyle, onEdgeStyleChange,
   onDelete, onUndo, onRedo, canUndo, canRedo, onExport,
-  showPalette, onTogglePalette, isFullscreen, onToggleFullscreen,
+  showPalette, onTogglePalette, isFullscreen, onToggleFullscreen, onQuickAdd,
 }: CanvasToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
@@ -87,6 +88,15 @@ export default function CanvasToolbar({
           <Separator orientation="vertical" className="h-5 mx-0.5" />
           <Btn icon={Undo2} label="Desfazer (Ctrl+Z)" onClick={onUndo} disabled={!canUndo} />
           <Btn icon={Redo2} label="Refazer (Ctrl+Y)" onClick={onRedo} disabled={!canRedo} />
+
+          {onQuickAdd && (
+            <>
+              <Separator orientation="vertical" className="h-5 mx-0.5" />
+              <Btn icon={Lightbulb} label="Adicionar Ideia" onClick={() => onQuickAdd('idea')} />
+              <Btn icon={AlertTriangle} label="Adicionar Alerta" onClick={() => onQuickAdd('warning')} />
+              <Btn icon={CheckSquare} label="Adicionar Tarefa" onClick={() => onQuickAdd('task')} />
+            </>
+          )}
 
           <Separator orientation="vertical" className="h-5 mx-0.5" />
 
