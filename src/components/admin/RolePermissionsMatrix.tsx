@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X, Hammer, PenTool, Bell, CalendarDays,
+  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -55,11 +55,26 @@ const permissionGroups: PermissionGroup[] = [
     ],
   },
   {
+    label: 'Minhas OS',
+    icon: ClipboardList,
+    permissions: [
+      { key: 'my_os:read', label: 'Visualizar', description: 'Acesso à tela de "Minhas OS" pessoais' },
+    ],
+  },
+  {
     label: 'Ativos',
     icon: Wrench,
     permissions: [
       { key: 'assets:read', label: 'Visualizar', description: 'Ver patrimônio e equipamentos' },
       { key: 'assets:manage', label: 'Gerenciar', description: 'Criar, editar e desativar ativos' },
+    ],
+  },
+  {
+    label: 'Manutenção',
+    icon: HardHat,
+    permissions: [
+      { key: 'manutencao:read', label: 'Visualizar', description: 'Ver registros de manutenção de ativos' },
+      { key: 'manutencao:manage', label: 'Gerenciar', description: 'Criar, editar e concluir manutenções' },
     ],
   },
   {
