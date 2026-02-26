@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { logAudit } from '@/lib/audit';
+import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -183,7 +184,7 @@ export default function Assets() {
       await logAudit({ entity: 'asset', entityId: deleteTarget.id, action: 'asset.deleted', tenantId: currentTenantId, diff: { name: deleteTarget.name } });
       toast({ title: 'Ativo excluído!' });
     } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir ativo.'), variant: 'destructive' });
     }
     setDeleteTarget(null);
   };
