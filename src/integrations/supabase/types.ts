@@ -376,6 +376,7 @@ export type Database = {
           id: string
           name: string
           nodes: Json
+          public_share_token: string | null
           tenant_id: string
           updated_at: string
           user_id: string
@@ -388,6 +389,7 @@ export type Database = {
           id?: string
           name?: string
           nodes?: Json
+          public_share_token?: string | null
           tenant_id: string
           updated_at?: string
           user_id: string
@@ -400,6 +402,7 @@ export type Database = {
           id?: string
           name?: string
           nodes?: Json
+          public_share_token?: string | null
           tenant_id?: string
           updated_at?: string
           user_id?: string
