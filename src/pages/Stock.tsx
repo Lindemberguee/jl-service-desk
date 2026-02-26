@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { logAudit } from '@/lib/audit';
+import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -173,7 +174,7 @@ export default function Stock() {
       toast({ title: `${ids.length} item(ns) excluído(s)!` });
       setSelectedIds(new Set());
     } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir itens.'), variant: 'destructive' });
     } finally {
       setBulkDeleting(false);
     }
@@ -960,7 +961,7 @@ export default function Stock() {
                           toast({ title: 'Item excluído!' });
                           setDetailItem(null);
                         } catch (err: any) {
-                          toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+                          toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir item.'), variant: 'destructive' });
                         }
                       }}>
                         Excluir

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { logAudit } from '@/lib/audit';
+import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
@@ -122,7 +123,7 @@ function CrudSection({
       await logAudit({ entity: table, entityId: deleteTarget.id, action: `${table}.deleted`, tenantId: tenantId, diff: { name: deleteTarget[fields[0]?.key] } });
       toast({ title: `${title} excluído(a)!` });
     } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir registro.'), variant: 'destructive' });
     }
     setDeleteTarget(null);
   };
