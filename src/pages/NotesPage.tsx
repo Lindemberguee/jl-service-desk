@@ -7,12 +7,15 @@ import {
   ArrowLeft, Loader2, Tag, Bold, Italic, List, ListOrdered,
   Heading1, Heading2, Quote, Code, Minus, X, FolderPlus,
   ChevronRight, Sparkles, Clock, FileText, Strikethrough,
-  Underline, AlignLeft, AlignCenter, Link2,
+  Underline, AlignLeft, AlignCenter, Share2, Paintbrush,
+  Highlighter, Eye, Pencil, ToggleLeft, ToggleRight,
+  Palette,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNotes, type Note } from '@/hooks/useNotes';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -23,6 +26,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import NoteShareDialog from '@/components/notes/NoteShareDialog';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// ─── Helpers ───
 
 function getPlainText(html: string) {
   const tmp = document.createElement('div');
@@ -57,6 +65,16 @@ function ToolbarBtn({ icon: Icon, label, onClick, active, className }: any) {
   );
 }
 
+const TEXT_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#22c55e', '#06b6d4',
+  '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff', '#000000',
+];
+
+const BG_COLORS = [
+  '#fef2f2', '#fff7ed', '#fefce8', '#f0fdf4', '#ecfeff',
+  '#eff6ff', '#f5f3ff', '#fdf2f8', '#fef9c3', '#e2e8f0',
+];
+
 const FOLDER_COLORS: Record<string, string> = {
   'Geral': 'bg-blue-500/10 text-blue-500',
   'Pessoal': 'bg-violet-500/10 text-violet-500',
@@ -68,6 +86,47 @@ function getFolderColor(folder: string) {
   return FOLDER_COLORS[folder] || 'bg-primary/10 text-primary';
 }
 
+// ─── Color Picker Popover ───
+
+function ColorPickerBtn({ colors, icon: Icon, label, onSelect }: {
+  colors: string[];
+  icon: any;
+  label: string;
+  onSelect: (color: string) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <div>
+          <ToolbarBtn icon={Icon} label={label} onClick={() => {}} />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" side="top" align="start">
+        <p className="text-[10px] font-medium text-muted-foreground mb-1.5">{label}</p>
+        <div className="flex flex-wrap gap-1 max-w-[140px]">
+          {colors.map(c => (
+            <button
+              key={c}
+              className="h-5 w-5 rounded border border-border/50 hover:scale-110 transition-transform"
+              style={{ backgroundColor: c }}
+              onClick={() => onSelect(c)}
+            />
+          ))}
+        </div>
+        <Button
+          variant="ghost" size="sm"
+          className="w-full h-6 text-[10px] mt-1 text-muted-foreground"
+          onClick={() => onSelect('')}
+        >
+          Remover
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Main Component ───
+
 export default function NotesPage() {
   const { notes, loading, saving, createNote, updateNote, deleteNote, folders, allTags } = useNotes();
   const navigate = useNavigate();
@@ -77,15 +136,18 @@ export default function NotesPage() {
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
-  // Local editing state
+  // Editor state
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editorMode, setEditorMode] = useState<'richtext' | 'markdown'>('richtext');
   const [newTag, setNewTag] = useState('');
   const [newFolder, setNewFolder] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const markdownRef = useRef<HTMLTextAreaElement>(null);
   const debouncedTitle = useDebounce(editTitle, 1000);
   const debouncedContent = useDebounce(editContent, 1500);
 
@@ -96,7 +158,8 @@ export default function NotesPage() {
     if (note) {
       setEditTitle(note.title);
       setEditContent(note.content);
-      if (editorRef.current) {
+      setEditorMode((note as any).editor_mode === 'markdown' ? 'markdown' : 'richtext');
+      if (editorRef.current && (note as any).editor_mode !== 'markdown') {
         editorRef.current.innerHTML = note.content;
       }
     }
@@ -120,6 +183,30 @@ export default function NotesPage() {
     document.execCommand(cmd, false, value);
     editorRef.current?.focus();
     setEditContent(editorRef.current?.innerHTML || '');
+  };
+
+  const handleTextColor = (color: string) => {
+    if (color) execCommand('foreColor', color);
+    else execCommand('removeFormat');
+  };
+
+  const handleBgColor = (color: string) => {
+    if (color) execCommand('hiliteColor', color);
+    else execCommand('removeFormat');
+  };
+
+  const toggleEditorMode = () => {
+    const newMode = editorMode === 'richtext' ? 'markdown' : 'richtext';
+    setEditorMode(newMode);
+    if (note) {
+      updateNote(note.id, { editor_mode: newMode } as any);
+    }
+    // When switching to richtext, load content into contentEditable
+    if (newMode === 'richtext' && editorRef.current) {
+      setTimeout(() => {
+        if (editorRef.current) editorRef.current.innerHTML = editContent;
+      }, 50);
+    }
   };
 
   const handleCreate = async () => {
@@ -163,11 +250,11 @@ export default function NotesPage() {
   const pinnedNotes = filtered.filter(n => n.is_pinned);
   const otherNotes = filtered.filter(n => !n.is_pinned);
 
-  // Word count
   const wordCount = useMemo(() => {
     if (!note) return 0;
-    return getPlainText(editContent).split(/\s+/).filter(Boolean).length;
-  }, [editContent, note]);
+    const text = editorMode === 'markdown' ? editContent : getPlainText(editContent);
+    return text.split(/\s+/).filter(Boolean).length;
+  }, [editContent, note, editorMode]);
 
   // ====================== RENDER ======================
 
@@ -179,7 +266,6 @@ export default function NotesPage() {
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="shrink-0 border-r bg-muted/20 flex flex-col overflow-hidden"
       >
-        {/* Header */}
         <div className="p-3 flex items-center gap-2">
           {!sidebarCollapsed && (
             <Button variant="ghost" size="sm" onClick={() => navigate('/ferramentas')} className="gap-1 text-xs h-7 px-2">
@@ -197,7 +283,6 @@ export default function NotesPage() {
 
         {!sidebarCollapsed && (
           <ScrollArea className="flex-1 px-2">
-            {/* Folders */}
             <div className="mb-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-2">Pastas</p>
               <div className="space-y-0.5">
@@ -254,7 +339,6 @@ export default function NotesPage() {
               </div>
             </div>
 
-            {/* Tags */}
             {allTags.length > 0 && (
               <div className="mb-4">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2 mb-2">Tags</p>
@@ -263,10 +347,7 @@ export default function NotesPage() {
                     <Badge
                       key={t}
                       variant={activeTag === t ? 'default' : 'outline'}
-                      className={cn(
-                        'text-[10px] cursor-pointer transition-all',
-                        activeTag === t && 'shadow-sm'
-                      )}
+                      className={cn('text-[10px] cursor-pointer transition-all', activeTag === t && 'shadow-sm')}
                       onClick={() => setActiveTag(activeTag === t ? null : t)}
                     >
                       {t}
@@ -278,7 +359,6 @@ export default function NotesPage() {
           </ScrollArea>
         )}
 
-        {/* New note button at bottom */}
         <div className="p-2 border-t">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -301,7 +381,6 @@ export default function NotesPage() {
         'shrink-0 border-r flex flex-col overflow-hidden transition-all',
         activeNote ? 'w-72' : 'flex-1 max-w-full'
       )}>
-        {/* Search bar */}
         <div className="p-3 space-y-2 shrink-0 border-b">
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-bold flex items-center gap-1.5 shrink-0">
@@ -321,7 +400,6 @@ export default function NotesPage() {
           </div>
         </div>
 
-        {/* Note list */}
         <ScrollArea className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -339,7 +417,6 @@ export default function NotesPage() {
             </div>
           ) : (
             <div className="p-2 space-y-1">
-              {/* Pinned */}
               {pinnedNotes.length > 0 && (
                 <>
                   <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-widest px-2 pt-1 flex items-center gap-1">
@@ -351,7 +428,6 @@ export default function NotesPage() {
                   <Separator className="my-1" />
                 </>
               )}
-              {/* Others */}
               {otherNotes.map(n => (
                 <NoteCard key={n.id} note={n} active={activeNote === n.id} onClick={() => setActiveNote(n.id)} onDelete={deleteNote} compact={!!activeNote} />
               ))}
@@ -382,6 +458,23 @@ export default function NotesPage() {
                 {note.folder}
               </Badge>
 
+              {/* Editor mode toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost" size="sm"
+                    className={cn('h-6 text-[10px] gap-1 px-2 rounded-full',
+                      editorMode === 'markdown' ? 'bg-violet-500/10 text-violet-600' : 'text-muted-foreground'
+                    )}
+                    onClick={toggleEditorMode}
+                  >
+                    {editorMode === 'markdown' ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
+                    {editorMode === 'markdown' ? 'Markdown' : 'Rich Text'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Alternar modo de edição</TooltipContent>
+              </Tooltip>
+
               <div className="flex-1" />
 
               <AnimatePresence>
@@ -397,6 +490,15 @@ export default function NotesPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShareDialogOpen(true)}>
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Compartilhar</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -425,48 +527,109 @@ export default function NotesPage() {
               </div>
             </div>
 
-            {/* Formatting toolbar */}
-            <div className="flex items-center gap-0.5 px-4 py-1.5 border-y bg-muted/20 flex-wrap">
-              <ToolbarBtn icon={Bold} label="Negrito" onClick={() => execCommand('bold')} />
-              <ToolbarBtn icon={Italic} label="Itálico" onClick={() => execCommand('italic')} />
-              <ToolbarBtn icon={Underline} label="Sublinhado" onClick={() => execCommand('underline')} />
-              <ToolbarBtn icon={Strikethrough} label="Riscado" onClick={() => execCommand('strikeThrough')} />
+            {/* Formatting toolbar (rich text mode only) */}
+            {editorMode === 'richtext' && (
+              <div className="flex items-center gap-0.5 px-4 py-1.5 border-y bg-muted/20 flex-wrap">
+                <ToolbarBtn icon={Bold} label="Negrito" onClick={() => execCommand('bold')} />
+                <ToolbarBtn icon={Italic} label="Itálico" onClick={() => execCommand('italic')} />
+                <ToolbarBtn icon={Underline} label="Sublinhado" onClick={() => execCommand('underline')} />
+                <ToolbarBtn icon={Strikethrough} label="Riscado" onClick={() => execCommand('strikeThrough')} />
 
-              <Separator orientation="vertical" className="h-4 mx-1" />
+                <Separator orientation="vertical" className="h-4 mx-1" />
 
-              <ToolbarBtn icon={Heading1} label="Título 1" onClick={() => execCommand('formatBlock', 'H1')} />
-              <ToolbarBtn icon={Heading2} label="Título 2" onClick={() => execCommand('formatBlock', 'H2')} />
-              <ToolbarBtn icon={Quote} label="Citação" onClick={() => execCommand('formatBlock', 'BLOCKQUOTE')} />
-              <ToolbarBtn icon={Code} label="Código" onClick={() => execCommand('formatBlock', 'PRE')} />
+                <ToolbarBtn icon={Heading1} label="Título 1" onClick={() => execCommand('formatBlock', 'H1')} />
+                <ToolbarBtn icon={Heading2} label="Título 2" onClick={() => execCommand('formatBlock', 'H2')} />
+                <ToolbarBtn icon={Quote} label="Citação" onClick={() => execCommand('formatBlock', 'BLOCKQUOTE')} />
+                <ToolbarBtn icon={Code} label="Código" onClick={() => execCommand('formatBlock', 'PRE')} />
 
-              <Separator orientation="vertical" className="h-4 mx-1" />
+                <Separator orientation="vertical" className="h-4 mx-1" />
 
-              <ToolbarBtn icon={List} label="Lista" onClick={() => execCommand('insertUnorderedList')} />
-              <ToolbarBtn icon={ListOrdered} label="Lista numerada" onClick={() => execCommand('insertOrderedList')} />
-              <ToolbarBtn icon={Minus} label="Separador" onClick={() => execCommand('insertHorizontalRule')} />
+                <ToolbarBtn icon={List} label="Lista" onClick={() => execCommand('insertUnorderedList')} />
+                <ToolbarBtn icon={ListOrdered} label="Lista numerada" onClick={() => execCommand('insertOrderedList')} />
+                <ToolbarBtn icon={Minus} label="Separador" onClick={() => execCommand('insertHorizontalRule')} />
 
-              <Separator orientation="vertical" className="h-4 mx-1" />
+                <Separator orientation="vertical" className="h-4 mx-1" />
 
-              <ToolbarBtn icon={AlignLeft} label="Alinhar esquerda" onClick={() => execCommand('justifyLeft')} />
-              <ToolbarBtn icon={AlignCenter} label="Centralizar" onClick={() => execCommand('justifyCenter')} />
-            </div>
+                <ToolbarBtn icon={AlignLeft} label="Alinhar esquerda" onClick={() => execCommand('justifyLeft')} />
+                <ToolbarBtn icon={AlignCenter} label="Centralizar" onClick={() => execCommand('justifyCenter')} />
 
-            {/* Content editor */}
-            <div className="flex-1 overflow-auto">
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                className="min-h-full px-6 py-4 outline-none prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
-                           [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-4
-                           [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3
-                           [&_blockquote]:border-l-3 [&_blockquote]:border-amber-500/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:bg-amber-500/5 [&_blockquote]:py-2 [&_blockquote]:rounded-r-lg
-                           [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:border [&_pre]:border-border
-                           [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
-                           [&_hr]:border-border [&_hr]:my-4"
-                onInput={() => setEditContent(editorRef.current?.innerHTML || '')}
-                data-placeholder="Comece a escrever..."
-              />
+                <Separator orientation="vertical" className="h-4 mx-1" />
+
+                {/* Color pickers */}
+                <ColorPickerBtn
+                  colors={TEXT_COLORS}
+                  icon={Palette}
+                  label="Cor do texto"
+                  onSelect={handleTextColor}
+                />
+                <ColorPickerBtn
+                  colors={BG_COLORS}
+                  icon={Highlighter}
+                  label="Cor de fundo"
+                  onSelect={handleBgColor}
+                />
+              </div>
+            )}
+
+            {/* Content area */}
+            <div className="flex-1 overflow-hidden flex">
+              {editorMode === 'markdown' ? (
+                /* ─── Markdown: split view ─── */
+                <div className="flex-1 flex overflow-hidden">
+                  {/* Editor */}
+                  <div className="flex-1 flex flex-col border-r overflow-hidden">
+                    <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
+                      <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground font-medium">Editor</span>
+                    </div>
+                    <textarea
+                      ref={markdownRef}
+                      value={editContent}
+                      onChange={e => setEditContent(e.target.value)}
+                      placeholder="Escreva em Markdown..."
+                      className="flex-1 px-4 py-3 bg-transparent border-0 outline-none resize-none font-mono text-sm leading-relaxed placeholder:text-muted-foreground/30"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {/* Preview */}
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="px-3 py-1 border-b bg-muted/30 flex items-center gap-1">
+                      <Eye className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground font-medium">Preview</span>
+                    </div>
+                    <ScrollArea className="flex-1">
+                      <div className="px-4 py-3 prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
+                                      prose-headings:font-bold prose-h1:text-xl prose-h2:text-lg
+                                      prose-blockquote:border-l-3 prose-blockquote:border-amber-500/40 prose-blockquote:bg-amber-500/5 prose-blockquote:py-1 prose-blockquote:rounded-r-lg
+                                      prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg
+                                      prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+                                      prose-table:border prose-th:bg-muted/50 prose-th:px-3 prose-th:py-1.5 prose-td:px-3 prose-td:py-1.5 prose-td:border">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {editContent || '*Nada para exibir...*'}
+                        </ReactMarkdown>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
+              ) : (
+                /* ─── Rich Text editor ─── */
+                <div className="flex-1 overflow-auto">
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className="min-h-full px-6 py-4 outline-none prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed
+                               [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-4
+                               [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3
+                               [&_blockquote]:border-l-3 [&_blockquote]:border-amber-500/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:bg-amber-500/5 [&_blockquote]:py-2 [&_blockquote]:rounded-r-lg
+                               [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:font-mono [&_pre]:border [&_pre]:border-border
+                               [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                               [&_hr]:border-border [&_hr]:my-4"
+                    onInput={() => setEditContent(editorRef.current?.innerHTML || '')}
+                    data-placeholder="Comece a escrever..."
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tags bar */}
@@ -502,7 +665,7 @@ export default function NotesPage() {
         )}
       </AnimatePresence>
 
-      {/* Empty state when no note selected in wide view */}
+      {/* Empty state */}
       {!activeNote && !loading && filtered.length > 0 && (
         <div className="hidden lg:flex flex-1 items-center justify-center text-center border-l">
           <div className="space-y-3">
@@ -514,6 +677,14 @@ export default function NotesPage() {
           </div>
         </div>
       )}
+
+      {/* Share dialog */}
+      <NoteShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        noteId={activeNote}
+        noteTitle={note?.title || 'Sem título'}
+      />
     </div>
   );
 }
@@ -535,9 +706,7 @@ function NoteCard({ note, active, onClick, onDelete, compact }: {
       whileHover={{ x: 2 }}
       className={cn(
         'group relative rounded-lg px-3 py-2.5 cursor-pointer transition-all border border-transparent',
-        active
-          ? 'bg-primary/8 border-primary/20 shadow-sm'
-          : 'hover:bg-muted/60'
+        active ? 'bg-primary/8 border-primary/20 shadow-sm' : 'hover:bg-muted/60'
       )}
       onClick={onClick}
     >
@@ -545,30 +714,20 @@ function NoteCard({ note, active, onClick, onDelete, compact }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             {note.is_pinned && <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
-            <h3 className={cn(
-              'text-xs font-medium truncate',
-              active ? 'text-primary' : 'text-foreground'
-            )}>
+            <h3 className={cn('text-xs font-medium truncate', active ? 'text-primary' : 'text-foreground')}>
               {note.title || 'Sem título'}
             </h3>
           </div>
-
           {preview && (
-            <p className="text-[11px] text-muted-foreground/70 line-clamp-2 leading-relaxed">
-              {preview}
-            </p>
+            <p className="text-[11px] text-muted-foreground/70 line-clamp-2 leading-relaxed">{preview}</p>
           )}
-
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[9px] text-muted-foreground/50">
-              {formatRelative(note.updated_at)}
-            </span>
+            <span className="text-[9px] text-muted-foreground/50">{formatRelative(note.updated_at)}</span>
             {!compact && note.tags.slice(0, 2).map(t => (
               <Badge key={t} variant="outline" className="text-[8px] h-3.5 px-1 border-muted-foreground/20">{t}</Badge>
             ))}
           </div>
         </div>
-
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button

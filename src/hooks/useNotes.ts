@@ -11,6 +11,7 @@ export interface Note {
   folder: string;
   tags: string[];
   is_pinned: boolean;
+  editor_mode: string;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +53,7 @@ export function useNotes() {
     return data as Note;
   }, [user, currentTenantId, fetchNotes]);
 
-  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'folder' | 'tags' | 'is_pinned'>>) => {
+  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'folder' | 'tags' | 'is_pinned' | 'editor_mode'>>) => {
     setSaving(true);
     const { error } = await supabase
       .from('notes')
