@@ -16,9 +16,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { priorityLabels } from '@/lib/permissions';
-import { Plus, Settings2, Tag, Clock, Star, Shield, ScrollText } from 'lucide-react';
+import { Plus, Settings2, Tag, Clock, Star, Shield, ScrollText, Palette } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import AuditSettingsTab from '@/components/admin/audit/AuditSettingsTab';
+import BrandingSettingsTab from '@/components/admin/BrandingSettingsTab';
 
 const RolePermissionsMatrix = lazy(() => import('@/components/admin/RolePermissionsMatrix'));
 
@@ -143,6 +144,7 @@ export default function AdminSettings() {
           <TabsTrigger value="permissoes"><Shield className="h-3 w-3 mr-1" />Permissões</TabsTrigger>
           <TabsTrigger value="auditoria"><ScrollText className="h-3 w-3 mr-1" />Auditoria</TabsTrigger>
           <TabsTrigger value="departamento"><Settings2 className="h-3 w-3 mr-1" />Departamento</TabsTrigger>
+          <TabsTrigger value="branding"><Palette className="h-3 w-3 mr-1" />Identidade Visual</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories">
@@ -249,6 +251,10 @@ export default function AdminSettings() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="branding">
+          <BrandingSettingsTab tenants={tenants} />
         </TabsContent>
       </Tabs>
 
