@@ -33,6 +33,7 @@ import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
 import AdminSystemHealth from "@/pages/admin/AdminSystemHealth";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
+import ShowcasePage from "@/pages/ShowcasePage";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
@@ -137,6 +138,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<AuthGate />} />
+            <Route path="/showcase" element={<ShowcasePage />} />
 
             {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>
