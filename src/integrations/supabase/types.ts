@@ -426,10 +426,63 @@ export type Database = {
           },
         ]
       }
+      note_shares: {
+        Row: {
+          created_at: string
+          id: string
+          note_id: string
+          permission: string
+          shared_by: string
+          shared_with_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note_id: string
+          permission?: string
+          shared_by: string
+          shared_with_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note_id?: string
+          permission?: string
+          shared_by?: string
+          shared_with_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_shares_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_shares_shared_with_user_id_fkey"
+            columns: ["shared_with_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_shares_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string
           created_at: string
+          editor_mode: string
           folder: string
           id: string
           is_pinned: boolean
@@ -442,6 +495,7 @@ export type Database = {
         Insert: {
           content?: string
           created_at?: string
+          editor_mode?: string
           folder?: string
           id?: string
           is_pinned?: boolean
@@ -454,6 +508,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          editor_mode?: string
           folder?: string
           id?: string
           is_pinned?: boolean
