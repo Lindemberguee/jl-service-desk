@@ -42,7 +42,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
   ],
   tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
-  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read'],
 };
