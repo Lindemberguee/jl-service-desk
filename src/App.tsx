@@ -36,6 +36,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
 import ShowcasePage from "@/pages/ShowcasePage";
 import LandingPage from "@/pages/LandingPage";
+import PublicCanvasPage from "@/pages/PublicCanvasPage";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
@@ -142,6 +143,7 @@ const App = () => (
             <Route path="/login" element={<AuthGate />} />
             <Route path="/showcase" element={<ShowcasePage />} />
             <Route path="/landing" element={<LandingPage />} />
+            <Route path="/canvas/public" element={<PublicCanvasPage />} />
 
             {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>

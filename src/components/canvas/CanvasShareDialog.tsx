@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Share2, Trash2, Users, Loader2, Eye, Pencil } from 'lucide-react';
+import { Share2, Trash2, Users, Loader2, Eye, Pencil, Globe, Copy, Link2Off, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Separator } from '@/components/ui/separator';
 
 interface Share {
   id: string;
@@ -36,12 +38,59 @@ export default function CanvasShareDialog({ boardId, boardName, isOwner }: Canva
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedPerm, setSelectedPerm] = useState<'view' | 'edit'>('view');
   const [loading, setLoading] = useState(false);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
+  const [copiedPublic, setCopiedPublic] = useState(false);
 
   useEffect(() => {
     if (!open || !currentTenantId) return;
     loadShares();
     loadTenantUsers();
+    loadPublicToken();
   }, [open, boardId, currentTenantId]);
+
+  const loadPublicToken = async () => {
+    const { data } = await supabase
+      .from('canvas_boards')
+      .select('public_share_token')
+      .eq('id', boardId)
+      .single();
+    setPublicToken(data?.public_share_token || null);
+  };
+
+  const generatePublicLink = async () => {
+    const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+    const { error } = await supabase
+      .from('canvas_boards')
+      .update({ public_share_token: token } as any)
+      .eq('id', boardId);
+    if (error) {
+      toast.error('Erro ao gerar link público');
+    } else {
+      setPublicToken(token);
+      toast.success('Link público gerado!');
+    }
+  };
+
+  const removePublicLink = async () => {
+    const { error } = await supabase
+      .from('canvas_boards')
+      .update({ public_share_token: null } as any)
+      .eq('id', boardId);
+    if (error) {
+      toast.error('Erro ao remover link');
+    } else {
+      setPublicToken(null);
+      toast.success('Link público removido');
+    }
+  };
+
+  const copyPublicLink = () => {
+    const url = `${window.location.origin}/canvas/public?token=${publicToken}`;
+    navigator.clipboard.writeText(url);
+    setCopiedPublic(true);
+    toast.success('Link copiado!');
+    setTimeout(() => setCopiedPublic(false), 2000);
+  };
 
   const loadShares = async () => {
     const { data } = await supabase
@@ -159,6 +208,35 @@ export default function CanvasShareDialog({ boardId, boardName, isOwner }: Canva
             Compartilhar "{boardName}"
           </DialogTitle>
         </DialogHeader>
+
+        {isOwner && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Link público (somente visualização)</span>
+            </div>
+            {publicToken ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={`${window.location.origin}/canvas/public?token=${publicToken}`}
+                  className="text-xs h-8 font-mono"
+                />
+                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={copyPublicLink}>
+                  {copiedPublic ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={removePublicLink} title="Remover link público">
+                  <Link2Off className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={generatePublicLink}>
+                <Globe className="h-3.5 w-3.5" /> Gerar link público
+              </Button>
+            )}
+            <Separator className="my-2" />
+          </div>
+        )}
 
         {isOwner && (
           <div className="flex items-center gap-2">
