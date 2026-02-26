@@ -16,7 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
-  MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link
+  MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link,
+  Paperclip, Upload, Trash2
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
@@ -40,7 +41,45 @@ export default function WorkOrderCreate() {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [externalLink, setExternalLink] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
+
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+  const ALLOWED_TYPES = [
+    'image/png', 'image/jpeg', 'image/jpg',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ];
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const valid: File[] = [];
+    for (const file of Array.from(files)) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast({ title: 'Tipo não permitido', description: `${file.name}: apenas imagens (PNG/JPG), PDF, Word e Excel.`, variant: 'destructive' });
+        continue;
+      }
+      if (file.size > MAX_SIZE_BYTES) {
+        toast({ title: 'Arquivo muito grande', description: `${file.name} excede o limite de 10 MB.`, variant: 'destructive' });
+        continue;
+      }
+      valid.push(file);
+    }
+    setPendingFiles(prev => [...prev, ...valid]);
+    e.target.value = '';
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
 
   // Auto-fill email from profile (only if no requester selected)
   useEffect(() => {
@@ -177,6 +216,38 @@ export default function WorkOrderCreate() {
         tenantId: currentTenantId,
         diff: { title, priority, category_id: categoryId || null },
       });
+
+      // Upload pending files
+      if (result?.id && pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          try {
+            const ext = file.name.split('.').pop();
+            const storagePath = `${currentTenantId}/${result.id}/${crypto.randomUUID()}.${ext}`;
+            const { error: uploadError } = await supabase.storage
+              .from('work-order-attachments')
+              .upload(storagePath, file);
+            if (uploadError) throw uploadError;
+
+            const { data: signedData } = await supabase.storage
+              .from('work-order-attachments')
+              .createSignedUrl(storagePath, 3600);
+
+            await supabase.from('work_order_attachments').insert({
+              tenant_id: currentTenantId!,
+              work_order_id: result.id,
+              file_name: file.name,
+              mime_type: file.type,
+              size: file.size,
+              storage_key: storagePath,
+              url: signedData?.signedUrl || '',
+              uploaded_by: user?.id || null,
+            });
+          } catch (err: any) {
+            console.error('Erro ao enviar anexo:', err);
+          }
+        }
+      }
+
       toast({ title: 'OS criada com sucesso!' });
       navigate('/os');
     } catch (err: any) {
@@ -438,7 +509,49 @@ export default function WorkOrderCreate() {
           </CardContent>
         </Card>
 
-        {/* Section 5: Tags */}
+        {/* Section 5: Anexos */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Paperclip className="h-4 w-4 text-primary" />
+              Anexos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3">
+            <label>
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,.pdf,.doc,.docx,.xls,.xlsx"
+                className="hidden"
+                onChange={handleFilesSelected}
+              />
+              <Button type="button" size="sm" variant="outline" asChild>
+                <span className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-1" />
+                  Selecionar Arquivos
+                </span>
+              </Button>
+            </label>
+            <p className="text-[10px] text-muted-foreground">Limite: 10 MB por arquivo (PNG, JPG, PDF, Word, Excel)</p>
+            {pendingFiles.length > 0 && (
+              <div className="space-y-1.5">
+                {pendingFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-card text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="flex-1 truncate">{file.name}</span>
+                    <span className="text-xs text-muted-foreground">{formatSize(file.size)}</span>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removePendingFile(idx)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Section 6: Tags */}
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-3 pt-4 px-5">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
