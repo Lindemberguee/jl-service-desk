@@ -57,6 +57,8 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hasChanges, setHasChanges] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingRef = useRef(false);
+  const localChangeCountRef = useRef(0);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
   const [showPalette, setShowPalette] = useState(true);
   const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
@@ -65,13 +67,16 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
   const contextMenuPos = useRef({ x: 0, y: 0 });
   const { screenToFlowPosition, getViewport } = useReactFlow();
   const { user, currentTenantId } = useAuth();
-  const skipRealtimeRef = useRef(false);
   const history = useCanvasHistory();
   const [, setUndoKey] = useState(0);
 
-  useEffect(() => { setHasChanges(true); }, [nodes, edges]);
+  // Track local changes with a counter to prevent realtime from overwriting unsaved work
+  useEffect(() => {
+    localChangeCountRef.current++;
+    setHasChanges(true);
+  }, [nodes, edges]);
 
-  // Realtime sync
+  // Realtime sync — only apply remote changes when we have no pending local edits
   useEffect(() => {
     if (!currentTenantId) return;
     const channel = supabase
@@ -79,23 +84,31 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'canvas_boards', filter: `id=eq.${boardId}`,
       }, (payload) => {
-        if (skipRealtimeRef.current) { skipRealtimeRef.current = false; return; }
+        // Skip events triggered by our own save (guard window)
+        if (isSavingRef.current) return;
+        // Don't overwrite local unsaved changes
+        if (hasChanges) return;
         const updated = payload.new as any;
         setNodes(updated.nodes as Node[]);
         setEdges(updated.edges as Edge[]);
-        setHasChanges(false);
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [boardId, currentTenantId, user?.id, readOnly, setNodes, setEdges]);
+  }, [boardId, currentTenantId, hasChanges, setNodes, setEdges]);
 
   // Auto-save on every change (debounced 1.5s)
   useEffect(() => {
     if (!hasChanges || readOnly) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
-      skipRealtimeRef.current = true;
+      const changesBefore = localChangeCountRef.current;
+      isSavingRef.current = true;
       await onSave(nodes, edges, getViewport());
-      setHasChanges(false);
+      // Only clear hasChanges if no new changes happened during save
+      if (localChangeCountRef.current === changesBefore) {
+        setHasChanges(false);
+      }
+      // Keep the guard up briefly so the realtime echo is ignored
+      setTimeout(() => { isSavingRef.current = false; }, 1000);
     }, 1500);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [nodes, edges, hasChanges, getViewport, onSave, readOnly]);
@@ -253,9 +266,10 @@ function CanvasBoardInner({ boardId, boardName, initialNodes, initialEdges, init
 
   const handleSave = useCallback(async () => {
     if (readOnly) return;
-    skipRealtimeRef.current = true;
+    isSavingRef.current = true;
     await onSave(nodes, edges, getViewport());
     setHasChanges(false);
+    setTimeout(() => { isSavingRef.current = false; }, 1000);
   }, [nodes, edges, getViewport, onSave, readOnly]);
 
   const handleUndo = useCallback(() => {

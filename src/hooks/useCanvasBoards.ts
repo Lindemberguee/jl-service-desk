@@ -107,14 +107,13 @@ export function useCanvasBoards() {
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             const updated = payload.new as any;
-            // Only update if it's not from the current user (avoid overwriting own pending changes)
-            if (updated.user_id !== user.id) {
-              setBoards(prev => prev.map(b =>
-                b.id === updated.id
-                  ? { ...b, nodes: updated.nodes as Node[], edges: updated.edges as Edge[], viewport: updated.viewport as any, updated_at: updated.updated_at }
-                  : b
-              ));
-            }
+            // Update metadata only (name, updated_at) — don't overwrite nodes/edges
+            // since CanvasBoard manages its own realtime sync for the active board
+            setBoards(prev => prev.map(b =>
+              b.id === updated.id
+                ? { ...b, name: updated.name, updated_at: updated.updated_at }
+                : b
+            ));
           } else if (payload.eventType === 'DELETE') {
             setBoards(prev => prev.filter(b => b.id !== (payload.old as any).id));
           }
