@@ -379,6 +379,7 @@ export type Database = {
           tenant_id: string
           updated_at: string
           user_id: string
+          version: number
           viewport: Json | null
         }
         Insert: {
@@ -390,6 +391,7 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           user_id: string
+          version?: number
           viewport?: Json | null
         }
         Update: {
@@ -401,6 +403,7 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           user_id?: string
+          version?: number
           viewport?: Json | null
         }
         Relationships: []
