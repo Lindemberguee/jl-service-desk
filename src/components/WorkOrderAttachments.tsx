@@ -31,6 +31,7 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState('');
+  const [previewType, setPreviewType] = useState<'image' | 'pdf' | null>(null);
 
   const { data: attachments = [], isLoading } = useQuery({
     queryKey: ['work_order_attachments', workOrderId],
@@ -136,18 +137,22 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
 
   const handlePreview = async (attachment: any) => {
     if (!attachment.storage_key) return;
-    const { data } = await supabase.storage
-      .from('work-order-attachments')
-      .download(attachment.storage_key);
-    if (data) {
-      const url = URL.createObjectURL(data);
-      if (attachment.mime_type?.startsWith('image')) {
+    const isPdf = attachment.mime_type === 'application/pdf' || attachment.file_name?.toLowerCase().endsWith('.pdf');
+    const isImage = attachment.mime_type?.startsWith('image');
+
+    if (isImage || isPdf) {
+      const { data } = await supabase.storage
+        .from('work-order-attachments')
+        .download(attachment.storage_key);
+      if (data) {
+        const url = URL.createObjectURL(data);
         setPreviewName(attachment.file_name);
         setPreviewUrl(url);
-      } else {
-        // Open blob URL - bypasses SmartScreen/browser blocking
-        window.open(url, '_blank');
+        setPreviewType(isImage ? 'image' : 'pdf');
       }
+    } else {
+      // For other files (Word, Excel), just download
+      handleDownload(attachment);
     }
   };
 
@@ -282,12 +287,15 @@ export function WorkOrderAttachments({ workOrderId, resolvedAt }: WorkOrderAttac
         )}
       </CardContent>
 
-      {/* Image preview dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
-        <DialogContent className="max-w-3xl p-2">
+      {/* Preview dialog for images and PDFs */}
+      <Dialog open={!!previewUrl} onOpenChange={(open) => { if (!open) { setPreviewUrl(null); setPreviewType(null); } }}>
+        <DialogContent className="max-w-4xl p-2 max-h-[90vh]">
           <DialogTitle className="sr-only">{previewName}</DialogTitle>
-          {previewUrl && (
+          {previewUrl && previewType === 'image' && (
             <img src={previewUrl} alt={previewName} className="w-full h-auto max-h-[80vh] object-contain rounded" />
+          )}
+          {previewUrl && previewType === 'pdf' && (
+            <iframe src={previewUrl} title={previewName} className="w-full h-[80vh] rounded border-0" />
           )}
         </DialogContent>
       </Dialog>
