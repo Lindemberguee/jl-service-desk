@@ -124,21 +124,39 @@
   }
 }
 
-/* Premium thin scrollbar for sidebar */
-[data-sidebar="content"] {
+/* Premium global scrollbar */
+* {
   scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Sidebar uses even thinner scrollbar */
+[data-sidebar="content"] {
   scrollbar-color: hsl(var(--sidebar-border)) transparent;
 }
 [data-sidebar="content"]::-webkit-scrollbar {
   width: 4px;
 }
-[data-sidebar="content"]::-webkit-scrollbar-track {
-  background: transparent;
-}
 [data-sidebar="content"]::-webkit-scrollbar-thumb {
   background: hsl(var(--sidebar-border));
-  border-radius: 9999px;
-  transition: background 0.2s;
 }
 [data-sidebar="content"]::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--sidebar-foreground) / 0.25);
