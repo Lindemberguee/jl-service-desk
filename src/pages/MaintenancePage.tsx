@@ -125,7 +125,7 @@ export default function MaintenancePage() {
   // Form states
   const [mForm, setMForm] = useState({
     asset_id: '', type: 'corretiva', status: 'agendada', title: '',
-    description: '', scheduled_at: '', observations: '', cost: '',
+    description: '', scheduled_at: '', observations: '', cost: '', technician_id: '',
   });
   const [cForm, setCForm] = useState({
     asset_id: '', component_type: 'cpu', brand: '', model: '',
@@ -345,7 +345,7 @@ export default function MaintenancePage() {
 
   /* ─── Helpers ─── */
   function resetMForm() {
-    setMForm({ asset_id: '', type: 'corretiva', status: 'agendada', title: '', description: '', scheduled_at: '', observations: '', cost: '' });
+    setMForm({ asset_id: '', type: 'corretiva', status: 'agendada', title: '', description: '', scheduled_at: '', observations: '', cost: '', technician_id: '' });
   }
   function resetCForm() {
     setCForm({ asset_id: '', component_type: 'cpu', brand: '', model: '', serial_number: '', stock_item_id: '', status: 'ativo', notes: '' });
@@ -357,6 +357,7 @@ export default function MaintenancePage() {
       asset_id: m.asset_id, type: m.type, status: m.status, title: m.title,
       description: m.description || '', scheduled_at: m.scheduled_at?.slice(0, 16) || '',
       observations: m.observations || '', cost: m.cost ? String(m.cost) : '',
+      technician_id: m.technician_id || '',
     });
     setMaintenanceDialog(true);
   }
@@ -493,28 +494,29 @@ export default function MaintenancePage() {
           <Card className="border-border/40 overflow-hidden">
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead>Título</TableHead>
-                    <TableHead>Ativo</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data Agendada</TableHead>
-                    <TableHead>Custo</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
+                 <TableHeader>
+                   <TableRow className="bg-muted/30">
+                     <TableHead>Título</TableHead>
+                     <TableHead>Ativo</TableHead>
+                     <TableHead>Tipo</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Técnico</TableHead>
+                     <TableHead>Data Agendada</TableHead>
+                     <TableHead>Custo</TableHead>
+                     <TableHead className="text-right">Ações</TableHead>
+                   </TableRow>
+                 </TableHeader>
                 <TableBody>
                   <AnimatePresence>
                     {loadingM ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Activity className="h-6 w-6 animate-spin" />
                           <span>Carregando manutenções...</span>
                         </div>
                       </TableCell></TableRow>
                     ) : filteredMaintenances.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-12">
+                      <TableRow><TableCell colSpan={8} className="text-center py-12">
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           <Wrench className="h-8 w-8 opacity-30" />
                           <p className="font-medium">Nenhuma manutenção encontrada</p>
@@ -557,6 +559,9 @@ export default function MaintenancePage() {
                             <Badge variant="outline" className={`${statusInfo.color} gap-1`}>
                               <StatusIcon className="h-3 w-3" />{statusInfo.label}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {tech?.name || '—'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {m.scheduled_at ? format(new Date(m.scheduled_at), 'dd/MM/yy HH:mm', { locale: ptBR }) : '—'}
@@ -790,6 +795,18 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="grid gap-2">
+              <Label>Técnico Responsável</Label>
+              <Select value={mForm.technician_id || 'none'} onValueChange={v => setMForm(p => ({ ...p, technician_id: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {profiles.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label>Descrição</Label>
               <Textarea value={mForm.description} onChange={e => setMForm(p => ({ ...p, description: e.target.value }))} rows={3} placeholder="Descreva o que será feito nesta manutenção..." />
             </div>
@@ -806,6 +823,7 @@ export default function MaintenancePage() {
                 asset_id: mForm.asset_id, type: mForm.type, status: mForm.status, title: mForm.title,
                 description: mForm.description || null, scheduled_at: mForm.scheduled_at || null,
                 observations: mForm.observations || null, cost: mForm.cost ? Number(mForm.cost) : 0,
+                technician_id: mForm.technician_id || null,
               })}
             >
               {saveMaintenance.isPending ? 'Salvando...' : 'Salvar'}
