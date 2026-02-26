@@ -143,13 +143,21 @@ export function useCanvasBoards() {
 
   const saveBoard = useCallback(async (id: string, nodes: Node[], edges: Edge[], viewport: { x: number; y: number; zoom: number }) => {
     setSaving(true);
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from('canvas_boards')
-      .update({ nodes: nodes as any, edges: edges as any, viewport: viewport as any, updated_at: new Date().toISOString() })
+      .update({ nodes: nodes as any, edges: edges as any, viewport: viewport as any, updated_at: now })
       .eq('id', id);
 
-    if (error) toast.error('Erro ao salvar');
-    else toast.success('Canvas salvo!');
+    if (error) {
+      toast.error('Erro ao salvar');
+    } else {
+      // Update local state immediately so listing reflects saved data
+      setBoards(prev => prev.map(b =>
+        b.id === id ? { ...b, nodes, edges, viewport, updated_at: now } : b
+      ));
+      toast.success('Canvas salvo!');
+    }
     setSaving(false);
   }, []);
 
