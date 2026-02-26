@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
       { email: "coord.limpeza@serviceos.com", password: "Coord123!", name: "Maria Coord Limpeza", memberships: [
         { slug: "limpeza-predial", role: "coordenador" },
       ]},
+      { email: "analista@serviceos.com", password: "Analista123!", name: "Fernanda Analista TI", memberships: [
+        { slug: "ti", role: "analista" },
+      ]},
       { email: "solicitante@serviceos.com", password: "Solic123!", name: "Pedro Solicitante", memberships: [
         { slug: "ti", role: "solicitante" }, { slug: "manutencao-predial", role: "solicitante" }, { slug: "limpeza-predial", role: "solicitante" },
       ]},
@@ -197,6 +200,7 @@ Deno.serve(async (req) => {
         { email: "coord.manut@serviceos.com", password: "Coord123!", role: "Coordenador Manutenção" },
         { email: "tecnico.manut@serviceos.com", password: "Tecnico123!", role: "Técnico Manut + Limpeza" },
         { email: "coord.limpeza@serviceos.com", password: "Coord123!", role: "Coordenador Limpeza" },
+        { email: "analista@serviceos.com", password: "Analista123!", role: "Analista TI" },
         { email: "solicitante@serviceos.com", password: "Solic123!", role: "Solicitante (todos)" },
       ],
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
