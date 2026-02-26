@@ -117,7 +117,11 @@ export default function Ferramentas() {
                   <div className={`h-11 w-11 rounded-lg bg-gradient-to-br ${tool.gradient} flex items-center justify-center`}>
                     <Icon className={`h-5 w-5 ${tool.iconColor}`} />
                   </div>
-                  {!tool.available && (
+                  {tool.available ? (
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium border-primary/40 text-primary">
+                      Beta
+                    </Badge>
+                  ) : (
                     <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium">
                       Em breve
                     </Badge>
