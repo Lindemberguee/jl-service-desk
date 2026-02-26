@@ -148,40 +148,52 @@ export default function NotesPage() {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const markdownRef = useRef<HTMLTextAreaElement>(null);
-  const debouncedTitle = useDebounce(editTitle, 800);
-  const debouncedContent = useDebounce(editContent, 1000);
-  const pendingSaveRef = useRef<{ title: string; content: string } | null>(null);
+  const debouncedTitleDraft = useDebounce({ noteId: activeNote, title: editTitle }, 800);
+  const debouncedContentDraft = useDebounce({ noteId: activeNote, content: editContent }, 1000);
+  const pendingSaveRef = useRef<{ noteId: string | null; title: string; content: string } | null>(null);
 
   const note = notes.find(n => n.id === activeNote);
 
-  // Track pending changes for flush-on-leave
   useEffect(() => {
     if (note) {
-      pendingSaveRef.current = { title: editTitle, content: editContent };
+      pendingSaveRef.current = { noteId: note.id, title: editTitle, content: editContent };
     }
   }, [editTitle, editContent, note]);
 
   // Flush pending save when leaving a note
-  const flushSave = useCallback(() => {
-    if (!activeNote || !pendingSaveRef.current) return;
+  const flushSave = useCallback(async () => {
     const pending = pendingSaveRef.current;
-    const currentNote = notes.find(n => n.id === activeNote);
+    if (!pending?.noteId) return;
+
+    const currentNote = notes.find(n => n.id === pending.noteId);
     if (!currentNote) return;
 
-    const updates: any = {};
-    if (pending.title !== currentNote.title && pending.title.trim()) updates.title = pending.title;
+    const updates: Partial<Pick<Note, 'title' | 'content'>> = {};
+    if (pending.title.trim() && pending.title !== currentNote.title) updates.title = pending.title;
     if (pending.content !== currentNote.content) updates.content = pending.content;
 
     if (Object.keys(updates).length > 0) {
-      updateNote(activeNote, updates);
+      await updateNote(pending.noteId, updates);
     }
+
     pendingSaveRef.current = null;
-  }, [activeNote, notes, updateNote]);
+  }, [notes, updateNote]);
 
   // Override setActiveNote to flush first
-  const switchNote = useCallback((id: string | null) => {
-    flushSave();
+  const switchNote = useCallback(async (id: string | null) => {
+    await flushSave();
     setActiveNote(id);
+  }, [flushSave]);
+
+  const handleBackToTools = useCallback(async () => {
+    await flushSave();
+    navigate('/ferramentas');
+  }, [flushSave, navigate]);
+
+  const handleSelectFolder = useCallback(async (folder: string | null) => {
+    await flushSave();
+    setActiveFolder(folder);
+    setActiveTag(null);
   }, [flushSave]);
 
   // Sync editor when switching notes
@@ -198,21 +210,31 @@ export default function NotesPage() {
 
   // Auto-save title
   useEffect(() => {
-    if (note && debouncedTitle !== note.title && debouncedTitle.trim()) {
-      updateNote(note.id, { title: debouncedTitle });
+    const noteId = debouncedTitleDraft.noteId;
+    if (!noteId) return;
+    const targetNote = notes.find(n => n.id === noteId);
+    if (!targetNote) return;
+
+    if (debouncedTitleDraft.title.trim() && debouncedTitleDraft.title !== targetNote.title) {
+      void updateNote(noteId, { title: debouncedTitleDraft.title });
     }
-  }, [debouncedTitle]);
+  }, [debouncedTitleDraft, notes, updateNote]);
 
   // Auto-save content
   useEffect(() => {
-    if (note && debouncedContent !== note.content) {
-      updateNote(note.id, { content: debouncedContent });
+    const noteId = debouncedContentDraft.noteId;
+    if (!noteId) return;
+    const targetNote = notes.find(n => n.id === noteId);
+    if (!targetNote) return;
+
+    if (debouncedContentDraft.content !== targetNote.content) {
+      void updateNote(noteId, { content: debouncedContentDraft.content });
     }
-  }, [debouncedContent]);
+  }, [debouncedContentDraft, notes, updateNote]);
 
   // Flush on unmount / page leave
   useEffect(() => {
-    return () => { flushSave(); };
+    return () => { void flushSave(); };
   }, [flushSave]);
 
   const execCommand = (cmd: string, value?: string) => {
@@ -246,30 +268,28 @@ export default function NotesPage() {
   };
 
   const handleCreate = async () => {
+    await flushSave();
     const folder = activeFolder || 'Geral';
     const result = await createNote(folder);
-    if (result) switchNote(result.id);
+    if (result) setActiveNote(result.id);
   };
 
   const handleAddTag = () => {
     if (!note || !newTag.trim()) return;
     const tags = [...note.tags, newTag.trim().toLowerCase()];
-    updateNote(note.id, { tags: [...new Set(tags)] });
-    note.tags = [...new Set(tags)];
+    void updateNote(note.id, { tags: [...new Set(tags)] });
     setNewTag('');
   };
 
   const handleRemoveTag = (tag: string) => {
     if (!note) return;
     const tags = note.tags.filter(t => t !== tag);
-    updateNote(note.id, { tags });
-    note.tags = tags;
+    void updateNote(note.id, { tags });
   };
 
   const togglePin = () => {
     if (!note) return;
-    updateNote(note.id, { is_pinned: !note.is_pinned });
-    note.is_pinned = !note.is_pinned;
+    void updateNote(note.id, { is_pinned: !note.is_pinned });
   };
 
   // Filtered notes
@@ -304,7 +324,7 @@ export default function NotesPage() {
       >
         <div className="p-3 flex items-center gap-2">
           {!sidebarCollapsed && (
-            <Button variant="ghost" size="sm" onClick={() => navigate('/ferramentas')} className="gap-1 text-xs h-7 px-2">
+            <Button variant="ghost" size="sm" onClick={handleBackToTools} className="gap-1 text-xs h-7 px-2">
               <ArrowLeft className="h-3 w-3" /> Ferramentas
             </Button>
           )}
@@ -327,7 +347,7 @@ export default function NotesPage() {
                     'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors',
                     activeFolder === null ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
-                  onClick={() => { setActiveFolder(null); setActiveTag(null); }}
+                  onClick={() => void handleSelectFolder(null)}
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">Todas</span>
@@ -340,7 +360,7 @@ export default function NotesPage() {
                       'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors',
                       activeFolder === f ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
-                    onClick={() => { setActiveFolder(f); setActiveTag(null); }}
+                    onClick={() => void handleSelectFolder(f)}
                   >
                     <FolderOpen className="h-3.5 w-3.5" />
                     <span className="flex-1 text-left truncate">{f}</span>
