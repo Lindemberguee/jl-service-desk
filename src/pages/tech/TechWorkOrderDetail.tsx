@@ -23,8 +23,10 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Play, Pause, CheckSquare, RotateCcw, Send, Lock, Unlock,
   Clock, MessageSquare, AlertTriangle, UserCheck, MapPin, Building, Package,
-  FolderOpen, Phone, Mail, Timer, Eye, EyeOff, Tag, Star
+  FolderOpen, Phone, Mail, Timer, Eye, EyeOff, Tag, Star, Link, ExternalLink
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 const eventLabels: Record<string, string> = {
   created: 'OS Criada', status_changed: 'Status Alterado', comment_internal: 'Comentário Interno',
@@ -43,6 +45,11 @@ export default function TechWorkOrderDetail() {
 
   const [comment, setComment] = useState('');
   const [isPublicComment, setIsPublicComment] = useState(false);
+  // Resolution dialog
+  const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [technicalNote, setTechnicalNote] = useState('');
+  const [resolutionQuality, setResolutionQuality] = useState(0);
+  const [resolutionTimeRating, setResolutionTimeRating] = useState(0);
 
   // Timer state
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -310,7 +317,7 @@ export default function TechWorkOrderDetail() {
               <Button variant="outline" className="h-11 gap-2 text-sm flex-1 sm:flex-none" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
                 <Pause className="h-4 w-4" /> Pausar (Solicitante)
               </Button>
-              <Button className="h-11 gap-2 text-sm bg-green-600 hover:bg-green-700 flex-1 sm:flex-none" onClick={() => statusMutation.mutate('concluida')} disabled={statusMutation.isPending}>
+              <Button className="h-11 gap-2 text-sm bg-green-600 hover:bg-green-700 flex-1 sm:flex-none" onClick={() => setShowResolveDialog(true)} disabled={statusMutation.isPending}>
                 <CheckSquare className="h-4 w-4" /> Resolver
               </Button>
             </>
@@ -357,6 +364,47 @@ export default function TechWorkOrderDetail() {
                     <Field icon={MapPin} label="Sala / Espaço" value={getLoc(wo.location_id)} />
                     <Field icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
                   </div>
+                  {wo.external_link && (
+                    <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-lg p-3">
+                      <Link className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] uppercase font-medium text-muted-foreground">Link Externo</p>
+                        <a
+                          href={wo.external_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary hover:underline flex items-center gap-1 truncate"
+                        >
+                          {wo.external_link}
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {wo.technical_note && (
+                    <div className="mt-4 bg-muted/40 rounded-lg p-3 space-y-2">
+                      <p className="text-[11px] uppercase font-medium text-muted-foreground">Nota Técnica</p>
+                      <p className="text-sm whitespace-pre-wrap">{wo.technical_note}</p>
+                      <div className="flex gap-4">
+                        {(wo.resolution_quality ?? 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground mr-1">Qualidade:</span>
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo.resolution_quality ?? 0) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                            ))}
+                          </div>
+                        )}
+                        {(wo.resolution_time_rating ?? 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground mr-1">Tempo:</span>
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo.resolution_time_rating ?? 0) ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               {/* SLA */}
@@ -555,6 +603,77 @@ export default function TechWorkOrderDetail() {
           <WorkOrderCosts workOrder={wo} canManage={true} />
         </TabsContent>
       </Tabs>
+      {/* Resolve Dialog */}
+      <Dialog open={showResolveDialog} onOpenChange={setShowResolveDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Resolver Ordem de Serviço</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs font-medium">Nota Técnica</Label>
+              <Textarea
+                value={technicalNote}
+                onChange={e => setTechnicalNote(e.target.value)}
+                placeholder="Descreva o que foi feito para resolver..."
+                rows={3}
+                className="text-sm mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-2 block">Qualidade da Resolução</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setResolutionQuality(s)} className="p-1">
+                    <Star className={`h-6 w-6 transition-colors ${s <= resolutionQuality ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium mb-2 block">Tempo de Resolução</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setResolutionTimeRating(s)} className="p-1">
+                    <Star className={`h-6 w-6 transition-colors ${s <= resolutionTimeRating ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground hover:text-blue-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowResolveDialog(false)}>Cancelar</Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={async () => {
+              const updates: any = { status: 'concluida', resolved_at: new Date().toISOString() };
+              if (technicalNote) updates.technical_note = technicalNote;
+              if (resolutionQuality > 0) updates.resolution_quality = resolutionQuality;
+              if (resolutionTimeRating > 0) updates.resolution_time_rating = resolutionTimeRating;
+              if (!wo?.paused_at) {
+                // not paused
+              } else {
+                updates.total_paused_ms = (wo.total_paused_ms || 0) + (Date.now() - new Date(wo.paused_at).getTime());
+                updates.paused_at = null;
+              }
+              const { error } = await supabase.from('work_orders').update(updates as any).eq('id', id!);
+              if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+              await supabase.from('work_order_events').insert({
+                tenant_id: currentTenantId!, work_order_id: id!,
+                type: 'resolved' as any, actor_user_id: user?.id,
+                payload: { technical_note: technicalNote, resolution_quality: resolutionQuality, resolution_time_rating: resolutionTimeRating },
+              });
+              await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.resolved', tenantId: currentTenantId, diff: { technical_note: technicalNote } });
+              setShowResolveDialog(false);
+              setTechnicalNote('');
+              setResolutionQuality(0);
+              setResolutionTimeRating(0);
+              invalidateAll();
+              toast({ title: 'OS resolvida com sucesso!' });
+            }} disabled={statusMutation.isPending}>
+              <CheckSquare className="h-3.5 w-3.5 mr-1.5" /> Resolver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -15,7 +15,8 @@ import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import {
   ArrowLeft, Send, Loader2, Clock, MessageSquare, CheckSquare, AlertTriangle,
-  Star, RefreshCw, ThumbsUp, FolderOpen, Building, MapPin, Package, UserCheck
+  Star, RefreshCw, ThumbsUp, FolderOpen, Building, MapPin, Package, UserCheck,
+  Link, ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -320,6 +321,47 @@ export default function MyWorkOrderDetail() {
                 {asset && <InfoField icon={Package} label="Equipamento" value={`${(asset as any).name}${(asset as any).patrimony_code ? ` — Pat. ${(asset as any).patrimony_code}` : ''}`} />}
                 {wo.assigned_to_id && <InfoField icon={UserCheck} label="Responsável" value={getProfileName(wo.assigned_to_id) || 'Atribuído'} />}
               </div>
+              {wo.external_link && (
+                <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-lg p-3">
+                  <Link className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase font-medium text-muted-foreground">Link de Referência</p>
+                    <a
+                      href={wo.external_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-primary hover:underline flex items-center gap-1 truncate"
+                    >
+                      {wo.external_link}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+              )}
+              {wo.technical_note && (
+                <div className="mt-4 bg-muted/40 rounded-lg p-3 space-y-2">
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Nota Técnica</p>
+                  <p className="text-sm whitespace-pre-wrap">{wo.technical_note}</p>
+                  <div className="flex gap-4">
+                    {(wo.resolution_quality ?? 0) > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground mr-1">Qualidade:</span>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo.resolution_quality ?? 0) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                        ))}
+                      </div>
+                    )}
+                    {(wo.resolution_time_rating ?? 0) > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground mr-1">Tempo:</span>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= (wo.resolution_time_rating ?? 0) ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -477,7 +519,7 @@ export default function MyWorkOrderDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1.5 text-xs">
-                  <InfoRow label="Mão de obra" value={`R$ ${Number(wo.labor_cost || 0).toFixed(2)}`} />
+                  <InfoRow label="Serviços de terceiros" value={`R$ ${Number(wo.labor_cost || 0).toFixed(2)}`} />
                   <InfoRow label="Materiais" value={`R$ ${Number(wo.parts_cost || 0).toFixed(2)}`} />
                   <div className="flex justify-between pt-1 border-t border-border">
                     <span className="font-semibold">Total</span>
