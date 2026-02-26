@@ -135,8 +135,8 @@ function CanvasBoardInner({
           break;
       }
     } finally {
-      // Reset after microtask so the state update completes
-      queueMicrotask(() => { isApplyingRemoteRef.current = false; });
+      // Use setTimeout to ensure React has flushed the state updates before resetting
+      setTimeout(() => { isApplyingRemoteRef.current = false; }, 50);
     }
   }, [setNodes, setEdges]);
 
@@ -520,6 +520,8 @@ function CanvasBoardInner({
           selectedNodeId={selectedNodeId}
           onClose={() => setShowInspector(false)}
           readOnly={readOnly}
+          onNodeUpdate={(nodeId, data) => broadcastOp({ type: 'node:update', nodeId, data })}
+          onNodeMove={(nodeId, position) => broadcastOp({ type: 'node:move', nodeId, position })}
         />
       )}
 
