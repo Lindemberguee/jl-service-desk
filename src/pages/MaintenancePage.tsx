@@ -684,10 +684,10 @@ export default function MaintenancePage() {
             </div>
             <div className="grid gap-2">
               <Label className="flex items-center gap-1.5"><Link2 className="h-3.5 w-3.5" /> Vincular ao Estoque</Label>
-              <Select value={cForm.stock_item_id} onValueChange={v => setCForm(p => ({ ...p, stock_item_id: v }))}>
+              <Select value={cForm.stock_item_id || 'none'} onValueChange={v => setCForm(p => ({ ...p, stock_item_id: v === 'none' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="Opcional — vincular item de estoque" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {stockItems.map((s: any) => (
                     <SelectItem key={s.id} value={s.id}>{s.name} {s.sku ? `(${s.sku})` : ''} — Qtd: {s.current_level}</SelectItem>
                   ))}
