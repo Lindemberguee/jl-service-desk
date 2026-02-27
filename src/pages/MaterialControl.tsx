@@ -519,20 +519,20 @@ export default function MaterialControl() {
       {/* Table */}
       <Card className="rounded-xl border-border/50 overflow-hidden max-w-full">
         <div className="overflow-x-auto max-w-full">
-          <table className="text-sm min-w-max">
+          <table className="text-sm w-full min-w-[900px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="p-2 w-10 sticky left-0 bg-muted/30 z-10">
                   <Checkbox checked={allOnPageSelected} onCheckedChange={toggleSelectAll} />
                 </th>
-                <th className="text-left p-3 font-semibold sticky left-10 bg-muted/30 z-10 min-w-[200px]">Item</th>
+                <th className="text-left p-2 font-semibold sticky left-10 bg-muted/30 z-10 min-w-[160px]">Item</th>
                 {months.map(m => (
-                  <th key={monthKey(m)} colSpan={3} className="text-center p-2 font-semibold border-l border-border/30">
+                  <th key={monthKey(m)} colSpan={3} className="text-center px-1 py-2 font-semibold border-l border-border/30 text-xs">
                     <span className="capitalize">{monthLabel(m)}</span>
-                    <span className="text-muted-foreground font-normal ml-1">{format(m, 'yy')}</span>
+                    <span className="text-muted-foreground font-normal ml-0.5">{format(m, 'yy')}</span>
                   </th>
                 ))}
-                <th className="text-center p-2 font-semibold border-l border-border/30 min-w-[80px]">Saldo</th>
+                <th className="text-center px-2 py-2 font-semibold border-l border-border/30 w-[60px] text-xs">Saldo</th>
               </tr>
               <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
                 <th className="sticky left-0 bg-muted/20 z-10 p-1.5" />
@@ -612,9 +612,9 @@ function PaginationBar({ page, totalPages, total, setPage }: { page: number; tot
 function MonthSubHeader() {
   return (
     <>
-      <th className="p-1.5 text-center border-l border-border/30 min-w-[55px]">Ent.</th>
-      <th className="p-1.5 text-center min-w-[55px]">Saída</th>
-      <th className="p-1.5 text-center min-w-[55px]">Total</th>
+      <th className="px-1 py-1.5 text-center border-l border-border/30 w-[42px]">Ent.</th>
+      <th className="px-1 py-1.5 text-center w-[42px]">Saída</th>
+      <th className="px-1 py-1.5 text-center w-[42px]">Total</th>
     </>
   );
 }
@@ -622,13 +622,13 @@ function MonthSubHeader() {
 function MonthCells({ data }: { data: { in: number; out: number; total: number } }) {
   return (
     <>
-      <td className="p-2 text-center border-l border-border/30 tabular-nums">
+      <td className="px-1 py-2 text-center border-l border-border/30 tabular-nums text-xs">
         {data.in > 0 ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">{data.in}</span> : <span className="text-muted-foreground/40">0</span>}
       </td>
-      <td className="p-2 text-center tabular-nums">
+      <td className="px-1 py-2 text-center tabular-nums text-xs">
         {data.out > 0 ? <span className="text-destructive font-medium">-{data.out}</span> : <span className="text-muted-foreground/40">0</span>}
       </td>
-      <td className="p-2 text-center tabular-nums font-semibold">
+      <td className="px-1 py-2 text-center tabular-nums text-xs font-semibold">
         {data.total !== 0 ? (
           <span className={data.total > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}>{data.total}</span>
         ) : <span className="text-muted-foreground/40">0</span>}
