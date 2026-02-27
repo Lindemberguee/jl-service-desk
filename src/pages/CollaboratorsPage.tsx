@@ -23,7 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Loader2, Search, Pencil, X, Users, Phone, Hash, Mail,
-  PlusCircle, GripVertical,
+  PlusCircle, GripVertical, Building2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,12 +34,13 @@ type CollaboratorForm = {
   matricula: string;
   phone: string;
   email: string;
+  department: string;
   is_active: boolean;
   custom_fields: CustomField[];
 };
 
 const emptyForm: CollaboratorForm = {
-  full_name: '', matricula: '', phone: '', email: '', is_active: true, custom_fields: [],
+  full_name: '', matricula: '', phone: '', email: '', department: '', is_active: true, custom_fields: [],
 };
 
 export default function CollaboratorsPage() {
@@ -63,7 +64,7 @@ export default function CollaboratorsPage() {
     return collaborators.filter((c: any) => {
       if (!debouncedSearch) return true;
       const s = debouncedSearch.toLowerCase();
-      return [c.full_name, c.matricula, c.phone, c.email]
+      return [c.full_name, c.matricula, c.phone, c.email, c.department]
         .some(v => v?.toLowerCase().includes(s));
     });
   }, [collaborators, debouncedSearch]);
@@ -104,6 +105,7 @@ export default function CollaboratorsPage() {
         matricula: form.matricula || null,
         phone: form.phone || null,
         email: form.email || null,
+        department: form.department || null,
         is_active: form.is_active,
         custom_fields: form.custom_fields.filter(f => f.label.trim()),
       });
@@ -127,6 +129,7 @@ export default function CollaboratorsPage() {
       matricula: item.matricula || '',
       phone: item.phone || '',
       email: item.email || '',
+      department: item.department || '',
       is_active: item.is_active ?? true,
       custom_fields: customFields,
     });
@@ -144,6 +147,7 @@ export default function CollaboratorsPage() {
         matricula: form.matricula || null,
         phone: form.phone || null,
         email: form.email || null,
+        department: form.department || null,
         is_active: form.is_active,
         custom_fields: form.custom_fields.filter(f => f.label.trim()),
       });
@@ -194,10 +198,14 @@ export default function CollaboratorsPage() {
           <Input value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="(00) 00000-0000" className="h-9 text-sm" />
         </div>
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">E-mail</Label>
+        <Input value={form.email} onChange={e => setField('email', e.target.value)} placeholder="email@exemplo.com" className="h-9 text-sm" type="email" />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium">E-mail</Label>
-          <Input value={form.email} onChange={e => setField('email', e.target.value)} placeholder="email@exemplo.com" className="h-9 text-sm" type="email" />
+          <Label className="text-xs font-medium">Departamento / Setor</Label>
+          <Input value={form.department} onChange={e => setField('department', e.target.value)} placeholder="Ex: TI, Manutenção, RH..." className="h-9 text-sm" />
         </div>
         <div className="flex items-end gap-2 pb-0.5">
           <div className="flex items-center gap-2">
@@ -342,6 +350,7 @@ export default function CollaboratorsPage() {
                     {item.matricula && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />{item.matricula}</p>}
                     {item.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{item.phone}</p>}
                     {item.email && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{item.email}</p>}
+                    {item.department && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Building2 className="h-3 w-3" />{item.department}</p>}
                     {customFields.filter((f: CustomField) => f.label).map((f: CustomField, i: number) => (
                       <p key={i} className="text-[11px] text-muted-foreground"><span className="font-medium">{f.label}:</span> {f.value || '-'}</p>
                     ))}
@@ -368,6 +377,7 @@ export default function CollaboratorsPage() {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Matrícula</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Telefone</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">E-mail</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Depto/Setor</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Status</TableHead>
                 <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>
               </TableRow>
@@ -379,6 +389,7 @@ export default function CollaboratorsPage() {
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.matricula || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.phone || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.email || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.department || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 px-2">
                       {item.is_active ? 'Ativo' : 'Inativo'}

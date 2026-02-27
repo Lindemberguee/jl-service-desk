@@ -1,0 +1,1 @@
+ALTER TABLE public.collaborators ADD COLUMN department text NULL;
