@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import ExcelJS from 'exceljs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +18,7 @@ import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHori
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
+import { useTenantBranding } from '@/hooks/useTenantBranding';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
@@ -55,6 +57,7 @@ export default function WorkOrders() {
   const { currentTenantId, currentRole, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { tenantName, primaryColor } = useTenantBranding();
 
   // Saved view
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -266,49 +269,100 @@ export default function WorkOrders() {
   // Export CSV
   const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '';
   const getLocationName = (id: string | null) => locations.find((l: any) => l.id === id)?.name || '';
-  const getCategoryName = (id: string | null) => categories.find((c: any) => c.id === id)?.name || '';
 
-  const escapeCSV = (val: string) => {
-    if (!val) return '';
-    if (val.includes(';') || val.includes('"') || val.includes('\n')) {
-      return `"${val.replace(/"/g, '""')}"`;
-    }
-    return val;
-  };
+  const exportExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = tenantName;
+    const ws = wb.addWorksheet('Ordens de Serviço');
 
-  const exportCSV = () => {
-    const headers = [
-      'Código', 'Título', 'Descrição', 'Prioridade', 'Status',
-      'Departamento', 'Categoria', 'Unidade', 'Local/Sala',
-      'Responsável', 'Solicitante', 'Visibilidade', 'SLA Resposta', 'SLA Resolução',
-      'Criada em', 'Iniciada em', 'Resolvida em', 'Atualizada em',
-    ];
-    const rows = filtered.map((wo: any) => [
-      escapeCSV(wo.code),
-      escapeCSV(wo.title),
-      escapeCSV(wo.description || ''),
-      priorityLabels[wo.priority] || wo.priority,
-      statusLabels[wo.status] || wo.status,
-      escapeCSV(tenantMap[wo.tenant_id] || ''),
-      escapeCSV(getCategoryName(wo.category_id)),
-      escapeCSV(getUnitName(wo.unit_id)),
-      escapeCSV(getLocationName(wo.location_id)),
-      escapeCSV(getAssignedName(wo.assigned_to_id)),
-      escapeCSV(getRequesterName(wo)),
-      wo.visibility === 'internal' ? 'Interna' : 'Cliente',
-      wo.response_due_at ? new Date(wo.response_due_at).toLocaleString('pt-BR') : '',
-      wo.resolve_due_at ? new Date(wo.resolve_due_at).toLocaleString('pt-BR') : '',
-      new Date(wo.created_at).toLocaleString('pt-BR'),
-      wo.started_at ? new Date(wo.started_at).toLocaleString('pt-BR') : '',
-      wo.resolved_at ? new Date(wo.resolved_at).toLocaleString('pt-BR') : '',
-      new Date(wo.updated_at).toLocaleString('pt-BR'),
-    ]);
-    const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    // Parse primary color to hex (remove #)
+    const brandHex = (primaryColor || '#3B82F6').replace('#', '');
+
+    // --- Header area with branding ---
+    ws.mergeCells('A1:G1');
+    const titleCell = ws.getCell('A1');
+    titleCell.value = tenantName;
+    titleCell.font = { name: 'Calibri', size: 18, bold: true, color: { argb: `FF${brandHex}` } };
+    titleCell.alignment = { vertical: 'middle' };
+    ws.getRow(1).height = 36;
+
+    ws.mergeCells('A2:G2');
+    const subtitleCell = ws.getCell('A2');
+    subtitleCell.value = `Relatório de Ordens de Serviço — ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
+    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF888888' } };
+    subtitleCell.alignment = { vertical: 'middle' };
+    ws.getRow(2).height = 20;
+
+    ws.mergeCells('A3:G3');
+    const countCell = ws.getCell('A3');
+    countCell.value = `${filtered.length} registro(s) exportado(s)`;
+    countCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF888888' } };
+    ws.getRow(3).height = 18;
+
+    // Empty row
+    ws.getRow(4).height = 8;
+
+    // --- Column headers ---
+    const headers = ['Código', 'Título', 'Descrição', 'Prioridade', 'Departamento', 'Local/Sala', 'Responsável', 'Solicitante', 'Criada em'];
+    const headerRow = ws.getRow(5);
+    headers.forEach((h, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = h;
+      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${brandHex}` } };
+      cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: `FF${brandHex}` } },
+      };
+    });
+    headerRow.height = 26;
+
+    // --- Data rows ---
+    filtered.forEach((wo: any, idx: number) => {
+      const row = ws.getRow(6 + idx);
+      const values = [
+        wo.code,
+        wo.title,
+        wo.description || '',
+        priorityLabels[wo.priority] || wo.priority,
+        tenantMap[wo.tenant_id] || '',
+        getLocationName(wo.location_id),
+        getAssignedName(wo.assigned_to_id),
+        getRequesterName(wo),
+        new Date(wo.created_at).toLocaleDateString('pt-BR'),
+      ];
+      values.forEach((v, i) => {
+        const cell = row.getCell(i + 1);
+        cell.value = v;
+        cell.font = { name: 'Calibri', size: 10 };
+        cell.alignment = { vertical: 'middle', wrapText: i === 2 }; // wrap description
+      });
+      // Zebra striping
+      if (idx % 2 === 1) {
+        values.forEach((_, i) => {
+          row.getCell(i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } };
+        });
+      }
+    });
+
+    // Column widths
+    ws.getColumn(1).width = 20; // Código
+    ws.getColumn(2).width = 35; // Título
+    ws.getColumn(3).width = 45; // Descrição
+    ws.getColumn(4).width = 12; // Prioridade
+    ws.getColumn(5).width = 16; // Departamento
+    ws.getColumn(6).width = 20; // Local/Sala
+    ws.getColumn(7).width = 20; // Responsável
+    ws.getColumn(8).width = 20; // Solicitante
+    ws.getColumn(9).width = 14; // Criada em
+
+    // Generate and download
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ordens-servico-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.download = `ordens-servico-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -364,9 +418,9 @@ export default function WorkOrders() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={exportCSV}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={exportExcel}>
             <Download className="h-3.5 w-3.5" />
-            CSV
+            Excel
           </Button>
           {canCreate && (
             <Button size="sm" onClick={() => navigate('/os/nova')} className="h-8 gap-1.5">
