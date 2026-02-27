@@ -8,16 +8,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { roleLabels, type AppRole } from '@/lib/permissions';
 import {
-  UserPlus, Building2, Search, Users, Filter, Shield,
+  UserPlus, Building2, Search, Users, Shield,
   ChevronDown, ChevronUp, KeyRound, UserX, ScrollText, Eye, EyeOff,
+  MoreHorizontal, Trash2, Power, Plus, UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -64,6 +74,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [filterTenant, setFilterTenant] = useState<string>('all');
   const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('users');
 
@@ -73,6 +84,11 @@ export default function AdminUsers() {
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [changePwUserId, setChangePwUserId] = useState('');
   const [changePwUserName, setChangePwUserName] = useState('');
+
+  // Delete confirm
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState('');
+  const [deleteUserName, setDeleteUserName] = useState('');
 
   // Create user form
   const [newName, setNewName] = useState('');
@@ -151,22 +167,18 @@ export default function AdminUsers() {
         u.memberships.some(m => m.tenant_id === filterTenant);
       const matchesRole = filterRole === 'all' ||
         u.memberships.some(m => m.role === filterRole);
-      return matchesSearch && matchesTenant && matchesRole;
+      const matchesStatus = filterStatus === 'all' ||
+        (filterStatus === 'active' && u.is_active) ||
+        (filterStatus === 'inactive' && !u.is_active);
+      return matchesSearch && matchesTenant && matchesRole && matchesStatus;
     });
-  }, [profiles, memberships, search, filterTenant, filterRole]);
+  }, [profiles, memberships, search, filterTenant, filterRole, filterStatus]);
 
   // Mutations
   const createUser = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-users', {
-        body: {
-          action: 'create_user',
-          email: newEmail,
-          password: newPassword,
-          name: newName,
-          tenant_id: newTenantId || undefined,
-          role: newRole,
-        },
+        body: { action: 'create_user', email: newEmail, password: newPassword, name: newName, tenant_id: newTenantId || undefined, role: newRole },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -212,9 +224,28 @@ export default function AdminUsers() {
       await logAudit({ entity: 'user', entityId: vars.user_id, action: vars.is_active ? 'user.activated' : 'user.deactivated', diff: { is_active: vars.is_active } });
       qc.invalidateQueries({ queryKey: ['admin_profiles'] });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
-      toast({ title: 'Status do usuário alterado!' });
+      toast({ title: vars.is_active ? 'Conta reativada!' : 'Conta desativada!' });
     },
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'delete_user', user_id: userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: async () => {
+      await logAudit({ entity: 'user', entityId: deleteUserId, action: 'user.deleted', diff: { name: deleteUserName, deleted_by: 'admin' } });
+      qc.invalidateQueries({ queryKey: ['admin_profiles'] });
+      qc.invalidateQueries({ queryKey: ['admin_memberships'] });
+      toast({ title: 'Usuário excluído permanentemente' });
+      setDeleteConfirmOpen(false);
+      setExpandedUser(null);
+    },
+    onError: (err: any) => toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' }),
   });
 
   const addMembership = useMutation({
@@ -294,11 +325,25 @@ export default function AdminUsers() {
       'user.password_changed': 'Senha alterada',
       'user.deactivated': 'Conta desativada',
       'user.reactivated': 'Conta reativada',
+      'user.activated': 'Conta ativada',
+      'user.deleted': 'Usuário excluído',
       'membership.created': 'Acesso adicionado',
       'membership.updated': 'Acesso atualizado',
       'membership.deleted': 'Acesso removido',
+      'membership.role_changed': 'Papel alterado',
+      'membership.activated': 'Acesso ativado',
+      'membership.deactivated': 'Acesso desativado',
     };
     return map[action] || action;
+  };
+
+  const getAuditIcon = (action: string) => {
+    if (action.includes('deleted')) return <Trash2 className="h-3.5 w-3.5 text-destructive" />;
+    if (action.includes('created')) return <UserPlus className="h-3.5 w-3.5 text-primary" />;
+    if (action.includes('deactivated')) return <UserX className="h-3.5 w-3.5 text-destructive/70" />;
+    if (action.includes('activated') || action.includes('reactivated')) return <UserCheck className="h-3.5 w-3.5 text-primary" />;
+    if (action.includes('password')) return <KeyRound className="h-3.5 w-3.5 text-accent-foreground" />;
+    return <ScrollText className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
   const getActorName = (actorId: string | null) => {
@@ -309,457 +354,496 @@ export default function AdminUsers() {
 
   const totalUsers = profiles.length;
   const activeUsers = profiles.filter(p => p.is_active).length;
+  const inactiveUsers = totalUsers - activeUsers;
   const totalMemberships = memberships.filter(m => m.is_active).length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Usuários & Acessos</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie contas, acessos e permissões do sistema
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setAddAccessOpen(true)}>
-            <Shield className="h-4 w-4 mr-2" />
-            Vincular Acesso
-          </Button>
-          <Button onClick={() => setCreateUserOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Nova Conta
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{activeUsers}<span className="text-sm text-muted-foreground font-normal">/{totalUsers}</span></p>
-              <p className="text-xs text-muted-foreground">Contas ativas</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totalMemberships}</p>
-              <p className="text-xs text-muted-foreground">Acessos ativos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <ScrollText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{tenants.length}</p>
-              <p className="text-xs text-muted-foreground">Departamentos</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="users">Usuários</TabsTrigger>
-          <TabsTrigger value="departments">Por Departamento</TabsTrigger>
-          <TabsTrigger value="audit">Auditoria</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="space-y-4 mt-4">
-          {/* Search & Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nome ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Select value={filterTenant} onValueChange={setFilterTenant}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <Filter className="h-4 w-4 mr-2" /><SelectValue placeholder="Departamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos departamentos</SelectItem>
-                {tenants.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Shield className="h-4 w-4 mr-2" /><SelectValue placeholder="Papel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos papéis</SelectItem>
-                {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-              </SelectContent>
-            </Select>
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Usuários & Acessos</h1>
+            <p className="text-sm text-muted-foreground">
+              Gerencie contas, acessos e permissões
+            </p>
           </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setAddAccessOpen(true)}>
+              <Shield className="h-4 w-4 mr-1.5" />
+              Vincular Acesso
+            </Button>
+            <Button size="sm" onClick={() => setCreateUserOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1.5" />
+              Nova Conta
+            </Button>
+          </div>
+        </div>
 
-          {/* User List */}
-          {isLoading ? (
-            <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}</div>
-          ) : userGroups.length === 0 ? (
-            <Card><CardContent className="p-8 text-center">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">Nenhum usuário encontrado</p>
-            </CardContent></Card>
-          ) : (
-            <div className="space-y-3">
-              {userGroups.map(user => {
-                const isExpanded = expandedUser === user.id;
-                return (
-                  <Card key={user.id} className={`overflow-hidden ${!user.is_active ? 'opacity-60' : ''}`}>
-                    <CardContent className="p-0">
-                      <button
-                        className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                        onClick={() => setExpandedUser(isExpanded ? null : user.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {user.name?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
-                          <div className="text-left">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{user.name}</p>
-                              {!user.is_active && <Badge variant="destructive" className="text-xs">Inativo</Badge>}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-1 flex-wrap justify-end">
-                            {user.memberships.slice(0, 3).map(m => (
-                              <Badge key={m.id} variant={getRoleBadgeVariant(m.role)} className="text-xs">
-                                {m.tenants?.name || 'N/A'}
-                              </Badge>
-                            ))}
-                            {user.memberships.length > 3 && (
-                              <Badge variant="outline" className="text-xs">+{user.memberships.length - 3}</Badge>
-                            )}
-                          </div>
-                          {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground ml-2" /> : <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />}
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
-                          {/* Quick actions */}
-                          <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setChangePwUserId(user.id);
-                              setChangePwUserName(user.name);
-                              setChangePwOpen(true);
-                            }}>
-                              <KeyRound className="h-3 w-3 mr-1" /> Alterar Senha
-                            </Button>
-                            <Button
-                              variant={user.is_active ? "outline" : "default"}
-                              size="sm"
-                              onClick={() => {
-                                if (confirm(user.is_active ? `Desativar a conta de ${user.name}?` : `Reativar a conta de ${user.name}?`)) {
-                                  toggleUserActive.mutate({ user_id: user.id, is_active: !user.is_active });
-                                }
-                              }}
-                            >
-                              <UserX className="h-3 w-3 mr-1" />
-                              {user.is_active ? 'Desativar Conta' : 'Reativar Conta'}
-                            </Button>
-                          </div>
-
-                          {/* Memberships */}
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Acessos por departamento
-                          </p>
-                          {user.memberships.map(m => (
-                            <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/40">
-                              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-sm flex-1 font-medium">{m.tenants?.name || '—'}</span>
-                              <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
-                                <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">{m.is_active ? 'Ativo' : 'Inativo'}</span>
-                                <Switch checked={m.is_active} onCheckedChange={v => toggleMembershipActive.mutate({ id: m.id, is_active: v })} />
-                              </div>
-                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8 px-2 text-xs"
-                                onClick={() => { if (confirm('Remover este acesso?')) removeMembership.mutate(m.id); }}>
-                                Remover
-                              </Button>
-                            </div>
-                          ))}
-                          <Button variant="outline" size="sm" onClick={() => { setSelectedUserId(user.id); setAddAccessOpen(true); }}>
-                            <Building2 className="h-3 w-3 mr-1" /> Adicionar departamento
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="departments" className="space-y-4 mt-4">
-          {tenants.map(tenant => {
-            const tenantMembers = memberships.filter(m => m.tenant_id === tenant.id);
-            const activeMembers = tenantMembers.filter(m => m.is_active);
-            const roleBreakdown = activeMembers.reduce((acc, m) => {
-              acc[m.role] = (acc[m.role] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
-
-            return (
-              <Card key={tenant.id}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold">{tenant.name}</h3>
-                      <Badge variant="outline" className="text-xs">{activeMembers.length} membro(s)</Badge>
-                    </div>
-                  </div>
-
-                  {/* Role breakdown badges */}
-                  <div className="flex gap-1.5 flex-wrap">
-                    {Object.entries(roleBreakdown).map(([role, count]) => (
-                      <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs gap-1">
-                        <Shield className="h-2.5 w-2.5" />
-                        {roleLabels[role as keyof typeof roleLabels] || role}: {count}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  {/* Members list */}
-                  {activeMembers.length > 0 && (
-                    <div className="border border-border rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="hover:bg-transparent">
-                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
-                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Email</TableHead>
-                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[150px]">Papel</TableHead>
-                            <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {tenantMembers.map(m => {
-                            const p = profiles.find(p => p.id === m.user_id);
-                            return (
-                              <TableRow key={m.id} className={!m.is_active ? 'opacity-50' : ''}>
-                                <TableCell className="text-sm font-medium">{p?.name || '—'}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{p?.email || '—'}</TableCell>
-                                <TableCell>
-                                  <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
-                                    <SelectTrigger className="h-7 text-xs w-[140px]"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  <Switch checked={m.is_active} onCheckedChange={v => toggleMembershipActive.mutate({ id: m.id, is_active: v })} />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </TabsContent>
-
-        <TabsContent value="audit" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {logsLoading ? (
-                <div className="p-4 space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
-              ) : auditLogs.length === 0 ? (
-                <div className="p-8 text-center">
-                  <ScrollText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">Nenhum log de auditoria encontrado</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total', value: totalUsers, icon: Users, color: 'text-primary' },
+            { label: 'Ativos', value: activeUsers, icon: UserCheck, color: 'text-primary' },
+            { label: 'Inativos', value: inactiveUsers, icon: UserX, color: 'text-destructive' },
+            { label: 'Departamentos', value: tenants.length, icon: Building2, color: 'text-primary' },
+          ].map(stat => (
+            <Card key={stat.label}>
+              <CardContent className="p-3 flex items-center gap-3">
+                <stat.icon className={`h-5 w-5 ${stat.color} shrink-0`} />
+                <div>
+                  <p className="text-xl font-bold leading-none">{stat.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
                 </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {auditLogs.map(log => (
-                    <div key={log.id} className="p-4 flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                        <ScrollText className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="text-xs">{getAuditActionLabel(log.action)}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            por {getActorName(log.actor_user_id)}
-                          </span>
-                        </div>
-                        {log.diff && (
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            {Object.entries(log.diff).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-      {/* Create User Dialog */}
-      <Dialog open={createUserOpen} onOpenChange={v => { setCreateUserOpen(v); if (!v) resetCreateForm(); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Criar Nova Conta</DialogTitle>
-            <DialogDescription>Crie uma conta e vincule ao departamento desejado.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome completo</Label>
-              <Input placeholder="Nome do usuário" value={newName} onChange={e => setNewName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" placeholder="email@empresa.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Senha inicial</Label>
-              <div className="relative">
-                <Input
-                  type={showNewPw ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                />
-                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowNewPw(!showNewPw)}>
-                  {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="departments">Departamentos</TabsTrigger>
+            <TabsTrigger value="audit">Auditoria</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="space-y-4 mt-4">
+            {/* Search & Filters */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar por nome ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Departamento (opcional)</Label>
-              <Select value={newTenantId} onValueChange={setNewTenantId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o departamento" /></SelectTrigger>
+              <Select value={filterTenant} onValueChange={setFilterTenant}>
+                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs">
+                  <Building2 className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="Departamento" />
+                </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Todos departamentos</SelectItem>
                   {tenants.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs">
+                  <Shield className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="Papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos papéis</SelectItem>
+                  {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-[130px] h-9 text-xs">
+                  <Power className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {newTenantId && (
+
+            <p className="text-xs text-muted-foreground">{userGroups.length} usuário(s) encontrado(s)</p>
+
+            {/* User List */}
+            {isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
+            ) : userGroups.length === 0 ? (
+              <Card><CardContent className="p-12 text-center">
+                <Users className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhum usuário encontrado</p>
+              </CardContent></Card>
+            ) : (
               <div className="space-y-2">
-                <Label>Papel</Label>
-                <Select value={newRole} onValueChange={setNewRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                {userGroups.map(user => {
+                  const isExpanded = expandedUser === user.id;
+                  return (
+                    <Card key={user.id} className={`transition-all ${!user.is_active ? 'opacity-50' : ''} ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
+                      <CardContent className="p-0">
+                        <div className="flex items-center gap-3 p-3">
+                          {/* Avatar */}
+                          <button
+                            className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                            onClick={() => setExpandedUser(isExpanded ? null : user.id)}
+                          >
+                            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium truncate">{user.name}</p>
+                                {!user.is_active && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Inativo</Badge>}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            </div>
+                          </button>
+
+                          {/* Roles badges */}
+                          <div className="hidden sm:flex gap-1 flex-wrap justify-end max-w-[250px]">
+                            {user.memberships.slice(0, 2).map(m => (
+                              <Badge key={m.id} variant={getRoleBadgeVariant(m.role)} className="text-[10px] px-1.5 py-0">
+                                {roleLabels[m.role as keyof typeof roleLabels] || m.role} · {m.tenants?.name?.substring(0, 12) || 'N/A'}
+                              </Badge>
+                            ))}
+                            {user.memberships.length > 2 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">+{user.memberships.length - 2}</Badge>
+                            )}
+                          </div>
+
+                          {/* Actions dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => {
+                                setChangePwUserId(user.id);
+                                setChangePwUserName(user.name);
+                                setChangePwOpen(true);
+                              }}>
+                                <KeyRound className="h-4 w-4 mr-2" /> Alterar Senha
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                toggleUserActive.mutate({ user_id: user.id, is_active: !user.is_active });
+                              }}>
+                                <Power className="h-4 w-4 mr-2" />
+                                {user.is_active ? 'Desativar Conta' : 'Reativar Conta'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedUserId(user.id);
+                                setAddAccessOpen(true);
+                              }}>
+                                <Plus className="h-4 w-4 mr-2" /> Adicionar Acesso
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  setDeleteUserId(user.id);
+                                  setDeleteUserName(user.name);
+                                  setDeleteConfirmOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Excluir Permanente
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          <button onClick={() => setExpandedUser(isExpanded ? null : user.id)} className="shrink-0">
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                          </button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+                            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                              Acessos ({user.memberships.length})
+                            </p>
+                            {user.memberships.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic">Nenhum acesso vinculado</p>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {user.memberships.map(m => (
+                                  <div key={m.id} className="flex items-center gap-2 p-2.5 rounded-md bg-muted/30">
+                                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-xs flex-1 font-medium truncate">{m.tenants?.name || '—'}</span>
+                                    <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
+                                      <SelectTrigger className="w-[130px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                      </SelectContent>
+                                    </Select>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex items-center">
+                                          <Switch checked={m.is_active} onCheckedChange={v => toggleMembershipActive.mutate({ id: m.id, is_active: v })} />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{m.is_active ? 'Desativar acesso' : 'Ativar acesso'}</TooltipContent>
+                                    </Tooltip>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                                      onClick={() => { if (confirm('Remover este acesso?')) removeMembership.mutate(m.id); }}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setSelectedUserId(user.id); setAddAccessOpen(true); }}>
+                              <Plus className="h-3 w-3 mr-1" /> Adicionar departamento
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="departments" className="space-y-4 mt-4">
+            {tenants.map(tenant => {
+              const tenantMembers = memberships.filter(m => m.tenant_id === tenant.id);
+              const activeMembers = tenantMembers.filter(m => m.is_active);
+              const roleBreakdown = activeMembers.reduce((acc, m) => {
+                acc[m.role] = (acc[m.role] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
+              return (
+                <Card key={tenant.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold text-sm">{tenant.name}</h3>
+                        <Badge variant="outline" className="text-[10px] px-1.5">{activeMembers.length} membro(s)</Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1 flex-wrap">
+                      {Object.entries(roleBreakdown).map(([role, count]) => (
+                        <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-[10px] gap-0.5">
+                          {roleLabels[role as keyof typeof roleLabels] || role}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    {activeMembers.length > 0 && (
+                      <div className="border border-border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="text-[10px] font-semibold uppercase text-muted-foreground h-8">Nome</TableHead>
+                              <TableHead className="text-[10px] font-semibold uppercase text-muted-foreground h-8">Email</TableHead>
+                              <TableHead className="text-[10px] font-semibold uppercase text-muted-foreground h-8 w-[140px]">Papel</TableHead>
+                              <TableHead className="text-[10px] font-semibold uppercase text-muted-foreground h-8 w-[70px]">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {tenantMembers.map(m => {
+                              const p = profiles.find(p => p.id === m.user_id);
+                              return (
+                                <TableRow key={m.id} className={!m.is_active ? 'opacity-40' : ''}>
+                                  <TableCell className="text-xs font-medium py-2">{p?.name || '—'}</TableCell>
+                                  <TableCell className="text-[11px] text-muted-foreground py-2">{p?.email || '—'}</TableCell>
+                                  <TableCell className="py-2">
+                                    <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
+                                      <SelectTrigger className="h-6 text-[11px] w-[120px]"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <Switch checked={m.is_active} onCheckedChange={v => toggleMembershipActive.mutate({ id: m.id, is_active: v })} />
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </TabsContent>
+
+          <TabsContent value="audit" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                {logsLoading ? (
+                  <div className="p-4 space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <ScrollText className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">Nenhum log de auditoria</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {auditLogs.map(log => (
+                      <div key={log.id} className="px-4 py-3 flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          {getAuditIcon(log.action)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium">{getAuditActionLabel(log.action)}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              — {getActorName(log.actor_user_id)}
+                            </span>
+                          </div>
+                          {log.diff && (
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              {Object.entries(log.diff).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Create User Dialog */}
+        <Dialog open={createUserOpen} onOpenChange={v => { setCreateUserOpen(v); if (!v) resetCreateForm(); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Nova Conta</DialogTitle>
+              <DialogDescription>Crie uma conta e vincule ao departamento.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nome completo</Label>
+                <Input placeholder="Nome do usuário" value={newName} onChange={e => setNewName(e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input type="email" placeholder="email@empresa.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Senha inicial</Label>
+                <div className="relative">
+                  <Input type={showNewPw ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="h-9 pr-9" />
+                  <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowNewPw(!showNewPw)}>
+                    {showNewPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Departamento (opcional)</Label>
+                <Select value={newTenantId} onValueChange={setNewTenantId}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newTenantId && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Papel</Label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <Button className="w-full" size="sm" disabled={!newName || !newEmail || !newPassword || newPassword.length < 6 || createUser.isPending}
+                onClick={() => createUser.mutate()}>
+                {createUser.isPending ? 'Criando...' : 'Criar Conta'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Access Dialog */}
+        <Dialog open={addAccessOpen} onOpenChange={v => { setAddAccessOpen(v); if (!v) resetAddForm(); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Vincular Acesso</DialogTitle>
+              <DialogDescription>Selecione o usuário, departamento e papel.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Usuário</Label>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.email})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Departamento</Label>
+                <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Papel</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-            <Button className="w-full" disabled={!newName || !newEmail || !newPassword || newPassword.length < 6 || createUser.isPending}
-              onClick={() => createUser.mutate()}>
-              {createUser.isPending ? 'Criando...' : 'Criar Conta'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              <Button className="w-full" size="sm" disabled={!selectedUserId || !selectedTenantId || addMembership.isPending}
+                onClick={() => addMembership.mutate()}>
+                {addMembership.isPending ? 'Salvando...' : 'Vincular Acesso'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      {/* Add Access Dialog */}
-      <Dialog open={addAccessOpen} onOpenChange={v => { setAddAccessOpen(v); if (!v) resetAddForm(); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Vincular Acesso a Departamento</DialogTitle>
-            <DialogDescription>Selecione o usuário, departamento e papel.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Usuário</Label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.email})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Departamento</Label>
-              <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {tenants.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Papel</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="w-full" disabled={!selectedUserId || !selectedTenantId || addMembership.isPending}
-              onClick={() => addMembership.mutate()}>
-              {addMembership.isPending ? 'Salvando...' : 'Vincular Acesso'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Change Password Dialog */}
-      <Dialog open={changePwOpen} onOpenChange={v => { setChangePwOpen(v); if (!v) { setNewPw(''); setShowChangePw(false); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Alterar Senha</DialogTitle>
-            <DialogDescription>Defina uma nova senha para {changePwUserName}.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nova senha</Label>
-              <div className="relative">
-                <Input
-                  type={showChangePw ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
-                  value={newPw}
-                  onChange={e => setNewPw(e.target.value)}
-                />
-                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowChangePw(!showChangePw)}>
-                  {showChangePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+        {/* Change Password Dialog */}
+        <Dialog open={changePwOpen} onOpenChange={v => { setChangePwOpen(v); if (!v) { setNewPw(''); setShowChangePw(false); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Alterar Senha</DialogTitle>
+              <DialogDescription>Nova senha para {changePwUserName}.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nova senha</Label>
+                <div className="relative">
+                  <Input type={showChangePw ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" value={newPw} onChange={e => setNewPw(e.target.value)} className="h-9 pr-9" />
+                  <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowChangePw(!showChangePw)}>
+                    {showChangePw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
+              <Button className="w-full" size="sm" disabled={!newPw || newPw.length < 6 || changePassword.isPending}
+                onClick={() => changePassword.mutate()}>
+                {changePassword.isPending ? 'Alterando...' : 'Alterar Senha'}
+              </Button>
             </div>
-            <Button className="w-full" disabled={!newPw || newPw.length < 6 || changePassword.isPending}
-              onClick={() => changePassword.mutate()}>
-              {changePassword.isPending ? 'Alterando...' : 'Alterar Senha'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Confirmation */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação irá excluir <strong>{deleteUserName}</strong> permanentemente do sistema, incluindo todos os seus acessos e dados de autenticação. Esta ação <strong>não pode ser desfeita</strong>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteUser.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteUser.mutate(deleteUserId);
+                }}
+              >
+                {deleteUser.isPending ? 'Excluindo...' : 'Excluir Permanentemente'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }

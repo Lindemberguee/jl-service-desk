@@ -248,6 +248,64 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "delete_user": {
+        const { user_id: deleteUserId } = body;
+        if (!deleteUserId) {
+          return new Response(JSON.stringify({ error: "user_id é obrigatório" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Prevent self-deletion
+        if (deleteUserId === caller.id) {
+          return new Response(JSON.stringify({ error: "Não é possível excluir a própria conta" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Only super_admin and admin can delete users
+        if (!isSuperAdmin && !isAdmin) {
+          return new Response(JSON.stringify({ error: "Apenas administradores podem excluir usuários" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get user info for audit before deletion
+        const { data: deletedProfile } = await adminClient
+          .from("profiles")
+          .select("name, email")
+          .eq("id", deleteUserId)
+          .single();
+
+        // Delete all memberships
+        await adminClient.from("user_memberships").delete().eq("user_id", deleteUserId);
+
+        // Delete profile
+        await adminClient.from("profiles").delete().eq("id", deleteUserId);
+
+        // Delete auth user
+        const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(deleteUserId);
+        if (deleteAuthError) {
+          return new Response(JSON.stringify({ error: deleteAuthError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        await logAudit("user", deleteUserId, "user.deleted", {
+          name: deletedProfile?.name || "N/A",
+          email: deletedProfile?.email || "N/A",
+          deleted_by: caller.id,
+        });
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Ação desconhecida" }), {
           status: 400,
