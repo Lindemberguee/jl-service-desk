@@ -57,6 +57,7 @@ export interface OkrKeyResult {
   delivery_date: string | null;
   activity_status: string;
   responsible_name: string;
+  links: Array<{ label: string; url: string }>;
 }
 
 export interface OkrCheckin {
@@ -114,7 +115,7 @@ export function useOkrs() {
         .eq('tenant_id', currentTenantId)
         .order('sort_order');
       if (error) throw error;
-      return data as OkrKeyResult[];
+      return (data as unknown as OkrKeyResult[]);
     },
     enabled: !!currentTenantId,
   });
