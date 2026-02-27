@@ -118,28 +118,28 @@ export function PrintWorkOrderGuide({
       <style>
         @media print { @page { margin: 12mm 10mm; size: A4; } }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Calibri, sans-serif; font-size: 11px; color: #222; }
-        .page { page-break-after: always; padding: 0; }
+        body { font-family: 'Segoe UI', Calibri, sans-serif; font-size: 14px; color: #222; }
+        .page { page-break-after: always; padding: 0; display: flex; flex-direction: column; min-height: calc(100vh - 24mm); }
         .page:last-child { page-break-after: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${primaryColor}; padding-bottom: 8px; margin-bottom: 12px; }
-        .header h1 { font-size: 16px; color: ${primaryColor}; }
-        .header .code { font-size: 14px; font-weight: 700; }
-        .header .date { font-size: 10px; color: #888; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-bottom: 12px; }
-        .field { border-bottom: 1px solid #e5e5e5; padding: 4px 0; }
-        .field-label { font-size: 9px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
-        .field-value { font-size: 11px; margin-top: 1px; }
-        .desc-section { margin-bottom: 14px; }
-        .desc-section h3 { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
-        .desc-box { border: 1px solid #e5e5e5; border-radius: 4px; padding: 8px; min-height: 50px; font-size: 11px; white-space: pre-wrap; }
-        .notes-section { margin-top: 14px; }
-        .notes-section h3 { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
-        .notes-box { border: 1px solid #e5e5e5; border-radius: 4px; min-height: 80px; padding: 8px; }
-        .signature-area { display: flex; gap: 40px; margin-top: 30px; padding-top: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${primaryColor}; padding-bottom: 10px; margin-bottom: 18px; }
+        .header h1 { font-size: 20px; color: ${primaryColor}; }
+        .header .code { font-size: 18px; font-weight: 700; }
+        .header .date { font-size: 12px; color: #888; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin-bottom: 18px; }
+        .field { border-bottom: 1px solid #e5e5e5; padding: 6px 0; }
+        .field-label { font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
+        .field-value { font-size: 14px; margin-top: 2px; }
+        .desc-section { margin-bottom: 18px; }
+        .desc-section h3 { font-size: 12px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .desc-box { border: 1px solid #e5e5e5; border-radius: 4px; padding: 10px; min-height: 60px; font-size: 14px; white-space: pre-wrap; }
+        .notes-section { margin-top: 18px; flex: 1; display: flex; flex-direction: column; }
+        .notes-section h3 { font-size: 12px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .notes-box { border: 1px solid #e5e5e5; border-radius: 4px; flex: 1; min-height: 120px; padding: 10px; }
+        .signature-area { display: flex; gap: 50px; margin-top: auto; padding-top: 16px; }
         .sig-line { flex: 1; text-align: center; }
-        .sig-line .line { border-top: 1px solid #333; margin-bottom: 4px; margin-top: 40px; }
-        .sig-line span { font-size: 9px; color: #888; text-transform: uppercase; }
-        .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #aaa; border-top: 1px solid #eee; padding-top: 6px; }
+        .sig-line .line { border-top: 1px solid #333; margin-bottom: 4px; margin-top: 50px; }
+        .sig-line span { font-size: 10px; color: #888; text-transform: uppercase; }
+        .footer { margin-top: 16px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 8px; }
       </style></head><body>
       ${content.innerHTML}
       </body></html>
