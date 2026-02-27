@@ -41,12 +41,13 @@ export function useRolePermissions() {
   const togglePermission = useMutation({
     mutationFn: async ({ role, permission, granted }: { role: AppRole; permission: Permission; granted: boolean }) => {
       const headers = await getAuthHeaders();
+      // Use upsert (POST with on_conflict) so new permissions that don't have rows yet still work
       const res = await fetch(
-        `${BASE_URL}/rest/v1/role_permissions?role=eq.${role}&permission=eq.${permission}`,
+        `${BASE_URL}/rest/v1/role_permissions`,
         {
-          method: 'PATCH',
-          headers: { ...headers, Prefer: 'return=minimal' },
-          body: JSON.stringify({ granted, updated_at: new Date().toISOString() }),
+          method: 'POST',
+          headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ role, permission, granted, updated_at: new Date().toISOString() }),
         }
       );
       if (!res.ok) {
