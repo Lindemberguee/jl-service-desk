@@ -517,8 +517,8 @@ export function OkrBoard() {
                               idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'
                             )}
                           >
-                            <td className="px-4 py-2.5 max-w-0">
-                              <div className="flex items-center gap-2 min-w-0">
+                            <td className="px-4 py-2.5 max-w-0 overflow-hidden">
+                              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                   {canManage && (
                                     <>
@@ -557,7 +557,12 @@ export function OkrBoard() {
                                     </>
                                   )}
                                 </div>
-                                <span className="text-sm truncate block min-w-0">{activity.title}</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-sm truncate block min-w-0 cursor-default">{activity.title}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-xs">{activity.title}</TooltipContent>
+                                </Tooltip>
                                 {activity.kpi_id && (() => {
                                   const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
                                   return linkedKpi ? (
