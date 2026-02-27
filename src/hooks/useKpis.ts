@@ -63,6 +63,7 @@ export function useKpis() {
         .select('*')
         .eq('tenant_id', currentTenantId)
         .order('period_end', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
       return data as KpiEntry[];
