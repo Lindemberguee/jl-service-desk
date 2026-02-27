@@ -12,7 +12,8 @@ export type Permission =
   | 'cadastros:read' | 'cadastros:manage'
   | 'manutencao:read' | 'manutencao:manage'
   | 'collaborators:read' | 'collaborators:manage'
-  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar';
+  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar'
+  | 'kpis:read' | 'kpis:manage';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
@@ -25,6 +26,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'kpis:read', 'kpis:manage',
   ],
   admin: [
     'dashboard:read', 'my_os:read',
@@ -35,6 +37,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'kpis:read', 'kpis:manage',
   ],
   coordenador: [
     'dashboard:read', 'my_os:read',
@@ -44,11 +47,12 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'collaborators:read', 'collaborators:manage',
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'kpis:read', 'kpis:manage',
   ],
-  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
-  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar'],
+  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
-  leitura: ['os:read', 'dashboard:read'],
+  leitura: ['os:read', 'dashboard:read', 'kpis:read'],
 };
 
 export function getPermissionsForRole(role: AppRole): Permission[] {
