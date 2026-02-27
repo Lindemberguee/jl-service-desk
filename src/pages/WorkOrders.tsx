@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import ExcelJS from 'exceljs';
+import { ExportWorkOrdersDialog } from '@/components/ExportWorkOrdersDialog';
+import { PrintWorkOrderGuide } from '@/components/PrintWorkOrderGuide';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2 } from 'lucide-react';
+import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -74,6 +75,8 @@ export default function WorkOrders() {
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showPrintGuide, setShowPrintGuide] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const applyView = (view: SavedView) => {
@@ -266,106 +269,8 @@ export default function WorkOrders() {
     },
   });
 
-  // Export CSV
   const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '';
   const getLocationName = (id: string | null) => locations.find((l: any) => l.id === id)?.name || '';
-
-  const exportExcel = async () => {
-    const wb = new ExcelJS.Workbook();
-    wb.creator = tenantName;
-    const ws = wb.addWorksheet('Ordens de Serviço');
-
-    // Parse primary color to hex (remove #)
-    const brandHex = (primaryColor || '#3B82F6').replace('#', '');
-
-    // --- Header area with branding ---
-    ws.mergeCells('A1:G1');
-    const titleCell = ws.getCell('A1');
-    titleCell.value = tenantName;
-    titleCell.font = { name: 'Calibri', size: 18, bold: true, color: { argb: `FF${brandHex}` } };
-    titleCell.alignment = { vertical: 'middle' };
-    ws.getRow(1).height = 36;
-
-    ws.mergeCells('A2:G2');
-    const subtitleCell = ws.getCell('A2');
-    subtitleCell.value = `Relatório de Ordens de Serviço — ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
-    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF888888' } };
-    subtitleCell.alignment = { vertical: 'middle' };
-    ws.getRow(2).height = 20;
-
-    ws.mergeCells('A3:G3');
-    const countCell = ws.getCell('A3');
-    countCell.value = `${filtered.length} registro(s) exportado(s)`;
-    countCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF888888' } };
-    ws.getRow(3).height = 18;
-
-    // Empty row
-    ws.getRow(4).height = 8;
-
-    // --- Column headers ---
-    const headers = ['Código', 'Título', 'Descrição', 'Prioridade', 'Departamento', 'Local/Sala', 'Responsável', 'Solicitante', 'Criada em'];
-    const headerRow = ws.getRow(5);
-    headers.forEach((h, i) => {
-      const cell = headerRow.getCell(i + 1);
-      cell.value = h;
-      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${brandHex}` } };
-      cell.alignment = { vertical: 'middle', horizontal: 'left' };
-      cell.border = {
-        bottom: { style: 'thin', color: { argb: `FF${brandHex}` } },
-      };
-    });
-    headerRow.height = 26;
-
-    // --- Data rows ---
-    filtered.forEach((wo: any, idx: number) => {
-      const row = ws.getRow(6 + idx);
-      const values = [
-        wo.code,
-        wo.title,
-        wo.description || '',
-        priorityLabels[wo.priority] || wo.priority,
-        tenantMap[wo.tenant_id] || '',
-        getLocationName(wo.location_id),
-        getAssignedName(wo.assigned_to_id),
-        getRequesterName(wo),
-        new Date(wo.created_at).toLocaleDateString('pt-BR'),
-      ];
-      values.forEach((v, i) => {
-        const cell = row.getCell(i + 1);
-        cell.value = v;
-        cell.font = { name: 'Calibri', size: 10 };
-        cell.alignment = { vertical: 'middle', wrapText: i === 2 }; // wrap description
-      });
-      // Zebra striping
-      if (idx % 2 === 1) {
-        values.forEach((_, i) => {
-          row.getCell(i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } };
-        });
-      }
-    });
-
-    // Column widths
-    ws.getColumn(1).width = 20; // Código
-    ws.getColumn(2).width = 35; // Título
-    ws.getColumn(3).width = 45; // Descrição
-    ws.getColumn(4).width = 12; // Prioridade
-    ws.getColumn(5).width = 16; // Departamento
-    ws.getColumn(6).width = 20; // Local/Sala
-    ws.getColumn(7).width = 20; // Responsável
-    ws.getColumn(8).width = 20; // Solicitante
-    ws.getColumn(9).width = 14; // Criada em
-
-    // Generate and download
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ordens-servico-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   // Active filters
   const activeFilters = [
@@ -418,7 +323,11 @@ export default function WorkOrders() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={exportExcel}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowPrintGuide(true)}>
+            <Printer className="h-3.5 w-3.5" />
+            Guia
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowExportDialog(true)}>
             <Download className="h-3.5 w-3.5" />
             Excel
           </Button>
@@ -968,6 +877,33 @@ export default function WorkOrders() {
           </div>
         </div>
       )}
+
+      {/* Export Dialog */}
+      <ExportWorkOrdersDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        workOrders={filtered}
+        profiles={profiles}
+        customers={customers}
+        locations={locations}
+        units={units}
+        tenantMap={tenantMap}
+        tenantName={tenantName}
+        primaryColor={primaryColor}
+      />
+
+      {/* Print Guide */}
+      <PrintWorkOrderGuide
+        open={showPrintGuide}
+        onOpenChange={setShowPrintGuide}
+        workOrders={selectedIds.size > 0 ? filtered.filter((wo: any) => selectedIds.has(wo.id)) : filtered.filter((wo: any) => !['concluida', 'aprovada', 'encerrada'].includes(wo.status))}
+        profiles={profiles}
+        customers={customers}
+        locations={locations}
+        units={units}
+        tenantName={tenantName}
+        primaryColor={primaryColor}
+      />
     </div>
   );
 }
