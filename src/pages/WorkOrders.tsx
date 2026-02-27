@@ -652,168 +652,195 @@ export default function WorkOrders() {
           ))}
         </div>
       ) : (
-        /* Desktop: Row-based list */
-        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] overflow-hidden divide-y divide-border/50">
-          {/* Header row */}
-          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/20">
-            {canUpdate && (
-              <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
-                <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
-              </div>
-            )}
-            <button className="flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[110px] shrink-0 select-none" onClick={() => handleSort('code')}>
-              Código <SortIcon field="code" />
-            </button>
-            <button className="flex items-center text-[11px] font-semibold uppercase text-muted-foreground flex-1 min-w-0 select-none" onClick={() => handleSort('title')}>
-              Título <SortIcon field="title" />
-            </button>
-            <button className="hidden md:flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[180px] shrink-0 select-none" onClick={() => handleSort('priority')}>
-              Prioridade / Status <SortIcon field="priority" />
-            </button>
-            {memberships.length > 1 && (
-              <span className="hidden lg:block text-[11px] font-semibold uppercase text-muted-foreground w-[90px] shrink-0">Depto</span>
-            )}
-            <span className="hidden lg:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">Responsável</span>
-            <span className="hidden xl:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">Solicitante</span>
-            <span className="hidden md:block text-[11px] font-semibold uppercase text-muted-foreground w-[100px] shrink-0">SLA</span>
-            <button className="hidden sm:flex items-center text-[11px] font-semibold uppercase text-muted-foreground w-[85px] shrink-0 select-none text-right justify-end" onClick={() => handleSort('updated_at')}>
-              Atualizada <SortIcon field="updated_at" />
-            </button>
-            <span className="w-8 shrink-0" />
-          </div>
-
-          {/* Data rows */}
-          {paginatedData.map((wo: any) => (
-            <div
-              key={wo.id}
-              className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors group"
-            >
-              {canUpdate && (
-                <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
-                  <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
-                </div>
-              )}
-
-              {/* Code */}
-              <div className="w-[110px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
-                <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
-              </div>
-
-              {/* Title block */}
-              <div className="flex-1 min-w-0 space-y-0.5" onClick={() => navigate(`/os/${wo.id}`)}>
-                <p className="text-sm font-medium truncate">{wo.title}</p>
-                <div className="flex items-center gap-2 md:hidden flex-wrap">
-                  <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
-                    {priorityLabels[wo.priority]}
-                  </Badge>
-                  <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
-                    {statusLabels[wo.status]}
-                  </Badge>
-                  <SlaIndicator workOrder={wo} compact />
-                </div>
-              </div>
-
-              {/* Priority + Status (desktop) */}
-              <div className="hidden md:flex items-center gap-1.5 w-[180px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
-                <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>
-                  {priorityLabels[wo.priority]}
-                </Badge>
-                <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>
-                  {statusLabels[wo.status]}
-                </Badge>
-              </div>
-
-              {/* Depto */}
-              {memberships.length > 1 && (
-                <span className="hidden lg:block text-xs text-muted-foreground w-[90px] shrink-0 truncate" onClick={() => navigate(`/os/${wo.id}`)}>
-                  {tenantMap[wo.tenant_id] || '—'}
-                </span>
-              )}
-
-              {/* Responsável */}
-              <div className="hidden lg:block w-[100px] shrink-0" onClick={e => e.stopPropagation()}>
-                {canAssign ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent max-w-[100px] truncate ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-                        <UserCheck className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{getAssignedName(wo.assigned_to_id)}</span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
-                      <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                        <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
-                      </DropdownMenuItem>
-                      {wo.assigned_to_id && (
-                        <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
-                          <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
-                        <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
-                          {p.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <span className="text-xs text-muted-foreground truncate block" onClick={() => navigate(`/os/${wo.id}`)}>
-                    {getAssignedName(wo.assigned_to_id)}
-                  </span>
-                )}
-              </div>
-
-              {/* Solicitante */}
-              <span className="hidden xl:block text-xs text-muted-foreground w-[100px] shrink-0 truncate" onClick={() => navigate(`/os/${wo.id}`)}>
-                {getRequesterName(wo)}
-              </span>
-
-              {/* SLA */}
-              <div className="hidden md:block w-[100px] shrink-0" onClick={() => navigate(`/os/${wo.id}`)}>
-                <SlaIndicator workOrder={wo} compact />
-              </div>
-
-              {/* Date */}
-              <span className="hidden sm:block text-xs text-muted-foreground w-[85px] shrink-0 text-right" onClick={() => navigate(`/os/${wo.id}`)}>
-                {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
-              </span>
-
-              {/* Actions */}
-              <div className="w-8 shrink-0" onClick={e => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
-                      <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
-                    </DropdownMenuItem>
+        /* Desktop: Table */
+        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 bg-muted/20">
+                  {canUpdate && (
+                    <th className="w-10 px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
+                    </th>
+                  )}
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap">
+                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('code')}>
+                      Código <SortIcon field="code" />
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5 text-left">
+                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('title')}>
+                      Título <SortIcon field="title" />
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden md:table-cell">
+                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('priority')}>
+                      Prioridade / Status <SortIcon field="priority" />
+                    </button>
+                  </th>
+                  {memberships.length > 1 && (
+                    <th className="px-3 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground">Depto</span>
+                    </th>
+                  )}
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Responsável</span>
+                  </th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden xl:table-cell">
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Solicitante</span>
+                  </th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden md:table-cell">
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">SLA</span>
+                  </th>
+                  <th className="px-3 py-2.5 text-right whitespace-nowrap hidden sm:table-cell">
+                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none ml-auto" onClick={() => handleSort('updated_at')}>
+                      Atualizada <SortIcon field="updated_at" />
+                    </button>
+                  </th>
+                  <th className="w-10 px-2 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {paginatedData.map((wo: any) => (
+                  <tr
+                    key={wo.id}
+                    className="cursor-pointer hover:bg-muted/30 transition-colors group"
+                    onClick={() => navigate(`/os/${wo.id}`)}
+                  >
                     {canUpdate && (
-                      <>
-                        <DropdownMenuSeparator />
-                        {canAssign && (
-                          <>
-                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                              <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
-                          <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
-                            → {v}
-                          </DropdownMenuItem>
-                        ))}
-                      </>
+                      <td className="px-3 py-2.5 w-10" onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
+                      </td>
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ))}
+
+                    {/* Code */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
+                    </td>
+
+                    {/* Title */}
+                    <td className="px-3 py-2.5 max-w-[220px]">
+                      <p className="text-sm font-medium truncate">{wo.title}</p>
+                      {/* Mobile fallback badges */}
+                      <div className="flex items-center gap-1.5 mt-1 md:hidden flex-wrap">
+                        <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
+                          {priorityLabels[wo.priority]}
+                        </Badge>
+                        <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                          {statusLabels[wo.status]}
+                        </Badge>
+                        <SlaIndicator workOrder={wo} compact />
+                      </div>
+                    </td>
+
+                    {/* Priority + Status */}
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
+                          {priorityLabels[wo.priority]}
+                        </Badge>
+                        <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                          {statusLabels[wo.status]}
+                        </Badge>
+                      </div>
+                    </td>
+
+                    {/* Depto */}
+                    {memberships.length > 1 && (
+                      <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
+                        <span className="text-xs text-muted-foreground">{tenantMap[wo.tenant_id] || '—'}</span>
+                      </td>
+                    )}
+
+                    {/* Responsável */}
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell" onClick={e => e.stopPropagation()}>
+                      {canAssign ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors hover:bg-accent whitespace-nowrap ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
+                              <UserCheck className="h-3 w-3 shrink-0" />
+                              <span className="max-w-[80px] truncate">{getAssignedName(wo.assigned_to_id)}</span>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
+                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                              <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
+                            </DropdownMenuItem>
+                            {wo.assigned_to_id && (
+                              <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
+                                <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
+                              <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
+                                {p.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-xs text-muted-foreground" onClick={() => navigate(`/os/${wo.id}`)}>
+                          {getAssignedName(wo.assigned_to_id)}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Solicitante */}
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell">
+                      <span className="text-xs text-muted-foreground max-w-[90px] truncate block">{getRequesterName(wo)}</span>
+                    </td>
+
+                    {/* SLA */}
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
+                      <SlaIndicator workOrder={wo} compact />
+                    </td>
+
+                    {/* Date */}
+                    <td className="px-3 py-2.5 whitespace-nowrap text-right hidden sm:table-cell">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-2 py-2.5 w-10" onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
+                            <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
+                          </DropdownMenuItem>
+                          {canUpdate && (
+                            <>
+                              <DropdownMenuSeparator />
+                              {canAssign && (
+                                <>
+                                  <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                                    <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
+                                <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
+                                  → {v}
+                                </DropdownMenuItem>
+                              ))}
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
