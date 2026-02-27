@@ -560,6 +560,9 @@ export default function WorkOrders() {
         <div className="bg-primary/5 rounded-xl p-3 flex items-center gap-2 flex-wrap shadow-sm">
           <span className="text-xs font-medium">{selectedIds.size} selecionada(s)</span>
           <div className="flex gap-1.5 ml-auto">
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowPrintGuide(true)}>
+              <Printer className="h-3 w-3" /> Imprimir Guia
+            </Button>
             {canAssign && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
