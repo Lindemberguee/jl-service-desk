@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
 import { ActivityDetailDialog } from '@/components/kpis/ActivityDetailDialog';
@@ -151,6 +151,33 @@ export function OkrBoard() {
   const totalDays = activeCycle ? differenceInDays(parseISO(activeCycle.ends_at), parseISO(activeCycle.starts_at)) : 1;
   const elapsedPct = totalDays > 0 ? Math.min(((totalDays - daysRemaining) / totalDays) * 100, 100) : 0;
 
+  // Auto-detect overdue activities and update status
+  const autoStatusRan = useRef(false);
+  useEffect(() => {
+    if (isLoading || allActivities.length === 0 || autoStatusRan.current) return;
+    autoStatusRan.current = true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdueUpdates = allActivities.filter(a => {
+      if (!a.end_date) return false;
+      const endDate = parseISO(a.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      // If past deadline and not in a terminal/paused status → mark atrasado
+      if (endDate < today && !['finalizado', 'finalizado_com_atraso', 'cancelado', 'pausado', 'atrasado'].includes(a.activity_status)) {
+        return true;
+      }
+      return false;
+    });
+
+    overdueUpdates.forEach(a => {
+      updateKeyResult.mutateAsync({ id: a.id, activity_status: 'atrasado' }).catch(() => {});
+    });
+  }, [isLoading, allActivities]);
+
+  // Auto-detect "finalizado com atraso" when marking as finalizado
+  // (already handled in handleQuickStatusChange)
+
   // Handlers
   const handleSaveCycle = async () => {
     if (!editingCycle.name?.trim()) return toast.error('Nome obrigatório');
@@ -220,10 +247,23 @@ export function OkrBoard() {
   const handleQuickStatusChange = async (activityId: string, newStatus: string) => {
     try {
       const activity = keyResults.find(kr => kr.id === activityId);
-      const updates: any = { id: activityId, activity_status: newStatus };
+      let finalStatus = newStatus;
+
+      // Auto-detect "finalizado com atraso" when marking as finalizado past deadline
+      if (newStatus === 'finalizado' && activity?.end_date) {
+        const endDate = parseISO(activity.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (today > endDate) {
+          finalStatus = 'finalizado_com_atraso';
+        }
+      }
+
+      const updates: any = { id: activityId, activity_status: finalStatus };
 
       // When marking as finalizado, auto-complete the progress
-      if ((newStatus === 'finalizado' || newStatus === 'finalizado_com_atraso') && activity) {
+      if ((finalStatus === 'finalizado' || finalStatus === 'finalizado_com_atraso') && activity) {
         updates.current_value = activity.target_value;
         updates.delivery_date = new Date().toISOString().split('T')[0];
       }
@@ -234,7 +274,7 @@ export function OkrBoard() {
       if (activity) {
         const objKrs = keyResults.filter(kr => kr.objective_id === activity.objective_id);
         const totalProgress = objKrs.reduce((sum, kr) => {
-          const cv = kr.id === activityId && (newStatus === 'finalizado' || newStatus === 'finalizado_com_atraso')
+          const cv = kr.id === activityId && (finalStatus === 'finalizado' || finalStatus === 'finalizado_com_atraso')
             ? kr.target_value : kr.current_value;
           const range = kr.target_value - kr.start_value;
           if (range === 0) return sum;
