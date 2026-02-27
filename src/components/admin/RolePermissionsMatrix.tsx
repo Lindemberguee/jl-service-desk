@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat,
+  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -99,6 +99,14 @@ const permissionGroups: PermissionGroup[] = [
     permissions: [
       { key: 'cadastros:read', label: 'Visualizar', description: 'Ver unidades, locais, categorias e solicitantes' },
       { key: 'cadastros:manage', label: 'Gerenciar', description: 'Criar e editar dados mestres' },
+    ],
+  },
+  {
+    label: 'Colaboradores',
+    icon: Contact,
+    permissions: [
+      { key: 'collaborators:read', label: 'Visualizar', description: 'Ver lista de colaboradores e seus dados' },
+      { key: 'collaborators:manage', label: 'Gerenciar', description: 'Criar, editar e excluir colaboradores' },
     ],
   },
   {
