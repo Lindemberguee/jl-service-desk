@@ -84,6 +84,7 @@ export function OkrBoard() {
   const [expandedObjectives, setExpandedObjectives] = useState<Set<string> | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArea, setFilterArea] = useState<string>('all');
+  const [filterResponsible, setFilterResponsible] = useState<string>('all');
 
   // Dialogs
   const [cycleDialogOpen, setCycleDialogOpen] = useState(false);
@@ -108,13 +109,19 @@ export function OkrBoard() {
   const cycleId = activeCycle?.id;
   const cycleObjectives = cycleId ? objectives.filter(o => o.cycle_id === cycleId) : [];
 
-  // Collect all unique areas
+  // Collect all unique areas and responsibles
   const allAreas = useMemo(() => {
     const areas = new Set<string>();
     cycleObjectives.forEach(o => { if (o.area) areas.add(o.area); });
     keyResults.forEach(kr => { if (kr.area) areas.add(kr.area); });
     return Array.from(areas).sort();
   }, [cycleObjectives, keyResults]);
+
+  const allResponsibles = useMemo(() => {
+    const names = new Set<string>();
+    keyResults.forEach(kr => { if (kr.responsible_name) names.add(kr.responsible_name); });
+    return Array.from(names).sort();
+  }, [keyResults]);
 
   // Initialize expanded objectives
   // Initialize expanded objectives only once
@@ -439,6 +446,18 @@ export function OkrBoard() {
                 </SelectContent>
               </Select>
             )}
+            {allResponsibles.length > 0 && (
+              <Select value={filterResponsible} onValueChange={setFilterResponsible}>
+                <SelectTrigger className="h-8 w-[170px] text-xs">
+                  <Users className="h-3 w-3 mr-1" />
+                  <SelectValue placeholder="Responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos responsáveis</SelectItem>
+                  {allResponsibles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           {canManage && cycleId && (
             <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} className="gap-2 h-8" size="sm">
@@ -469,7 +488,8 @@ export function OkrBoard() {
           const objActivities = keyResults
             .filter(kr => kr.objective_id === obj.id)
             .filter(kr => filterStatus === 'all' || kr.activity_status === filterStatus)
-            .filter(kr => filterArea === 'all' || kr.area === filterArea);
+            .filter(kr => filterArea === 'all' || kr.area === filterArea)
+            .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible);
 
           const totalActivities = keyResults.filter(kr => kr.objective_id === obj.id).length;
           const completedActivities = keyResults.filter(kr => kr.objective_id === obj.id && (kr.activity_status === 'finalizado' || kr.activity_status === 'finalizado_com_atraso')).length;
@@ -705,7 +725,7 @@ export function OkrBoard() {
 
                   {objActivities.length === 0 && (
                     <div className="text-center py-8 text-sm text-muted-foreground">
-                      Nenhuma atividade{filterStatus !== 'all' || filterArea !== 'all' ? ' com os filtros selecionados' : ''}
+                      Nenhuma atividade{filterStatus !== 'all' || filterArea !== 'all' || filterResponsible !== 'all' ? ' com os filtros selecionados' : ''}
                     </div>
                   )}
                 </div>
