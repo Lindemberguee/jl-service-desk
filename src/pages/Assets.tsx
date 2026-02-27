@@ -23,7 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Wrench, Loader2, Search, Pencil, X, Download, Upload,
-  Building2, MapPin, FolderOpen, Filter,
+  Building2, MapPin, FolderOpen, Filter, Contact,
 } from 'lucide-react';
 
 const statusLabelsMap: Record<string, string> = {
@@ -48,11 +48,12 @@ type AssetForm = {
   unit_id: string;
   location_id: string;
   category_id: string;
+  collaborator_id: string;
 };
 
 const emptyForm: AssetForm = {
   name: '', patrimony_code: '', serial_number: '', status: 'ativo',
-  unit_id: '', location_id: '', category_id: '',
+  unit_id: '', location_id: '', category_id: '', collaborator_id: '',
 };
 
 export default function Assets() {
@@ -61,6 +62,7 @@ export default function Assets() {
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
   const { data: allLocations = [] } = useTenantQuery<any>('locations', 'locations');
   const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
+  const { data: collaborators = [] } = useTenantQuery<any>('collaborators', 'collaborators');
   const insertMutation = useTenantInsert('assets', ['assets']);
   const updateMutation = useTenantUpdate('assets', ['assets']);
   const deleteMutation = useTenantDelete('assets', ['assets']);
@@ -86,6 +88,7 @@ export default function Assets() {
   const unitMap = useMemo(() => Object.fromEntries(units.map((u: any) => [u.id, u.name])), [units]);
   const locationMap = useMemo(() => Object.fromEntries(allLocations.map((l: any) => [l.id, l])), [allLocations]);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map((c: any) => [c.id, c.name])), [categories]);
+  const collaboratorMap = useMemo(() => Object.fromEntries(collaborators.map((c: any) => [c.id, c.full_name])), [collaborators]);
 
   // Locations filtered by form unit
   const formLocations = useMemo(
@@ -129,6 +132,7 @@ export default function Assets() {
         unit_id: form.unit_id || null,
         location_id: form.location_id || null,
         category_id: form.category_id || null,
+        collaborator_id: form.collaborator_id || null,
       });
       await logAudit({ entity: 'asset', entityId: (result as any)?.id, action: 'asset.created', tenantId: currentTenantId, diff: { name: form.name, patrimony_code: form.patrimony_code, status: form.status } });
       toast({ title: 'Ativo criado com sucesso!' });
@@ -148,6 +152,7 @@ export default function Assets() {
       unit_id: item.unit_id || '',
       location_id: item.location_id || '',
       category_id: item.category_id || '',
+      collaborator_id: item.collaborator_id || '',
     });
     setEditId(item.id);
     setEditOpen(true);
@@ -166,6 +171,7 @@ export default function Assets() {
         unit_id: form.unit_id || null,
         location_id: form.location_id || null,
         category_id: form.category_id || null,
+        collaborator_id: form.collaborator_id || null,
       });
       await logAudit({ entity: 'asset', entityId: editId, action: 'asset.updated', tenantId: currentTenantId, diff: { name: form.name, status: form.status } });
       toast({ title: 'Ativo atualizado!' });
@@ -337,6 +343,19 @@ export default function Assets() {
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Responsável (Colaborador)</Label>
+        <Select value={form.collaborator_id} onValueChange={v => setField('collaborator_id', v)}>
+          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione um colaborador" /></SelectTrigger>
+          <SelectContent>
+            {collaborators.filter((c: any) => c.is_active).map((c: any) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.full_name}{c.matricula ? ` (${c.matricula})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   );
@@ -524,6 +543,7 @@ export default function Assets() {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[120px]">Unidade</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[120px]">Local</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[100px]">Categoria</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[130px]">Responsável</TableHead>
                 <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -541,6 +561,7 @@ export default function Assets() {
                   <TableCell className="text-xs text-muted-foreground">{unitMap[a.unit_id] || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{locationMap[a.location_id]?.name || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{categoryMap[a.category_id] || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{collaboratorMap[a.collaborator_id] || '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>

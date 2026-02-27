@@ -16,6 +16,7 @@ import MyWorkOrderDetail from "@/pages/MyWorkOrderDetail";
 import WorkOrderDetail from "@/pages/WorkOrderDetail";
 import Cadastros from "@/pages/Cadastros";
 import Assets from "@/pages/Assets";
+import CollaboratorsPage from "@/pages/CollaboratorsPage";
 import Stock from "@/pages/Stock";
 import MaterialControl from "@/pages/MaterialControl";
 import MaintenancePage from "@/pages/MaintenancePage";
@@ -172,6 +173,7 @@ const App = () => (
               <Route path="minhas-os/:id" element={<PermissionGuard permission="my_os:read"><MyWorkOrderDetail /></PermissionGuard>} />
               <Route path="cadastros" element={<PermissionGuard permission="cadastros:read"><Cadastros /></PermissionGuard>} />
               <Route path="ativos" element={<PermissionGuard permission="assets:read"><Assets /></PermissionGuard>} />
+              <Route path="colaboradores" element={<PermissionGuard permission="collaborators:read"><CollaboratorsPage /></PermissionGuard>} />
               <Route path="estoque" element={<PermissionGuard permission="stock:read"><Stock /></PermissionGuard>} />
               <Route path="manutencao" element={<PermissionGuard permission="manutencao:read"><MaintenancePage /></PermissionGuard>} />
               <Route path="materiais" element={<PermissionGuard permission="materiais:read"><MaterialControl /></PermissionGuard>} />

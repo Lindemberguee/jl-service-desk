@@ -175,6 +175,7 @@ export type Database = {
       assets: {
         Row: {
           category_id: string | null
+          collaborator_id: string | null
           created_at: string
           id: string
           location_id: string | null
@@ -189,6 +190,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          collaborator_id?: string | null
           created_at?: string
           id?: string
           location_id?: string | null
@@ -203,6 +205,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          collaborator_id?: string | null
           created_at?: string
           id?: string
           location_id?: string | null
@@ -221,6 +224,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborators"
             referencedColumns: ["id"]
           },
           {
@@ -485,6 +495,53 @@ export type Database = {
           },
           {
             foreignKeyName: "checklist_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborators: {
+        Row: {
+          created_at: string
+          custom_fields: Json
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          matricula: string | null
+          phone: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          matricula?: string | null
+          phone?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          matricula?: string | null
+          phone?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborators_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
