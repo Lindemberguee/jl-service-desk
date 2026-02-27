@@ -110,6 +110,7 @@ export default function WorkOrders() {
   const { data: workOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const { data: categories = [] } = useAllTenantsQuery<any>('categories_all', 'categories');
   const { data: units = [] } = useAllTenantsQuery<any>('units_all', 'units');
+  const { data: locations = [] } = useAllTenantsQuery<any>('locations_all', 'locations');
   const { data: profiles = [] } = useQuery({
     queryKey: ['profiles_list'],
     queryFn: async () => {
@@ -263,13 +264,44 @@ export default function WorkOrders() {
   });
 
   // Export CSV
+  const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '';
+  const getLocationName = (id: string | null) => locations.find((l: any) => l.id === id)?.name || '';
+  const getCategoryName = (id: string | null) => categories.find((c: any) => c.id === id)?.name || '';
+
+  const escapeCSV = (val: string) => {
+    if (!val) return '';
+    if (val.includes(';') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+
   const exportCSV = () => {
-    const headers = ['Código', 'Título', 'Prioridade', 'Status', 'Visibilidade', 'Criada em', 'Atualizada em'];
+    const headers = [
+      'Código', 'Título', 'Descrição', 'Prioridade', 'Status',
+      'Departamento', 'Categoria', 'Unidade', 'Local/Sala',
+      'Responsável', 'Solicitante', 'Visibilidade', 'SLA Resposta', 'SLA Resolução',
+      'Criada em', 'Iniciada em', 'Resolvida em', 'Atualizada em',
+    ];
     const rows = filtered.map((wo: any) => [
-      wo.code, `"${wo.title}"`, priorityLabels[wo.priority], statusLabels[wo.status],
+      escapeCSV(wo.code),
+      escapeCSV(wo.title),
+      escapeCSV(wo.description || ''),
+      priorityLabels[wo.priority] || wo.priority,
+      statusLabels[wo.status] || wo.status,
+      escapeCSV(tenantMap[wo.tenant_id] || ''),
+      escapeCSV(getCategoryName(wo.category_id)),
+      escapeCSV(getUnitName(wo.unit_id)),
+      escapeCSV(getLocationName(wo.location_id)),
+      escapeCSV(getAssignedName(wo.assigned_to_id)),
+      escapeCSV(getRequesterName(wo)),
       wo.visibility === 'internal' ? 'Interna' : 'Cliente',
-      new Date(wo.created_at).toLocaleDateString('pt-BR'),
-      new Date(wo.updated_at).toLocaleDateString('pt-BR'),
+      wo.response_due_at ? new Date(wo.response_due_at).toLocaleString('pt-BR') : '',
+      wo.resolve_due_at ? new Date(wo.resolve_due_at).toLocaleString('pt-BR') : '',
+      new Date(wo.created_at).toLocaleString('pt-BR'),
+      wo.started_at ? new Date(wo.started_at).toLocaleString('pt-BR') : '',
+      wo.resolved_at ? new Date(wo.resolved_at).toLocaleString('pt-BR') : '',
+      new Date(wo.updated_at).toLocaleString('pt-BR'),
     ]);
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
