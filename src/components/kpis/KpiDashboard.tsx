@@ -3,12 +3,13 @@ import { useOkrs } from '@/hooks/useOkrs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Target, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { BarChart3, Target, TrendingUp, TrendingDown, Minus, AlertTriangle, Link2, Clock } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function KpiStatusBadge({ value, target, direction, warning, critical }: {
   value: number; target: number; direction: string; warning?: number | null; critical?: number | null;
@@ -47,7 +48,11 @@ function KpiStatusBadge({ value, target, direction, warning, critical }: {
 
 export function KpiDashboard() {
   const { kpis, entries, isLoading } = useKpis();
-  const { cycles, objectives, keyResults } = useOkrs();
+  const { cycles, objectives, keyResults, checkins } = useOkrs();
+
+  // KRs linked to KPIs
+  const linkedKRs = keyResults.filter(kr => kr.kpi_id);
+  const linkedKpiIds = new Set(linkedKRs.map(kr => kr.kpi_id));
 
   if (isLoading) {
     return (
@@ -245,6 +250,147 @@ export function KpiDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Linked KPI ↔ OKR Section */}
+      {linkedKRs.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              KPIs Vinculados a OKRs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {linkedKRs.map(kr => {
+                const kpi = kpis.find(k => k.id === kr.kpi_id);
+                const obj = objectives.find(o => o.id === kr.objective_id);
+                if (!kpi || !obj) return null;
+                const kpiValue = latestEntries.get(kpi.id) ?? 0;
+                const krPct = kr.target_value - kr.start_value !== 0
+                  ? Math.min(((kr.current_value - kr.start_value) / (kr.target_value - kr.start_value)) * 100, 100)
+                  : 0;
+
+                return (
+                  <div key={kr.id} className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow">
+                    <div className="h-8 w-1 rounded-full shrink-0" style={{ backgroundColor: kpi.color }} />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[9px] gap-1 h-5">
+                          <BarChart3 className="h-2.5 w-2.5" />
+                          {kpi.name}: {kpiValue.toLocaleString('pt-BR')} {kpi.unit}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">→</span>
+                        <Badge variant="outline" className="text-[9px] gap-1 h-5 border-primary/30 text-primary">
+                          <Target className="h-2.5 w-2.5" />
+                          {kr.title}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Objetivo: {obj.title} · Progresso: {obj.progress.toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="w-24 shrink-0">
+                      <div className="flex justify-between text-[9px] text-muted-foreground mb-0.5">
+                        <span>{krPct.toFixed(0)}%</span>
+                        <span>{kr.target_value}</span>
+                      </div>
+                      <Progress value={krPct} className="h-1.5" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Integrated Timeline */}
+      {(entries.length > 0 || checkins.length > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              Histórico Integrado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[280px]">
+              <div className="space-y-2">
+                {(() => {
+                  // Merge KPI entries and OKR checkins into timeline
+                  const timeline: Array<{
+                    id: string;
+                    date: string;
+                    type: 'kpi' | 'okr';
+                    title: string;
+                    value: string;
+                    notes: string | null;
+                    color?: string;
+                  }> = [];
+
+                  entries.slice(0, 30).forEach(e => {
+                    const kpi = kpis.find(k => k.id === e.kpi_id);
+                    if (kpi) {
+                      timeline.push({
+                        id: `kpi-${e.id}`,
+                        date: e.created_at,
+                        type: 'kpi',
+                        title: kpi.name,
+                        value: `${e.value.toLocaleString('pt-BR')} ${kpi.unit}`,
+                        notes: e.notes,
+                        color: kpi.color,
+                      });
+                    }
+                  });
+
+                  checkins.slice(0, 30).forEach(c => {
+                    const kr = keyResults.find(k => k.id === c.key_result_id);
+                    if (kr) {
+                      timeline.push({
+                        id: `okr-${c.id}`,
+                        date: c.created_at,
+                        type: 'okr',
+                        title: kr.title,
+                        value: `${c.value} ${kr.unit}`,
+                        notes: c.notes,
+                      });
+                    }
+                  });
+
+                  timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                  return timeline.slice(0, 30).map(item => (
+                    <div key={item.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                      <div className="mt-1 shrink-0">
+                        {item.type === 'kpi' ? (
+                          <div className="h-6 w-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${item.color || 'hsl(var(--primary))'}20` }}>
+                            <BarChart3 className="h-3 w-3" style={{ color: item.color || 'hsl(var(--primary))' }} />
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Target className="h-3 w-3 text-primary" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{item.title}</span>
+                          <Badge variant="secondary" className="text-[9px] h-4">{item.value}</Badge>
+                        </div>
+                        {item.notes && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{item.notes}</p>}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {format(parseISO(item.date), "dd/MM HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

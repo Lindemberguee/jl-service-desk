@@ -246,7 +246,6 @@ export function useOkrs() {
       if (krError) throw krError;
 
       // 3. Recalculate objective progress
-      // Get the key result to find objective_id
       const { data: kr } = await supabase
         .from('okr_key_results')
         .select('objective_id')
@@ -254,7 +253,6 @@ export function useOkrs() {
         .single();
       
       if (kr) {
-        // Get all KRs for this objective
         const { data: allKrs } = await supabase
           .from('okr_key_results')
           .select('start_value, target_value, current_value')
@@ -278,7 +276,12 @@ export function useOkrs() {
 
       return checkinData;
     },
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      invalidateAll();
+      // Also invalidate KPI data in case of linked KPIs
+      qc.invalidateQueries({ queryKey: ['kpis', currentTenantId] });
+      qc.invalidateQueries({ queryKey: ['kpi_entries', currentTenantId] });
+    },
   });
 
   const isLoading = cyclesLoading || objectivesLoading || krLoading;

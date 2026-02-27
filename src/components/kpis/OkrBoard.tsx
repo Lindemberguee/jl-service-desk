@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
+import { useKpis } from '@/hooks/useKpis';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,6 +74,7 @@ export function OkrBoard() {
     createKeyResult, updateKeyResult, deleteKeyResult,
     addCheckin, isLoading,
   } = useOkrs();
+  const { kpis } = useKpis();
   const { currentRole, rolePermissions, user } = useAuth();
   const canManage = currentRole && hasPermission(currentRole, 'kpis:manage', undefined, rolePermissions);
 
@@ -390,7 +392,7 @@ export function OkrBoard() {
 
           const totalActivities = keyResults.filter(kr => kr.objective_id === obj.id).length;
           const completedActivities = keyResults.filter(kr => kr.objective_id === obj.id && (kr.activity_status === 'finalizado' || kr.activity_status === 'finalizado_com_atraso')).length;
-          const objPct = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
+          const objPct = Math.round(obj.progress);
           const StatusInfo = objectiveStatuses[obj.status] || objectiveStatuses.on_track;
           const isExpanded = expandedObjectives.has(obj.id);
           const catColor = categoryColors[obj.category] || 'hsl(var(--primary))';
@@ -509,6 +511,15 @@ export function OkrBoard() {
                                 )}
                               </div>
                               <span className="text-sm truncate">{activity.title}</span>
+                              {activity.kpi_id && (() => {
+                                const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
+                                return linkedKpi ? (
+                                  <Badge variant="outline" className="text-[8px] shrink-0 h-4 gap-0.5 border-primary/30 text-primary">
+                                    <BarChart3 className="h-2.5 w-2.5" />
+                                    {linkedKpi.name}
+                                  </Badge>
+                                ) : null;
+                              })()}
                               {deadlineInfo && (
                                 <Badge variant="outline" className={cn("text-[8px] shrink-0 h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
                                   {deadlineInfo.text}
@@ -877,6 +888,32 @@ export function OkrBoard() {
                   <Label>Unidade</Label>
                   <Input value={editingActivity.unit || '%'} onChange={e => setEditingActivity(p => ({ ...p, unit: e.target.value }))} />
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label className="flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                  Vincular a Indicador (KPI)
+                </Label>
+                <Select
+                  value={editingActivity.kpi_id || '__none__'}
+                  onValueChange={v => setEditingActivity(p => ({ ...p, kpi_id: v === '__none__' ? null : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Nenhum (manual)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nenhum (manual)</SelectItem>
+                    {kpis.filter(k => k.is_active).map(k => (
+                      <SelectItem key={k.id} value={k.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: k.color }} />
+                          {k.name} ({k.unit})
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  Ao vincular, o valor do KPI será sincronizado automaticamente com esta atividade.
+                </p>
               </div>
             </div>
             <DialogFooter>
