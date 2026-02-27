@@ -446,17 +446,21 @@ export function OkrBoard() {
               {isExpanded && (
                 <div className="border-t">
                   {objActivities.length > 0 && (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto border-b">
                       {/* Header */}
-                      <div className="grid grid-cols-[1fr_120px_120px_100px_100px_100px_140px] gap-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 px-4 py-2 min-w-[900px]">
-                        <span>Atividade</span>
-                        <span>Responsável</span>
-                        <span>Área / Apoio</span>
-                        <span>Início</span>
-                        <span>Final</span>
-                        <span>Entrega</span>
-                        <span>Status</span>
-                      </div>
+                      <table className="w-full min-w-[960px] table-fixed">
+                        <thead>
+                          <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50">
+                            <th className="text-left px-4 py-2 w-[30%]">Atividade</th>
+                            <th className="text-left px-3 py-2 w-[14%]">Responsável</th>
+                            <th className="text-left px-3 py-2 w-[14%]">Área / Apoio</th>
+                            <th className="text-left px-3 py-2 w-[10%]">Início</th>
+                            <th className="text-left px-3 py-2 w-[10%]">Final</th>
+                            <th className="text-left px-3 py-2 w-[10%]">Entrega</th>
+                            <th className="text-left px-3 py-2 w-[12%]">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                       {/* Rows */}
                       {objActivities.map((activity, idx) => {
                         const actStatus = activityStatuses[activity.activity_status] || activityStatuses.a_iniciar;
@@ -464,85 +468,87 @@ export function OkrBoard() {
                         const ActIcon = actStatus.icon;
 
                         return (
-                          <div
+                          <tr
                             key={activity.id}
                             className={cn(
-                              "grid grid-cols-[1fr_120px_120px_100px_100px_100px_140px] gap-0 px-4 py-2.5 items-center min-w-[900px] group hover:bg-muted/20 transition-colors",
+                              "group hover:bg-muted/20 transition-colors",
                               idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'
                             )}
                           >
-                            <div className="flex items-center gap-2 min-w-0 pr-3">
-                              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                {canManage && (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                          setCheckinKrId(activity.id);
-                                          setCheckinValue(activity.current_value.toString());
-                                          setCheckinConfidence((activity.confidence_level ?? 70).toString());
-                                          setCheckinDialogOpen(true);
-                                        }}>
-                                          <TrendingUp className="h-3 w-3" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Check-in</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                          setEditingActivity(activity);
-                                          setActivityDialogOpen(true);
-                                        }}>
-                                          <Pencil className="h-3 w-3" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Editar</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Excluir</TooltipContent>
-                                    </Tooltip>
-                                  </>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  {canManage && (
+                                    <>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                            setCheckinKrId(activity.id);
+                                            setCheckinValue(activity.current_value.toString());
+                                            setCheckinConfidence((activity.confidence_level ?? 70).toString());
+                                            setCheckinDialogOpen(true);
+                                          }}>
+                                            <TrendingUp className="h-3 w-3" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Check-in</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                            setEditingActivity(activity);
+                                            setActivityDialogOpen(true);
+                                          }}>
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Editar</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Excluir</TooltipContent>
+                                      </Tooltip>
+                                    </>
+                                  )}
+                                </div>
+                                <span className="text-sm truncate">{activity.title}</span>
+                                {activity.kpi_id && (() => {
+                                  const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
+                                  return linkedKpi ? (
+                                    <Badge variant="outline" className="text-[8px] shrink-0 h-4 gap-0.5 border-primary/30 text-primary">
+                                      <BarChart3 className="h-2.5 w-2.5" />
+                                      {linkedKpi.name}
+                                    </Badge>
+                                  ) : null;
+                                })()}
+                                {deadlineInfo && (
+                                  <Badge variant="outline" className={cn("text-[8px] shrink-0 h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
+                                    {deadlineInfo.text}
+                                  </Badge>
                                 )}
                               </div>
-                              <span className="text-sm truncate">{activity.title}</span>
-                              {activity.kpi_id && (() => {
-                                const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
-                                return linkedKpi ? (
-                                  <Badge variant="outline" className="text-[8px] shrink-0 h-4 gap-0.5 border-primary/30 text-primary">
-                                    <BarChart3 className="h-2.5 w-2.5" />
-                                    {linkedKpi.name}
-                                  </Badge>
-                                ) : null;
-                              })()}
-                              {deadlineInfo && (
-                                <Badge variant="outline" className={cn("text-[8px] shrink-0 h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
-                                  {deadlineInfo.text}
-                                </Badge>
-                              )}
-                            </div>
-                            <span className="text-xs text-muted-foreground truncate">{activity.responsible_name || '—'}</span>
-                            <div className="text-xs text-muted-foreground truncate">
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground truncate whitespace-nowrap">{activity.responsible_name || '—'}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground truncate whitespace-nowrap">
                               {activity.area && <span>{activity.area}</span>}
                               {activity.area && activity.support_team && <span> / </span>}
                               {activity.support_team && <span className="text-primary/70">{activity.support_team}</span>}
                               {!activity.area && !activity.support_team && '—'}
-                            </div>
-                            <span className="text-xs text-muted-foreground">
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
-                            </span>
-                            <div>
+                            </td>
+                            <td className="px-3 py-2.5">
                               {canManage ? (
                                 <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
                                   <SelectTrigger className={cn("h-7 text-[10px] font-semibold border", actStatus.bgClass)}>
@@ -568,10 +574,12 @@ export function OkrBoard() {
                                   {actStatus.label}
                                 </Badge>
                               )}
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         );
                       })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
 
