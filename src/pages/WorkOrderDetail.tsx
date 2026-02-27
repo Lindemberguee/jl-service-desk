@@ -16,13 +16,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
 import { WorkOrderCosts } from '@/components/WorkOrderCosts';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
+import { useTenantBranding } from '@/hooks/useTenantBranding';
 
 const eventIcons: Record<string, any> = {
   created: Clock, status_changed: Clock, comment_internal: Lock,
@@ -46,6 +47,7 @@ export default function WorkOrderDetail() {
   const { currentTenantId, currentRole, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { tenantName, primaryColor } = useTenantBranding();
   const [comment, setComment] = useState('');
   const [isPublicComment, setIsPublicComment] = useState(false);
   const [newStatus, setNewStatus] = useState('');
@@ -216,6 +218,68 @@ export default function WorkOrderDetail() {
   const getAssetDisplay = (assetId: string | null) => { const a = assets.find((a: any) => a.id === assetId); if (!a) return undefined; return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`; };
   const getCustomerName = (custId: string | null) => customers.find((c: any) => c.id === custId)?.name;
 
+  const getRequesterDisplay = () => {
+    if (wo.requester_id) return getCustomerName(wo.requester_id) || '—';
+    if (wo.requester_user_id) return getProfileName(wo.requester_user_id) || '—';
+    return '—';
+  };
+
+  const handlePrintGuide = () => {
+    const pc = primaryColor || '#3B82F6';
+    const html = `<!DOCTYPE html><html><head><title>Guia — ${wo.code}</title>
+    <style>
+      @media print { @page { margin: 12mm 10mm; size: A4; } }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Calibri, sans-serif; font-size: 11px; color: #222; }
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${pc}; padding-bottom: 8px; margin-bottom: 12px; }
+      .header h1 { font-size: 16px; color: ${pc}; }
+      .header .code { font-size: 14px; font-weight: 700; }
+      .header .date { font-size: 10px; color: #888; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-bottom: 12px; }
+      .field { border-bottom: 1px solid #e5e5e5; padding: 4px 0; }
+      .field-label { font-size: 9px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
+      .field-value { font-size: 11px; margin-top: 1px; }
+      .desc-section { margin-bottom: 14px; }
+      .desc-section h3 { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; }
+      .desc-box { border: 1px solid #e5e5e5; border-radius: 4px; padding: 8px; min-height: 50px; font-size: 11px; white-space: pre-wrap; }
+      .notes-section { margin-top: 14px; }
+      .notes-section h3 { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; }
+      .notes-box { border: 1px solid #e5e5e5; border-radius: 4px; min-height: 80px; padding: 8px; }
+      .signature-area { display: flex; gap: 40px; margin-top: 30px; }
+      .sig-line { flex: 1; text-align: center; }
+      .sig-line .line { border-top: 1px solid #333; margin-bottom: 4px; margin-top: 40px; }
+      .sig-line span { font-size: 9px; color: #888; text-transform: uppercase; }
+      .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #aaa; border-top: 1px solid #eee; padding-top: 6px; }
+    </style></head><body>
+      <div class="header">
+        <div><h1>${tenantName}</h1><span class="date">Guia de Serviço</span></div>
+        <div style="text-align:right"><div class="code">${wo.code}</div><div class="date">${new Date(wo.created_at).toLocaleDateString('pt-BR')}</div></div>
+      </div>
+      <div class="grid">
+        <div class="field"><div class="field-label">Título</div><div class="field-value" style="font-weight:600">${wo.title}</div></div>
+        <div class="field"><div class="field-label">Prioridade</div><div class="field-value">${priorityLabels[wo.priority] || wo.priority}</div></div>
+        <div class="field"><div class="field-label">Responsável</div><div class="field-value">${getProfileName(wo.assigned_to_id) || '—'}</div></div>
+        <div class="field"><div class="field-label">Solicitante</div><div class="field-value">${getRequesterDisplay()}</div></div>
+        <div class="field"><div class="field-label">Local / Sala</div><div class="field-value">${getLocationName(wo.location_id) || '—'}</div></div>
+        <div class="field"><div class="field-label">Unidade</div><div class="field-value">${getUnitName(wo.unit_id) || '—'}</div></div>
+      </div>
+      ${wo.description ? `<div class="desc-section"><h3>Descrição</h3><div class="desc-box">${wo.description}</div></div>` : ''}
+      ${wo.technical_note ? `<div class="desc-section"><h3>Nota Técnica</h3><div class="desc-box">${wo.technical_note}</div></div>` : ''}
+      <div class="notes-section"><h3>Observações do Técnico</h3><div class="notes-box"></div></div>
+      <div class="signature-area">
+        <div class="sig-line"><div class="line"></div><span>Assinatura do Técnico</span></div>
+        <div class="sig-line"><div class="line"></div><span>Assinatura do Solicitante</span></div>
+      </div>
+      <div class="footer">${tenantName} — Guia gerada em ${new Date().toLocaleString('pt-BR')}</div>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-5">
       {/* ─── Hero Header ─── */}
@@ -238,27 +302,32 @@ export default function WorkOrderDetail() {
             </div>
             <h1 className="text-lg sm:text-xl font-semibold leading-snug">{wo.title}</h1>
           </div>
-          {canManage && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
-                  <AlertDialogDescription>Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={handlePrintGuide} title="Imprimir Guia">
+              <Printer className="h-4 w-4" />
+            </Button>
+            {canManage && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
+                    <AlertDialogDescription>Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
 
         {/* Workflow action buttons */}
