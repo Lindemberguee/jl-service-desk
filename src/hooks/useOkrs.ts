@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logAudit } from '@/lib/audit';
 
 export interface OkrCycle {
   id: string;
@@ -151,15 +152,22 @@ export function useOkrs() {
       if (error) throw error;
       return data;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (data) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_cycle', entityId: data?.id, action: 'okr_cycle.created', tenantId: currentTenantId, diff: { name: data?.name } });
+    },
   });
 
   const updateCycle = useMutation({
     mutationFn: async ({ id, ...rest }: Partial<OkrCycle> & { id: string }) => {
       const { error } = await supabase.from('okr_cycles').update(rest as any).eq('id', id);
       if (error) throw error;
+      return { id, ...rest };
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, vars) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_cycle', entityId: vars.id, action: 'okr_cycle.updated', tenantId: currentTenantId, diff: vars });
+    },
   });
 
   const deleteCycle = useMutation({
@@ -167,7 +175,10 @@ export function useOkrs() {
       const { error } = await supabase.from('okr_cycles').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, id) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_cycle', entityId: id, action: 'okr_cycle.deleted', tenantId: currentTenantId });
+    },
   });
 
   const createObjective = useMutation({
@@ -180,7 +191,10 @@ export function useOkrs() {
       if (error) throw error;
       return data;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (data) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_objective', entityId: data?.id, action: 'okr_objective.created', tenantId: currentTenantId, diff: { title: data?.title } });
+    },
   });
 
   const updateObjective = useMutation({
@@ -188,7 +202,10 @@ export function useOkrs() {
       const { error } = await supabase.from('okr_objectives').update(rest as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, vars) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_objective', entityId: vars.id, action: 'okr_objective.updated', tenantId: currentTenantId, diff: vars });
+    },
   });
 
   const deleteObjective = useMutation({
@@ -196,7 +213,10 @@ export function useOkrs() {
       const { error } = await supabase.from('okr_objectives').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, id) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_objective', entityId: id, action: 'okr_objective.deleted', tenantId: currentTenantId });
+    },
   });
 
   const createKeyResult = useMutation({
@@ -209,7 +229,10 @@ export function useOkrs() {
       if (error) throw error;
       return data;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (data) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_key_result', entityId: data?.id, action: 'okr_key_result.created', tenantId: currentTenantId, diff: { title: data?.title } });
+    },
   });
 
   const updateKeyResult = useMutation({
@@ -217,7 +240,10 @@ export function useOkrs() {
       const { error } = await supabase.from('okr_key_results').update(rest as any).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, vars) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_key_result', entityId: vars.id, action: 'okr_key_result.updated', tenantId: currentTenantId, diff: vars });
+    },
   });
 
   const deleteKeyResult = useMutation({
@@ -225,7 +251,10 @@ export function useOkrs() {
       const { error } = await supabase.from('okr_key_results').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: invalidateAll,
+    onSuccess: (_, id) => {
+      invalidateAll();
+      logAudit({ entity: 'okr_key_result', entityId: id, action: 'okr_key_result.deleted', tenantId: currentTenantId });
+    },
   });
 
   const addCheckin = useMutation({
@@ -276,11 +305,11 @@ export function useOkrs() {
 
       return checkinData;
     },
-    onSuccess: () => {
+    onSuccess: (data, vars) => {
       invalidateAll();
-      // Also invalidate KPI data in case of linked KPIs
       qc.invalidateQueries({ queryKey: ['kpis', currentTenantId] });
       qc.invalidateQueries({ queryKey: ['kpi_entries', currentTenantId] });
+      logAudit({ entity: 'okr_checkin', entityId: data?.id, action: 'okr_checkin.created', tenantId: currentTenantId, diff: { key_result_id: vars.key_result_id, value: vars.value } });
     },
   });
 
