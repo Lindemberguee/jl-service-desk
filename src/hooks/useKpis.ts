@@ -113,7 +113,12 @@ export function useKpis() {
       if (error) throw error;
       return data as KpiEntry;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpi_entries', currentTenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kpi_entries', currentTenantId] });
+      // Trigger syncs KPI → OKR, so invalidate OKR data too
+      qc.invalidateQueries({ queryKey: ['okr_key_results', currentTenantId] });
+      qc.invalidateQueries({ queryKey: ['okr_objectives', currentTenantId] });
+    },
   });
 
   return { kpis, entries, isLoading, entriesLoading, createKpi, updateKpi, deleteKpi, addEntry };
