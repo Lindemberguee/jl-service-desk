@@ -42,7 +42,7 @@ function HeroSlide() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.15 }}
       >
-        ServiceOS
+         OrdFy
       </motion.h1>
 
       <motion.p
@@ -276,9 +276,9 @@ function PricingSlide() {
 }
 
 const testimonials = [
-  { name: 'Carlos Mendes', role: 'Gerente de Manutenção', company: 'Indústria Nova', avatar: '👨‍🔧', stars: 5, text: 'O ServiceOS revolucionou nossa gestão de manutenção. Reduzimos o tempo de resposta em 60% e temos visibilidade total das operações.' },
-  { name: 'Ana Lucia Silva', role: 'Coord. Facilities', company: 'Hospital São Lucas', avatar: '👩‍⚕️', stars: 5, text: 'A melhor plataforma que já usei. O sistema de notificações em tempo real e o controle de estoque são incríveis.' },
-  { name: 'Roberto Farias', role: 'Diretor de Operações', company: 'Grupo TechPark', avatar: '👨‍💼', stars: 5, text: 'Multi-departamento e permissões granulares foram decisivos. Gerenciamos 5 unidades com uma única plataforma.' },
+   { name: 'Carlos Mendes', role: 'Gerente de Manutenção', company: 'Indústria Nova', avatar: '👨‍🔧', stars: 5, text: 'O OrdFy revolucionou nossa gestão de manutenção. Reduzimos o tempo de resposta em 60% e temos visibilidade total das operações.' },
+   { name: 'Ana Lucia Silva', role: 'Coord. Facilities', company: 'Hospital São Lucas', avatar: '👩‍⚕️', stars: 5, text: 'A melhor plataforma que já usei. O sistema de notificações em tempo real e o controle de estoque são incríveis.' },
+   { name: 'Roberto Farias', role: 'Diretor de Operações', company: 'Grupo TechPark', avatar: '👨‍💼', stars: 5, text: 'Multi-departamento e permissões granulares foram decisivos. Gerenciamos 5 unidades com uma única plataforma.' },
 ];
 
 const stats = [
@@ -384,7 +384,7 @@ function CtaSlide() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        ✉️ contato@serviceos.com.br &nbsp;·&nbsp; 📞 (11) 9 1234-5678
+        ✉️ contato@ordfy.com.br &nbsp;·&nbsp; 📞 (11) 9 1234-5678
       </motion.p>
     </div>
   );

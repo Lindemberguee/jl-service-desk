@@ -58,7 +58,7 @@ export function RequesterLayout() {
             </div>
           )}
           <div className="hidden sm:block">
-            <p className="text-sm font-bold leading-none tracking-tight">{tenant?.name || 'ServiceOS'}</p>
+            <p className="text-sm font-bold leading-none tracking-tight">{tenant?.name || 'OrdFy'}</p>
             <p className="text-[10px] text-muted-foreground font-medium">Portal do Solicitante</p>
           </div>
         </div>

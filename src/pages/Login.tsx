@@ -163,8 +163,8 @@ export default function Login() {
               <Wrench className="h-7 w-7 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white">ServiceOS</h1>
-              <p className="text-sm text-slate-400 font-medium">Enterprise Service Management</p>
+               <h1 className="text-3xl font-bold tracking-tight text-white">OrdFy</h1>
+               <p className="text-sm text-slate-400 font-medium">Gestão Inteligente de Serviços</p>
             </div>
           </motion.div>
 
@@ -201,7 +201,7 @@ export default function Login() {
             transition={{ delay: 1 }}
           >
             <p className="text-xs text-slate-500">
-              © {new Date().getFullYear()} ServiceOS · Plataforma corporativa de gestão de serviços
+              © {new Date().getFullYear()} OrdFy · Plataforma moderna de gestão de serviços
             </p>
             <p className="text-[10px] text-slate-600">
               Desenvolvido por{' '}
@@ -231,8 +231,8 @@ export default function Login() {
               <Wrench className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">ServiceOS</h1>
-              <p className="text-xs text-slate-400">Enterprise Service Management</p>
+               <h1 className="text-xl font-bold tracking-tight text-white">OrdFy</h1>
+               <p className="text-xs text-slate-400">Gestão Inteligente de Serviços</p>
             </div>
           </div>
 

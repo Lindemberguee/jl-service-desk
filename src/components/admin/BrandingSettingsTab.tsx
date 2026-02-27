@@ -175,7 +175,7 @@ export default function BrandingSettingsTab({ tenants }: { tenants: any[] }) {
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: ServiceOS, Manutenção TI"
+                placeholder="Ex: OrdFy, Manutenção TI"
               />
               <p className="text-[10px] text-muted-foreground">Exibido no menu lateral e cabeçalhos</p>
             </div>
@@ -299,7 +299,7 @@ export default function BrandingSettingsTab({ tenants }: { tenants: any[] }) {
                       {form.name?.charAt(0)?.toUpperCase() || 'S'}
                     </div>
                   )}
-                  <span className="text-sm font-bold" style={{ color: form.primary_color }}>{form.name || 'ServiceOS'}</span>
+                  <span className="text-sm font-bold" style={{ color: form.primary_color }}>{form.name || 'OrdFy'}</span>
                 </div>
               </div>
             </div>

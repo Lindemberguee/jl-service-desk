@@ -29,7 +29,7 @@ export function useTenantBranding() {
   });
 
   return {
-    tenantName: branding?.name || 'ServiceOS',
+    tenantName: branding?.name || 'OrdFy',
     tenantLogo: branding?.logo_url || null,
     primaryColor: branding?.primary_color || '#3B82F6',
     accentColor: branding?.accent_color || '#8B5CF6',
