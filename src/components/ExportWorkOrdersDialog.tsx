@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -7,8 +7,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Download, FileSpreadsheet } from 'lucide-react';
+import { Download, FileSpreadsheet, Save, RotateCcw } from 'lucide-react';
 import { priorityLabels, statusLabels } from '@/lib/permissions';
+import { useToast } from '@/hooks/use-toast';
+
+const STORAGE_KEY = 'ordfy_export_prefs';
 
 interface ColumnOption {
   key: string;
@@ -16,6 +19,13 @@ interface ColumnOption {
   default: boolean;
   getValue: (wo: any) => string;
   width: number;
+}
+
+interface ExportPrefs {
+  selectedColumns: string[];
+  selectedResponsavel: string;
+  separateByResponsavel: boolean;
+  excludeConcluidas: boolean;
 }
 
 interface ExportWorkOrdersDialogProps {
@@ -31,25 +41,31 @@ interface ExportWorkOrdersDialogProps {
   primaryColor: string;
 }
 
+function loadPrefs(): ExportPrefs | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function savePrefs(prefs: ExportPrefs) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+}
+
 export function ExportWorkOrdersDialog({
   open, onOpenChange, workOrders, profiles, customers, locations, units, tenantMap, tenantName, primaryColor,
 }: ExportWorkOrdersDialogProps) {
-  const [selectedResponsavel, setSelectedResponsavel] = useState<string>('all');
-  const [separateByResponsavel, setSeparateByResponsavel] = useState(false);
-  const [excludeConcluidas, setExcludeConcluidas] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   const getAssignedName = (id: string | null) => {
     if (!id) return '—';
     return profiles.find((p: any) => p.id === id)?.name || id.slice(0, 8);
   };
-
   const getRequesterName = (wo: any) => {
     if (wo.requester_id) return customers.find((c: any) => c.id === wo.requester_id)?.name || '—';
     if (wo.requester_user_id) return profiles.find((p: any) => p.id === wo.requester_user_id)?.name || '—';
     return '—';
   };
-
   const getLocationName = (id: string | null) => locations.find((l: any) => l.id === id)?.name || '';
   const getUnitName = (id: string | null) => units.find((u: any) => u.id === id)?.name || '';
 
@@ -69,9 +85,18 @@ export function ExportWorkOrdersDialog({
     { key: 'resolved_at', label: 'Resolvida em', default: false, getValue: wo => wo.resolved_at ? new Date(wo.resolved_at).toLocaleDateString('pt-BR') : '', width: 14 },
   ];
 
+  const defaultCols = ALL_COLUMNS.filter(c => c.default).map(c => c.key);
+
+  // Load saved prefs or defaults
+  const saved = loadPrefs();
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
-    new Set(ALL_COLUMNS.filter(c => c.default).map(c => c.key))
+    new Set(saved?.selectedColumns || defaultCols)
   );
+  const [selectedResponsavel, setSelectedResponsavel] = useState<string>(saved?.selectedResponsavel || 'all');
+  const [separateByResponsavel, setSeparateByResponsavel] = useState(saved?.separateByResponsavel ?? false);
+  const [excludeConcluidas, setExcludeConcluidas] = useState(saved?.excludeConcluidas ?? true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(!!saved);
 
   const toggleColumn = (key: string) => {
     setSelectedColumns(prev => {
@@ -81,7 +106,27 @@ export function ExportWorkOrdersDialog({
     });
   };
 
-  // Unique responsaveis from current data
+  const handleSavePrefs = () => {
+    savePrefs({
+      selectedColumns: Array.from(selectedColumns),
+      selectedResponsavel,
+      separateByResponsavel,
+      excludeConcluidas,
+    });
+    setPrefsSaved(true);
+    toast({ title: 'Preferências salvas', description: 'Suas configurações de exportação foram salvas.' });
+  };
+
+  const handleResetPrefs = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSelectedColumns(new Set(defaultCols));
+    setSelectedResponsavel('all');
+    setSeparateByResponsavel(false);
+    setExcludeConcluidas(true);
+    setPrefsSaved(false);
+    toast({ title: 'Preferências resetadas' });
+  };
+
   const responsaveis = useMemo(() => {
     const ids = new Set(workOrders.map((wo: any) => wo.assigned_to_id).filter(Boolean));
     return Array.from(ids).map(id => ({
@@ -94,7 +139,6 @@ export function ExportWorkOrdersDialog({
     const colCount = cols.length;
     const lastCol = String.fromCharCode(64 + Math.min(colCount, 26));
 
-    // Branding header
     ws.mergeCells(`A1:${lastCol}1`);
     const titleCell = ws.getCell('A1');
     titleCell.value = tenantName;
@@ -114,7 +158,6 @@ export function ExportWorkOrdersDialog({
     ws.getRow(3).height = 18;
     ws.getRow(4).height = 8;
 
-    // Headers
     const headerRow = ws.getRow(5);
     cols.forEach((col, i) => {
       const cell = headerRow.getCell(i + 1);
@@ -125,7 +168,6 @@ export function ExportWorkOrdersDialog({
     });
     headerRow.height = 26;
 
-    // Data
     data.forEach((wo, idx) => {
       const row = ws.getRow(6 + idx);
       cols.forEach((col, i) => {
@@ -141,10 +183,7 @@ export function ExportWorkOrdersDialog({
       }
     });
 
-    // Column widths
-    cols.forEach((col, i) => {
-      ws.getColumn(i + 1).width = col.width;
-    });
+    cols.forEach((col, i) => { ws.getColumn(i + 1).width = col.width; });
   };
 
   const handleExport = async () => {
@@ -155,18 +194,16 @@ export function ExportWorkOrdersDialog({
       const CLOSED = ['concluida', 'aprovada', 'encerrada'];
 
       let data = workOrders.filter((wo: any) => !wo.deleted_at);
-      if (excludeConcluidas) {
-        data = data.filter((wo: any) => !CLOSED.includes(wo.status));
-      }
+      if (excludeConcluidas) data = data.filter((wo: any) => !CLOSED.includes(wo.status));
       if (selectedResponsavel !== 'all') {
-        data = data.filter((wo: any) => wo.assigned_to_id === selectedResponsavel);
+        if (selectedResponsavel === 'unassigned') data = data.filter((wo: any) => !wo.assigned_to_id);
+        else data = data.filter((wo: any) => wo.assigned_to_id === selectedResponsavel);
       }
 
       const wb = new ExcelJS.Workbook();
       wb.creator = tenantName;
 
       if (separateByResponsavel && selectedResponsavel === 'all') {
-        // Group by responsável
         const groups: Record<string, any[]> = {};
         data.forEach((wo: any) => {
           const name = getAssignedName(wo.assigned_to_id);
@@ -254,12 +291,26 @@ export function ExportWorkOrdersDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button size="sm" className="gap-1.5" onClick={handleExport} disabled={isExporting || selectedColumns.size === 0}>
-            <Download className="h-3.5 w-3.5" />
-            {isExporting ? 'Exportando...' : 'Exportar Excel'}
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <div className="flex gap-1.5 mr-auto">
+            <Button variant="ghost" size="sm" className="gap-1 text-xs h-8" onClick={handleSavePrefs}>
+              <Save className="h-3 w-3" />
+              {prefsSaved ? 'Atualizar' : 'Salvar'}
+            </Button>
+            {prefsSaved && (
+              <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 text-muted-foreground" onClick={handleResetPrefs}>
+                <RotateCcw className="h-3 w-3" />
+                Resetar
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button size="sm" className="gap-1.5" onClick={handleExport} disabled={isExporting || selectedColumns.size === 0}>
+              <Download className="h-3.5 w-3.5" />
+              {isExporting ? 'Exportando...' : 'Exportar Excel'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
