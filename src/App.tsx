@@ -23,6 +23,7 @@ import MaintenancePage from "@/pages/MaintenancePage";
 import Reports from "@/pages/Reports";
 import UsersPage from "@/pages/UsersPage";
 import Ferramentas from "@/pages/Ferramentas";
+import KpisOkrsPage from "@/pages/KpisOkrsPage";
 import CanvasPage from "@/pages/CanvasPage";
 import NotesPage from "@/pages/NotesPage";
 import RemindersPage from "@/pages/RemindersPage";
@@ -180,6 +181,7 @@ const App = () => (
               <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
               <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />
               <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
+              <Route path="kpis" element={<PermissionGuard permission="kpis:read"><KpisOkrsPage /></PermissionGuard>} />
               <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
               <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
               <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />

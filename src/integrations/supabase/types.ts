@@ -608,6 +608,125 @@ export type Database = {
           },
         ]
       }
+      kpi_entries: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          recorded_by: string | null
+          tenant_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_id: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          recorded_by?: string | null
+          tenant_id: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          recorded_by?: string | null
+          tenant_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_entries_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpis: {
+        Row: {
+          category: string
+          color: string | null
+          created_at: string
+          created_by: string | null
+          critical_threshold: number | null
+          data_source: string
+          description: string | null
+          direction: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          target_value: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+          warning_threshold: number | null
+        }
+        Insert: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number | null
+          data_source?: string
+          description?: string | null
+          direction?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          target_value?: number
+          tenant_id: string
+          unit?: string
+          updated_at?: string
+          warning_threshold?: number | null
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number | null
+          data_source?: string
+          description?: string | null
+          direction?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          target_value?: number
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+          warning_threshold?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpis_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           created_at: string
@@ -815,6 +934,246 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      okr_checkins: {
+        Row: {
+          confidence_level: number | null
+          created_at: string
+          id: string
+          key_result_id: string
+          notes: string | null
+          recorded_by: string | null
+          tenant_id: string
+          value: number
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          key_result_id: string
+          notes?: string | null
+          recorded_by?: string | null
+          tenant_id: string
+          value: number
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          key_result_id?: string
+          notes?: string | null
+          recorded_by?: string | null
+          tenant_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "okr_checkins_key_result_id_fkey"
+            columns: ["key_result_id"]
+            isOneToOne: false
+            referencedRelation: "okr_key_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "okr_checkins_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      okr_cycles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          name: string
+          starts_at: string
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          name: string
+          starts_at: string
+          status?: string
+          tenant_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          name?: string
+          starts_at?: string
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "okr_cycles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      okr_key_results: {
+        Row: {
+          confidence_level: number | null
+          created_at: string
+          current_value: number
+          description: string | null
+          id: string
+          kpi_id: string | null
+          objective_id: string
+          owner_user_id: string | null
+          sort_order: number
+          start_value: number
+          status: string
+          target_value: number
+          tenant_id: string
+          title: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string
+          current_value?: number
+          description?: string | null
+          id?: string
+          kpi_id?: string | null
+          objective_id: string
+          owner_user_id?: string | null
+          sort_order?: number
+          start_value?: number
+          status?: string
+          target_value?: number
+          tenant_id: string
+          title: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string
+          current_value?: number
+          description?: string | null
+          id?: string
+          kpi_id?: string | null
+          objective_id?: string
+          owner_user_id?: string | null
+          sort_order?: number
+          start_value?: number
+          status?: string
+          target_value?: number
+          tenant_id?: string
+          title?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "okr_key_results_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "okr_key_results_objective_id_fkey"
+            columns: ["objective_id"]
+            isOneToOne: false
+            referencedRelation: "okr_objectives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "okr_key_results_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      okr_objectives: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          cycle_id: string
+          description: string | null
+          id: string
+          owner_user_id: string | null
+          priority: string
+          progress: number
+          sort_order: number
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          cycle_id: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          priority?: string
+          progress?: number
+          sort_order?: number
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string
+          description?: string | null
+          id?: string
+          owner_user_id?: string | null
+          priority?: string
+          progress?: number
+          sort_order?: number
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "okr_objectives_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "okr_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "okr_objectives_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
