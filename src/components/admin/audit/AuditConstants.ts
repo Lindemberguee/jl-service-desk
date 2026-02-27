@@ -21,6 +21,10 @@ export const actionLabels: Record<string, string> = {
   'tenant.created': 'Departamento criado', 'tenant.updated': 'Departamento atualizado',
   'sla_policy.created': 'SLA criado', 'sla_policy.updated': 'SLA atualizado', 'sla_policy.deleted': 'SLA excluído',
   'role_permissions.updated': 'Permissões alteradas',
+  'okr_cycle.created': 'Ciclo OKR criado', 'okr_cycle.updated': 'Ciclo OKR atualizado', 'okr_cycle.deleted': 'Ciclo OKR excluído',
+  'okr_objective.created': 'Objetivo criado', 'okr_objective.updated': 'Objetivo atualizado', 'okr_objective.deleted': 'Objetivo excluído',
+  'okr_key_result.created': 'Atividade criada', 'okr_key_result.updated': 'Atividade atualizada', 'okr_key_result.deleted': 'Atividade excluída',
+  'okr_checkin.created': 'Check-in registrado',
 };
 
 export const actionColors: Record<string, string> = {
@@ -40,6 +44,7 @@ export const entityLabels: Record<string, string> = {
   customer: 'Solicitante', unit: 'Unidade', location: 'Local',
   category: 'Categoria', tenant: 'Departamento', sla_policy: 'SLA',
   role_permissions: 'Permissões',
+  okr_cycle: 'Ciclo OKR', okr_objective: 'Objetivo OKR', okr_key_result: 'Atividade OKR', okr_checkin: 'Check-in OKR',
 };
 
 export const entityIcons: Record<string, any> = {
@@ -48,6 +53,7 @@ export const entityIcons: Record<string, any> = {
   customer: User, unit: ScrollText, location: ScrollText,
   category: ScrollText, tenant: Shield, sla_policy: Clock,
   role_permissions: Shield,
+  okr_cycle: Clock, okr_objective: ScrollText, okr_key_result: ScrollText, okr_checkin: ScrollText,
 };
 
 export const actionIcons: Record<string, any> = {
