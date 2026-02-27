@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Pencil, Trash2, BarChart3, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, TrendingUp, AlertTriangle, HelpCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -107,8 +107,15 @@ export function KpiManager() {
   return (
     <div className="space-y-6">
       {canManage && (
-        <div className="flex justify-end">
-          <Button onClick={() => { setEditingKpi(defaultKpi); setDialogOpen(true); }} className="gap-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>Como funciona:</strong> Crie indicadores, defina metas e registre valores periodicamente clicando em <TrendingUp className="inline h-3 w-3" />. 
+              O card sempre exibe o <strong>último valor registrado</strong>. Registre novos valores ao longo do tempo para acompanhar a evolução.
+            </span>
+          </div>
+          <Button onClick={() => { setEditingKpi(defaultKpi); setDialogOpen(true); }} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" />
             Novo Indicador
           </Button>
@@ -281,20 +288,42 @@ export function KpiManager() {
           <DialogHeader>
             <DialogTitle>Registrar Valor</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>Data</Label>
-              <Input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Valor</Label>
-              <Input type="number" value={entryValue} onChange={e => setEntryValue(e.target.value)} placeholder="0" autoFocus />
-            </div>
-            <div className="grid gap-2">
-              <Label>Observação</Label>
-              <Textarea value={entryNotes} onChange={e => setEntryNotes(e.target.value)} placeholder="Opcional..." rows={2} />
-            </div>
-          </div>
+          {(() => {
+            const selectedKpi = kpis.find(k => k.id === selectedKpiId);
+            const kpiEntries = entries.filter(e => e.kpi_id === selectedKpiId).slice(0, 5);
+            const currentValue = selectedKpiId ? (latestEntries.get(selectedKpiId) ?? 0) : 0;
+            return (
+              <div className="grid gap-4">
+                {selectedKpi && (
+                  <div className="rounded-md bg-muted/50 p-3 space-y-1.5">
+                    <p className="text-sm font-medium">{selectedKpi.name}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>Atual: <strong className="text-foreground">{currentValue.toLocaleString('pt-BR')} {selectedKpi.unit}</strong></span>
+                      <span>Meta: <strong className="text-foreground">{selectedKpi.target_value.toLocaleString('pt-BR')} {selectedKpi.unit}</strong></span>
+                    </div>
+                    {kpiEntries.length > 0 && (
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        Últimos: {kpiEntries.map(e => `${e.value} (${format(new Date(e.period_end), 'dd/MM')})`).join(' → ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="grid gap-2">
+                  <Label>Data</Label>
+                  <Input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Novo Valor {selectedKpi ? `(${selectedKpi.unit})` : ''}</Label>
+                  <Input type="number" value={entryValue} onChange={e => setEntryValue(e.target.value)} placeholder="0" autoFocus />
+                  <p className="text-[10px] text-muted-foreground">Este valor substituirá o valor exibido no card do indicador.</p>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Observação</Label>
+                  <Textarea value={entryNotes} onChange={e => setEntryNotes(e.target.value)} placeholder="Opcional..." rows={2} />
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEntryDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleAddEntry} disabled={addEntry.isPending}>Registrar</Button>
