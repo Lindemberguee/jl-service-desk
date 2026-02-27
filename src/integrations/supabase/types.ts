@@ -1035,17 +1035,24 @@ export type Database = {
       }
       okr_key_results: {
         Row: {
+          activity_status: string
+          area: string | null
           confidence_level: number | null
           created_at: string
           current_value: number
+          delivery_date: string | null
           description: string | null
+          end_date: string | null
           id: string
           kpi_id: string | null
           objective_id: string
           owner_user_id: string | null
+          responsible_name: string | null
           sort_order: number
+          start_date: string | null
           start_value: number
           status: string
+          support_team: string | null
           target_value: number
           tenant_id: string
           title: string
@@ -1053,17 +1060,24 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_status?: string
+          area?: string | null
           confidence_level?: number | null
           created_at?: string
           current_value?: number
+          delivery_date?: string | null
           description?: string | null
+          end_date?: string | null
           id?: string
           kpi_id?: string | null
           objective_id: string
           owner_user_id?: string | null
+          responsible_name?: string | null
           sort_order?: number
+          start_date?: string | null
           start_value?: number
           status?: string
+          support_team?: string | null
           target_value?: number
           tenant_id: string
           title: string
@@ -1071,17 +1085,24 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_status?: string
+          area?: string | null
           confidence_level?: number | null
           created_at?: string
           current_value?: number
+          delivery_date?: string | null
           description?: string | null
+          end_date?: string | null
           id?: string
           kpi_id?: string | null
           objective_id?: string
           owner_user_id?: string | null
+          responsible_name?: string | null
           sort_order?: number
+          start_date?: string | null
           start_value?: number
           status?: string
+          support_team?: string | null
           target_value?: number
           tenant_id?: string
           title?: string
@@ -1114,49 +1135,61 @@ export type Database = {
       }
       okr_objectives: {
         Row: {
+          area: string | null
           category: string
           created_at: string
           created_by: string | null
           cycle_id: string
           description: string | null
           id: string
+          indicator: string | null
           owner_user_id: string | null
           priority: string
           progress: number
+          responsible_name: string | null
           sort_order: number
           status: string
+          target_label: string | null
           tenant_id: string
           title: string
           updated_at: string
         }
         Insert: {
+          area?: string | null
           category?: string
           created_at?: string
           created_by?: string | null
           cycle_id: string
           description?: string | null
           id?: string
+          indicator?: string | null
           owner_user_id?: string | null
           priority?: string
           progress?: number
+          responsible_name?: string | null
           sort_order?: number
           status?: string
+          target_label?: string | null
           tenant_id: string
           title: string
           updated_at?: string
         }
         Update: {
+          area?: string | null
           category?: string
           created_at?: string
           created_by?: string | null
           cycle_id?: string
           description?: string | null
           id?: string
+          indicator?: string | null
           owner_user_id?: string | null
           priority?: string
           progress?: number
+          responsible_name?: string | null
           sort_order?: number
           status?: string
+          target_label?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string

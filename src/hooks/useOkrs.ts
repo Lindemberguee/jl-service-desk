@@ -27,6 +27,10 @@ export interface OkrObjective {
   status: string;
   sort_order: number;
   created_at: string;
+  area: string;
+  indicator: string;
+  target_label: string;
+  responsible_name: string;
 }
 
 export interface OkrKeyResult {
@@ -45,6 +49,13 @@ export interface OkrKeyResult {
   status: string;
   sort_order: number;
   created_at: string;
+  area: string;
+  support_team: string;
+  start_date: string | null;
+  end_date: string | null;
+  delivery_date: string | null;
+  activity_status: string;
+  responsible_name: string;
 }
 
 export interface OkrCheckin {
@@ -70,70 +81,74 @@ async function getHeaders() {
   };
 }
 
+function createRestQuery<T>(key: string, table: string, tenantId: string | null, extra = '') {
+  return {
+    queryKey: [key, tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [] as T[];
+      const headers = await getHeaders();
+      const res = await fetch(
+        `${BASE_URL}/rest/v1/${table}?tenant_id=eq.${tenantId}${extra}`,
+        { headers }
+      );
+      if (!res.ok) throw new Error(`Erro ao carregar ${table}`);
+      return (await res.json()) as T[];
+    },
+    enabled: !!tenantId,
+  };
+}
+
+function createRestMutation(table: string, method: 'POST' | 'PATCH' | 'DELETE', tenantId: string | null, invalidateKeys: string[]) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const headers = await getHeaders();
+      let url = `${BASE_URL}/rest/v1/${table}`;
+      const opts: RequestInit = { method, headers: { ...headers } };
+
+      if (method === 'POST') {
+        (opts.headers as any).Prefer = 'return=representation';
+        opts.body = JSON.stringify({ ...payload, tenant_id: tenantId });
+      } else if (method === 'PATCH') {
+        const { id, ...data } = payload;
+        url += `?id=eq.${id}`;
+        (opts.headers as any).Prefer = 'return=minimal';
+        opts.body = JSON.stringify(data);
+      } else {
+        url += `?id=eq.${payload}`;
+      }
+
+      const res = await fetch(url, opts);
+      if (!res.ok) throw new Error(`Erro na operação ${table}`);
+      if (method === 'POST') return (await res.json())[0];
+    },
+    onSuccess: () => {
+      invalidateKeys.forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+    },
+  });
+}
+
 export function useOkrs() {
   const { currentTenantId } = useAuth();
   const qc = useQueryClient();
 
-  const { data: cycles = [], isLoading: cyclesLoading } = useQuery({
-    queryKey: ['okr_cycles', currentTenantId],
-    queryFn: async () => {
-      if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/okr_cycles?tenant_id=eq.${currentTenantId}&order=starts_at.desc`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar ciclos');
-      return (await res.json()) as OkrCycle[];
-    },
-    enabled: !!currentTenantId,
-  });
+  const { data: cycles = [], isLoading: cyclesLoading } = useQuery(
+    createRestQuery<OkrCycle>('okr_cycles', 'okr_cycles', currentTenantId, '&order=starts_at.desc')
+  );
 
-  const { data: objectives = [], isLoading: objectivesLoading } = useQuery({
-    queryKey: ['okr_objectives', currentTenantId],
-    queryFn: async () => {
-      if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/okr_objectives?tenant_id=eq.${currentTenantId}&order=sort_order`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar objetivos');
-      return (await res.json()) as OkrObjective[];
-    },
-    enabled: !!currentTenantId,
-  });
+  const { data: objectives = [], isLoading: objectivesLoading } = useQuery(
+    createRestQuery<OkrObjective>('okr_objectives', 'okr_objectives', currentTenantId, '&order=sort_order')
+  );
 
-  const { data: keyResults = [], isLoading: krLoading } = useQuery({
-    queryKey: ['okr_key_results', currentTenantId],
-    queryFn: async () => {
-      if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/okr_key_results?tenant_id=eq.${currentTenantId}&order=sort_order`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar key results');
-      return (await res.json()) as OkrKeyResult[];
-    },
-    enabled: !!currentTenantId,
-  });
+  const { data: keyResults = [], isLoading: krLoading } = useQuery(
+    createRestQuery<OkrKeyResult>('okr_key_results', 'okr_key_results', currentTenantId, '&order=sort_order')
+  );
 
-  const { data: checkins = [] } = useQuery({
-    queryKey: ['okr_checkins', currentTenantId],
-    queryFn: async () => {
-      if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/okr_checkins?tenant_id=eq.${currentTenantId}&order=created_at.desc&limit=200`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar check-ins');
-      return (await res.json()) as OkrCheckin[];
-    },
-    enabled: !!currentTenantId,
-  });
+  const { data: checkins = [] } = useQuery(
+    createRestQuery<OkrCheckin>('okr_checkins', 'okr_checkins', currentTenantId, '&order=created_at.desc&limit=200')
+  );
 
+  // Mutations using direct fetch calls for flexibility
   const createCycle = useMutation({
     mutationFn: async (cycle: Partial<OkrCycle>) => {
       const headers = await getHeaders();
@@ -144,6 +159,27 @@ export function useOkrs() {
       });
       if (!res.ok) throw new Error('Erro ao criar ciclo');
       return (await res.json())[0];
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
+  });
+
+  const updateCycle = useMutation({
+    mutationFn: async ({ id, ...data }: Partial<OkrCycle> & { id: string }) => {
+      const headers = await getHeaders();
+      const res = await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar ciclo');
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
+  });
+
+  const deleteCycle = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getHeaders();
+      await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, { method: 'DELETE', headers });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
   });
@@ -233,27 +269,6 @@ export function useOkrs() {
       qc.invalidateQueries({ queryKey: ['okr_checkins'] });
       qc.invalidateQueries({ queryKey: ['okr_key_results'] });
     },
-  });
-
-  const updateCycle = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<OkrCycle> & { id: string }) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Erro ao atualizar ciclo');
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
-  });
-
-  const deleteCycle = useMutation({
-    mutationFn: async (id: string) => {
-      const headers = await getHeaders();
-      await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, { method: 'DELETE', headers });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
   });
 
   const isLoading = cyclesLoading || objectivesLoading || krLoading;
