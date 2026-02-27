@@ -69,206 +69,216 @@ export interface OkrCheckin {
   created_at: string;
 }
 
-const BASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-async function getHeaders() {
-  const { data } = await supabase.auth.getSession();
-  return {
-    apikey: ANON_KEY,
-    Authorization: `Bearer ${data.session?.access_token}`,
-    'Content-Type': 'application/json',
-  };
-}
-
-function createRestQuery<T>(key: string, table: string, tenantId: string | null, extra = '') {
-  return {
-    queryKey: [key, tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [] as T[];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/${table}?tenant_id=eq.${tenantId}${extra}`,
-        { headers }
-      );
-      if (!res.ok) throw new Error(`Erro ao carregar ${table}`);
-      return (await res.json()) as T[];
-    },
-    enabled: !!tenantId,
-  };
-}
-
-function createRestMutation(table: string, method: 'POST' | 'PATCH' | 'DELETE', tenantId: string | null, invalidateKeys: string[]) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: any) => {
-      const headers = await getHeaders();
-      let url = `${BASE_URL}/rest/v1/${table}`;
-      const opts: RequestInit = { method, headers: { ...headers } };
-
-      if (method === 'POST') {
-        (opts.headers as any).Prefer = 'return=representation';
-        opts.body = JSON.stringify({ ...payload, tenant_id: tenantId });
-      } else if (method === 'PATCH') {
-        const { id, ...data } = payload;
-        url += `?id=eq.${id}`;
-        (opts.headers as any).Prefer = 'return=minimal';
-        opts.body = JSON.stringify(data);
-      } else {
-        url += `?id=eq.${payload}`;
-      }
-
-      const res = await fetch(url, opts);
-      if (!res.ok) throw new Error(`Erro na operação ${table}`);
-      if (method === 'POST') return (await res.json())[0];
-    },
-    onSuccess: () => {
-      invalidateKeys.forEach(k => qc.invalidateQueries({ queryKey: [k] }));
-    },
-  });
-}
-
 export function useOkrs() {
   const { currentTenantId } = useAuth();
   const qc = useQueryClient();
 
-  const { data: cycles = [], isLoading: cyclesLoading } = useQuery(
-    createRestQuery<OkrCycle>('okr_cycles', 'okr_cycles', currentTenantId, '&order=starts_at.desc')
-  );
+  const { data: cycles = [], isLoading: cyclesLoading } = useQuery({
+    queryKey: ['okr_cycles', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('okr_cycles')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('starts_at', { ascending: false });
+      if (error) throw error;
+      return data as OkrCycle[];
+    },
+    enabled: !!currentTenantId,
+  });
 
-  const { data: objectives = [], isLoading: objectivesLoading } = useQuery(
-    createRestQuery<OkrObjective>('okr_objectives', 'okr_objectives', currentTenantId, '&order=sort_order')
-  );
+  const { data: objectives = [], isLoading: objectivesLoading } = useQuery({
+    queryKey: ['okr_objectives', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('okr_objectives')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('sort_order');
+      if (error) throw error;
+      return data as OkrObjective[];
+    },
+    enabled: !!currentTenantId,
+  });
 
-  const { data: keyResults = [], isLoading: krLoading } = useQuery(
-    createRestQuery<OkrKeyResult>('okr_key_results', 'okr_key_results', currentTenantId, '&order=sort_order')
-  );
+  const { data: keyResults = [], isLoading: krLoading } = useQuery({
+    queryKey: ['okr_key_results', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('okr_key_results')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('sort_order');
+      if (error) throw error;
+      return data as OkrKeyResult[];
+    },
+    enabled: !!currentTenantId,
+  });
 
-  const { data: checkins = [] } = useQuery(
-    createRestQuery<OkrCheckin>('okr_checkins', 'okr_checkins', currentTenantId, '&order=created_at.desc&limit=200')
-  );
+  const { data: checkins = [] } = useQuery({
+    queryKey: ['okr_checkins', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('okr_checkins')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data as OkrCheckin[];
+    },
+    enabled: !!currentTenantId,
+  });
 
-  // Mutations using direct fetch calls for flexibility
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['okr_cycles', currentTenantId] });
+    qc.invalidateQueries({ queryKey: ['okr_objectives', currentTenantId] });
+    qc.invalidateQueries({ queryKey: ['okr_key_results', currentTenantId] });
+    qc.invalidateQueries({ queryKey: ['okr_checkins', currentTenantId] });
+  };
+
   const createCycle = useMutation({
     mutationFn: async (cycle: Partial<OkrCycle>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_cycles`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...cycle, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao criar ciclo');
-      return (await res.json())[0];
+      const { data, error } = await supabase
+        .from('okr_cycles')
+        .insert({ ...cycle, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
+    onSuccess: invalidateAll,
   });
 
   const updateCycle = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<OkrCycle> & { id: string }) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Erro ao atualizar ciclo');
+    mutationFn: async ({ id, ...rest }: Partial<OkrCycle> & { id: string }) => {
+      const { error } = await supabase.from('okr_cycles').update(rest as any).eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
+    onSuccess: invalidateAll,
   });
 
   const deleteCycle = useMutation({
     mutationFn: async (id: string) => {
-      const headers = await getHeaders();
-      await fetch(`${BASE_URL}/rest/v1/okr_cycles?id=eq.${id}`, { method: 'DELETE', headers });
+      const { error } = await supabase.from('okr_cycles').delete().eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_cycles'] }),
+    onSuccess: invalidateAll,
   });
 
   const createObjective = useMutation({
     mutationFn: async (obj: Partial<OkrObjective>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_objectives`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...obj, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao criar objetivo');
-      return (await res.json())[0];
+      const { data, error } = await supabase
+        .from('okr_objectives')
+        .insert({ ...obj, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_objectives'] }),
+    onSuccess: invalidateAll,
   });
 
   const updateObjective = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<OkrObjective> & { id: string }) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_objectives?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Erro ao atualizar objetivo');
+    mutationFn: async ({ id, ...rest }: Partial<OkrObjective> & { id: string }) => {
+      const { error } = await supabase.from('okr_objectives').update(rest as any).eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_objectives'] }),
+    onSuccess: invalidateAll,
   });
 
   const deleteObjective = useMutation({
     mutationFn: async (id: string) => {
-      const headers = await getHeaders();
-      await fetch(`${BASE_URL}/rest/v1/okr_objectives?id=eq.${id}`, { method: 'DELETE', headers });
+      const { error } = await supabase.from('okr_objectives').delete().eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_objectives'] }),
+    onSuccess: invalidateAll,
   });
 
   const createKeyResult = useMutation({
     mutationFn: async (kr: Partial<OkrKeyResult>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_key_results`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...kr, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao criar key result');
-      return (await res.json())[0];
+      const { data, error } = await supabase
+        .from('okr_key_results')
+        .insert({ ...kr, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_key_results'] }),
+    onSuccess: invalidateAll,
   });
 
   const updateKeyResult = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<OkrKeyResult> & { id: string }) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_key_results?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Erro ao atualizar key result');
+    mutationFn: async ({ id, ...rest }: Partial<OkrKeyResult> & { id: string }) => {
+      const { error } = await supabase.from('okr_key_results').update(rest as any).eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_key_results'] }),
+    onSuccess: invalidateAll,
   });
 
   const deleteKeyResult = useMutation({
     mutationFn: async (id: string) => {
-      const headers = await getHeaders();
-      await fetch(`${BASE_URL}/rest/v1/okr_key_results?id=eq.${id}`, { method: 'DELETE', headers });
+      const { error } = await supabase.from('okr_key_results').delete().eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okr_key_results'] }),
+    onSuccess: invalidateAll,
   });
 
   const addCheckin = useMutation({
-    mutationFn: async (checkin: Partial<OkrCheckin>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/okr_checkins`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...checkin, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao registrar check-in');
-      return (await res.json())[0];
+    mutationFn: async (checkin: Partial<OkrCheckin> & { key_result_id: string }) => {
+      // 1. Insert checkin
+      const { data: checkinData, error: checkinError } = await supabase
+        .from('okr_checkins')
+        .insert({ ...checkin, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (checkinError) throw checkinError;
+
+      // 2. Update key result's current_value
+      const { error: krError } = await supabase
+        .from('okr_key_results')
+        .update({ current_value: checkin.value, confidence_level: checkin.confidence_level ?? 70 } as any)
+        .eq('id', checkin.key_result_id);
+      if (krError) throw krError;
+
+      // 3. Recalculate objective progress
+      // Get the key result to find objective_id
+      const { data: kr } = await supabase
+        .from('okr_key_results')
+        .select('objective_id')
+        .eq('id', checkin.key_result_id)
+        .single();
+      
+      if (kr) {
+        // Get all KRs for this objective
+        const { data: allKrs } = await supabase
+          .from('okr_key_results')
+          .select('start_value, target_value, current_value')
+          .eq('objective_id', kr.objective_id);
+        
+        if (allKrs && allKrs.length > 0) {
+          const totalProgress = allKrs.reduce((sum, k) => {
+            const range = k.target_value - k.start_value;
+            if (range === 0) return sum;
+            const pct = Math.min(((k.current_value - k.start_value) / range) * 100, 100);
+            return sum + Math.max(pct, 0);
+          }, 0);
+          const avgProgress = Math.round(totalProgress / allKrs.length);
+
+          await supabase
+            .from('okr_objectives')
+            .update({ progress: avgProgress } as any)
+            .eq('id', kr.objective_id);
+        }
+      }
+
+      return checkinData;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['okr_checkins'] });
-      qc.invalidateQueries({ queryKey: ['okr_key_results'] });
-    },
+    onSuccess: invalidateAll,
   });
 
   const isLoading = cyclesLoading || objectivesLoading || krLoading;
