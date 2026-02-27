@@ -134,9 +134,12 @@ export function OkrBoard() {
     const atrasados = allActivities.filter(a => a.activity_status === 'atrasado').length;
     const emAndamento = allActivities.filter(a => a.activity_status === 'em_andamento' || a.activity_status === 'no_prazo').length;
     const aIniciar = allActivities.filter(a => a.activity_status === 'a_iniciar').length;
-    const pctConcluido = total > 0 ? Math.round((finalizados / total) * 100) : 0;
+    // Use real progress from objectives (weighted by activity count)
+    const pctConcluido = cycleObjectives.length > 0
+      ? Math.round(cycleObjectives.reduce((sum, o) => sum + (o.progress || 0), 0) / cycleObjectives.length)
+      : 0;
     return { total, finalizados, atrasados, emAndamento, aIniciar, pctConcluido };
-  }, [allActivities]);
+  }, [allActivities, cycleObjectives]);
 
   const daysRemaining = activeCycle ? Math.max(0, differenceInDays(parseISO(activeCycle.ends_at), new Date())) : 0;
   const totalDays = activeCycle ? differenceInDays(parseISO(activeCycle.ends_at), parseISO(activeCycle.starts_at)) : 1;
@@ -210,7 +213,31 @@ export function OkrBoard() {
 
   const handleQuickStatusChange = async (activityId: string, newStatus: string) => {
     try {
-      await updateKeyResult.mutateAsync({ id: activityId, activity_status: newStatus } as any);
+      const activity = keyResults.find(kr => kr.id === activityId);
+      const updates: any = { id: activityId, activity_status: newStatus };
+
+      // When marking as finalizado, auto-complete the progress
+      if ((newStatus === 'finalizado' || newStatus === 'finalizado_com_atraso') && activity) {
+        updates.current_value = activity.target_value;
+        updates.delivery_date = new Date().toISOString().split('T')[0];
+      }
+
+      await updateKeyResult.mutateAsync(updates);
+
+      // Recalculate objective progress
+      if (activity) {
+        const objKrs = keyResults.filter(kr => kr.objective_id === activity.objective_id);
+        const totalProgress = objKrs.reduce((sum, kr) => {
+          const cv = kr.id === activityId && (newStatus === 'finalizado' || newStatus === 'finalizado_com_atraso')
+            ? kr.target_value : kr.current_value;
+          const range = kr.target_value - kr.start_value;
+          if (range === 0) return sum;
+          return sum + Math.max(0, Math.min(((cv - kr.start_value) / range) * 100, 100));
+        }, 0);
+        const avgProgress = objKrs.length > 0 ? Math.round(totalProgress / objKrs.length) : 0;
+        await updateObjective.mutateAsync({ id: activity.objective_id, progress: avgProgress });
+      }
+
       toast.success('Status atualizado');
     } catch { toast.error('Erro ao atualizar status'); }
   };
@@ -295,11 +322,19 @@ export function OkrBoard() {
             </Card>
 
             {/* Stats mini-cards */}
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className={cn("hover:shadow-md transition-shadow", stats.pctConcluido >= 100 && "ring-2 ring-primary/50")}>
               <CardContent className="py-4 text-center">
-                <p className="text-3xl font-bold text-primary">{stats.pctConcluido}%</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Concluído</p>
-                <Progress value={stats.pctConcluido} className="h-1 mt-2" />
+                <p className={cn("text-3xl font-bold", stats.pctConcluido >= 100 ? 'text-primary' : stats.pctConcluido >= 70 ? 'text-emerald-500' : stats.pctConcluido >= 40 ? 'text-amber-500' : 'text-muted-foreground')}>
+                  {stats.pctConcluido}%
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">Progresso Geral</p>
+                <Progress value={stats.pctConcluido} className="h-1.5 mt-2" />
+                {stats.pctConcluido >= 100 && (
+                  <div className="flex items-center justify-center gap-1 mt-1.5 text-[9px] text-primary font-medium">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Plano Concluído
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card className="hover:shadow-md transition-shadow">
@@ -398,7 +433,7 @@ export function OkrBoard() {
           const catColor = categoryColors[obj.category] || 'hsl(var(--primary))';
 
           return (
-            <Card key={obj.id} className="overflow-hidden border">
+            <Card key={obj.id} className={cn("overflow-hidden border", objPct >= 100 && "ring-1 ring-primary/30")}>
               {/* Objective Header */}
               <div
                 className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
@@ -433,7 +468,14 @@ export function OkrBoard() {
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="text-right w-20">
-                    <p className="text-lg font-bold">{objPct}%</p>
+                    <p className={cn("text-lg font-bold", objPct >= 100 ? 'text-primary' : objPct >= 70 ? 'text-emerald-500' : '')}>
+                      {objPct >= 100 ? (
+                        <span className="flex items-center justify-end gap-1">
+                          <CheckCircle2 className="h-4 w-4" />
+                          {objPct}%
+                        </span>
+                      ) : `${objPct}%`}
+                    </p>
                     <p className="text-[9px] text-muted-foreground">{completedActivities}/{totalActivities} ativ.</p>
                   </div>
                   <div className="w-20">
@@ -475,7 +517,7 @@ export function OkrBoard() {
                               idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'
                             )}
                           >
-                            <td className="px-4 py-2.5">
+                            <td className="px-4 py-2.5 max-w-0">
                               <div className="flex items-center gap-2 min-w-0">
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                   {canManage && (
@@ -515,7 +557,7 @@ export function OkrBoard() {
                                     </>
                                   )}
                                 </div>
-                                <span className="text-sm truncate">{activity.title}</span>
+                                <span className="text-sm truncate block min-w-0">{activity.title}</span>
                                 {activity.kpi_id && (() => {
                                   const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
                                   return linkedKpi ? (
