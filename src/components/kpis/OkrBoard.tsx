@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
+import { ActivityDetailDialog } from '@/components/kpis/ActivityDetailDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,6 +98,8 @@ export function OkrBoard() {
   const [checkinValue, setCheckinValue] = useState('');
   const [checkinNotes, setCheckinNotes] = useState('');
   const [checkinConfidence, setCheckinConfidence] = useState('70');
+  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const activeCycle = selectedCycleId
     ? cycles.find(c => c.id === selectedCycleId)
@@ -516,13 +519,14 @@ export function OkrBoard() {
                           <tr
                             key={activity.id}
                             className={cn(
-                              "group hover:bg-muted/20 transition-colors",
+                              "group hover:bg-muted/20 transition-colors cursor-pointer",
                               idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'
                             )}
+                            onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
                           >
                             <td className="px-4 py-2.5 max-w-0 overflow-hidden">
                               <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
                                   {canManage && (
                                     <>
                                       <Tooltip>
@@ -598,7 +602,7 @@ export function OkrBoard() {
                             <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                               {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
                             </td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                               {canManage ? (
                                 <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
                                   <SelectTrigger className={cn("h-7 text-[10px] font-semibold border", actStatus.bgClass)}>
@@ -1005,6 +1009,22 @@ export function OkrBoard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Activity Detail Dialog */}
+        <ActivityDetailDialog
+          activity={detailActivity}
+          objective={detailActivity ? objectives.find(o => o.id === detailActivity.objective_id) || null : null}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          canManage={!!canManage}
+          onUpdateLinks={async (activityId, links) => {
+            try {
+              await updateKeyResult.mutateAsync({ id: activityId, links } as any);
+              setDetailActivity(prev => prev ? { ...prev, links } as any : null);
+              toast.success('Links atualizados');
+            } catch { toast.error('Erro ao salvar links'); }
+          }}
+        />
       </div>
     </TooltipProvider>
   );
