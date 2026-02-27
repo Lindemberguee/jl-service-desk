@@ -34,18 +34,6 @@ export interface KpiEntry {
   created_at: string;
 }
 
-const BASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-async function getHeaders() {
-  const { data } = await supabase.auth.getSession();
-  return {
-    apikey: ANON_KEY,
-    Authorization: `Bearer ${data.session?.access_token}`,
-    'Content-Type': 'application/json',
-  };
-}
-
 export function useKpis() {
   const { currentTenantId } = useAuth();
   const qc = useQueryClient();
@@ -54,13 +42,14 @@ export function useKpis() {
     queryKey: ['kpis', currentTenantId],
     queryFn: async () => {
       if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/kpis?tenant_id=eq.${currentTenantId}&order=category,name`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar KPIs');
-      return (await res.json()) as Kpi[];
+      const { data, error } = await supabase
+        .from('kpis')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('category')
+        .order('name');
+      if (error) throw error;
+      return data as Kpi[];
     },
     enabled: !!currentTenantId,
   });
@@ -69,68 +58,61 @@ export function useKpis() {
     queryKey: ['kpi_entries', currentTenantId],
     queryFn: async () => {
       if (!currentTenantId) return [];
-      const headers = await getHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/kpi_entries?tenant_id=eq.${currentTenantId}&order=period_end.desc&limit=500`,
-        { headers }
-      );
-      if (!res.ok) throw new Error('Erro ao carregar entradas');
-      return (await res.json()) as KpiEntry[];
+      const { data, error } = await supabase
+        .from('kpi_entries')
+        .select('*')
+        .eq('tenant_id', currentTenantId)
+        .order('period_end', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data as KpiEntry[];
     },
     enabled: !!currentTenantId,
   });
 
   const createKpi = useMutation({
     mutationFn: async (kpi: Partial<Kpi>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/kpis`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...kpi, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao criar KPI');
-      return (await res.json())[0] as Kpi;
+      const { data, error } = await supabase
+        .from('kpis')
+        .insert({ ...kpi, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Kpi;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis', currentTenantId] }),
   });
 
   const updateKpi = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Kpi> & { id: string }) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/kpis?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Erro ao atualizar KPI');
+    mutationFn: async ({ id, ...rest }: Partial<Kpi> & { id: string }) => {
+      const { error } = await supabase
+        .from('kpis')
+        .update(rest as any)
+        .eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis', currentTenantId] }),
   });
 
   const deleteKpi = useMutation({
     mutationFn: async (id: string) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/kpis?id=eq.${id}`, {
-        method: 'DELETE',
-        headers,
-      });
-      if (!res.ok) throw new Error('Erro ao excluir KPI');
+      const { error } = await supabase.from('kpis').delete().eq('id', id);
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpis', currentTenantId] }),
   });
 
   const addEntry = useMutation({
     mutationFn: async (entry: Partial<KpiEntry>) => {
-      const headers = await getHeaders();
-      const res = await fetch(`${BASE_URL}/rest/v1/kpi_entries`, {
-        method: 'POST',
-        headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ ...entry, tenant_id: currentTenantId }),
-      });
-      if (!res.ok) throw new Error('Erro ao registrar valor');
-      return (await res.json())[0] as KpiEntry;
+      const { data, error } = await supabase
+        .from('kpi_entries')
+        .insert({ ...entry, tenant_id: currentTenantId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as KpiEntry;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpi_entries'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['kpi_entries', currentTenantId] }),
   });
 
   return { kpis, entries, isLoading, entriesLoading, createKpi, updateKpi, deleteKpi, addEntry };
