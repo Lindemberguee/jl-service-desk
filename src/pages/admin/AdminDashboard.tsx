@@ -1,15 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ClipboardList, AlertTriangle, Clock, Zap, Building2, Users, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { ClipboardList, AlertTriangle, Clock, Zap, Building2, Users, TrendingUp, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminDashboard() {
-  const { switchTenant } = useAuth();
   const navigate = useNavigate();
 
   const { data: tenants = [], isLoading: tenantsLoading } = useQuery({
@@ -50,17 +48,12 @@ export default function AdminDashboard() {
 
   const globalStats = [
     { label: 'Total OS', value: allOrders.length, icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Abertas', value: totalOpen, icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { label: 'Em Execução', value: totalInProgress, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { label: 'Resolvidas', value: totalResolved, icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' },
-    { label: 'Críticas', value: totalCritical, icon: Zap, color: 'text-destructive', bg: 'bg-destructive/10' },
-    { label: 'SLA Atrasadas', value: totalOverdue, icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+    { label: 'Abertas', value: totalOpen, icon: Clock, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: 'Em Execução', value: totalInProgress, icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: 'Resolvidas', value: totalResolved, icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: 'Críticas', value: totalCritical, icon: Zap, color: 'text-destructive', bg: 'bg-destructive/5' },
+    { label: 'SLA Atrasadas', value: totalOverdue, icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/5' },
   ];
-
-  const goToDept = (tenantId: string) => {
-    switchTenant(tenantId);
-    navigate('/os');
-  };
 
   return (
     <div className="space-y-6">
@@ -73,7 +66,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {globalStats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="border-border shadow-none rounded-xl">
+            <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04),0_1px_2px_-1px_hsl(var(--foreground)/0.04)] rounded-xl">
               <CardContent className="p-3.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-medium text-muted-foreground">{stat.label}</span>
@@ -100,38 +93,41 @@ export default function AdminDashboard() {
             const deptMembers = allMemberships.filter((m: any) => m.tenant_id === tenant.id && m.is_active).length;
 
             return (
-              <motion.div key={tenant.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.05 }}>
+              <motion.div key={tenant.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.04 }}>
                 <Card
-                  className="border-border shadow-none rounded-xl cursor-pointer hover:border-primary/30 transition-all overflow-hidden group"
-                  onClick={() => goToDept(tenant.id)}
+                  className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04),0_1px_3px_-1px_hsl(var(--foreground)/0.03)] rounded-xl cursor-pointer hover:shadow-[0_4px_16px_0_hsl(var(--foreground)/0.08)] transition-shadow duration-200 group"
+                  onClick={() => navigate('/admin/departamentos')}
                 >
-                  <div className="h-1" style={{ background: `linear-gradient(90deg, ${tenant.primary_color || '#3B82F6'}, ${tenant.accent_color || '#8B5CF6'})` }} />
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tenant.primary_color || '#3B82F6' }}>
-                        <Building2 className="h-4 w-4 text-white" />
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{tenant.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{deptMembers} membros • {deptOrders.length} OS</p>
+                        <p className="text-[11px] text-muted-foreground">{deptMembers} membros</p>
                       </div>
-                      <Badge variant={tenant.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 shrink-0">
+                      <ArrowUpRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground transition-colors shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        <span className="text-muted-foreground">{deptOpen} abertas</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                        <span className="text-muted-foreground">{deptInProgress} execução</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                        <span className="text-muted-foreground">{deptResolved} resolvidas</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-lg font-bold">{deptOrders.length}</span>
+                      <Badge variant={tenant.is_active ? 'secondary' : 'outline'} className="text-[10px] h-5 font-normal">
                         {tenant.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-muted/40 rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold text-blue-500">{deptOpen}</p>
-                        <p className="text-[10px] text-muted-foreground">Abertas</p>
-                      </div>
-                      <div className="bg-muted/40 rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold text-amber-500">{deptInProgress}</p>
-                        <p className="text-[10px] text-muted-foreground">Execução</p>
-                      </div>
-                      <div className="bg-muted/40 rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold text-green-500">{deptResolved}</p>
-                        <p className="text-[10px] text-muted-foreground">Resolvidas</p>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
