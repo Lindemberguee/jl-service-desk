@@ -80,7 +80,7 @@ export function OkrBoard() {
 
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'plan' | 'board'>('plan');
-  const [expandedObjectives, setExpandedObjectives] = useState<Set<string>>(new Set());
+  const [expandedObjectives, setExpandedObjectives] = useState<Set<string> | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArea, setFilterArea] = useState<string>('all');
 
@@ -114,9 +114,12 @@ export function OkrBoard() {
   }, [cycleObjectives, keyResults]);
 
   // Initialize expanded objectives
-  if (expandedObjectives.size === 0 && cycleObjectives.length > 0) {
+  // Initialize expanded objectives only once
+  if (expandedObjectives === null && cycleObjectives.length > 0) {
     setExpandedObjectives(new Set(cycleObjectives.map(o => o.id)));
   }
+
+  const currentExpanded = expandedObjectives ?? new Set<string>();
 
   const toggleObjective = (id: string) => {
     setExpandedObjectives(prev => {
@@ -429,7 +432,7 @@ export function OkrBoard() {
           const completedActivities = keyResults.filter(kr => kr.objective_id === obj.id && (kr.activity_status === 'finalizado' || kr.activity_status === 'finalizado_com_atraso')).length;
           const objPct = Math.round(obj.progress);
           const StatusInfo = objectiveStatuses[obj.status] || objectiveStatuses.on_track;
-          const isExpanded = expandedObjectives.has(obj.id);
+          const isExpanded = currentExpanded.has(obj.id);
           const catColor = categoryColors[obj.category] || 'hsl(var(--primary))';
 
           return (
