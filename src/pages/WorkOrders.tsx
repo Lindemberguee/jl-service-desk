@@ -313,14 +313,21 @@ export default function WorkOrders() {
     return '—';
   };
 
+  const clearAllFilters = () => {
+    setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all');
+    setUnitFilter('all'); setAssignedFilter('all'); setSlaFilter('all');
+    setVisibilityFilter('all'); setDeptFilter('all'); setDateFrom(undefined); setDateTo(undefined);
+    setSearch(''); setActiveView(null); resetPage();
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Ordens de Serviço</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {totalCount} de {workOrders.length} registro(s)
+            {totalCount} registro(s)
             {selectedIds.size > 0 && ` • ${selectedIds.size} selecionada(s)`}
           </p>
         </div>
@@ -339,195 +346,223 @@ export default function WorkOrders() {
         </div>
       </div>
 
-      {/* Saved Views */}
+      {/* Search + Filter toggle */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código ou título..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); resetPage(); }}
+            className="pl-9 h-9 text-sm border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] bg-card"
+          />
+        </div>
+        <Button
+          variant={showAdvancedFilters ? "default" : "outline"}
+          size="sm"
+          className="h-9 gap-1.5 text-xs shrink-0 border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)]"
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+        >
+          <Filter className="h-3.5 w-3.5" />
+          Filtros
+          {activeFilters.length > 0 && (
+            <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+              {activeFilters.length}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Saved Views - compact pills */}
       <div className="flex gap-1.5 flex-wrap">
         {SAVED_VIEWS.map(view => (
-          <Button
+          <button
             key={view.id}
-            variant={activeView === view.id ? "default" : "outline"}
-            size="sm"
-            className="h-7 text-xs gap-1.5"
             onClick={() => applyView(view)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              activeView === view.id
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+            }`}
           >
             <view.icon className="h-3 w-3" />
             {view.label}
-          </Button>
+          </button>
         ))}
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-card border border-border rounded-md p-3 space-y-2">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por código ou título..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); resetPage(); }}
-              className="pl-8 h-8 text-sm"
-            />
-          </div>
-          <Button
-            variant={showAdvancedFilters ? "secondary" : "outline"}
-            size="sm"
-            className="h-8 gap-1 text-xs shrink-0"
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            Filtros
+      {/* Collapsible Filters Panel */}
+      {showAdvancedFilters && (
+        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] p-4 space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtros</span>
             {activeFilters.length > 0 && (
-              <Badge variant="default" className="h-4 w-4 p-0 text-[9px] rounded-full flex items-center justify-center ml-0.5">
-                {activeFilters.length}
-              </Badge>
+              <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-muted-foreground" onClick={clearAllFilters}>
+                Limpar todos
+              </Button>
             )}
-          </Button>
-        </div>
-
-        {/* Basic filters - always visible */}
-        <div className="flex gap-2 flex-wrap">
-          {memberships.length > 1 && (
-            <Select value={deptFilter} onValueChange={v => { setDeptFilter(v); resetPage(); }}>
-              <SelectTrigger className="w-[160px] h-8 text-xs">
-                <Building2 className="h-3 w-3 mr-1 shrink-0" />
-                <SelectValue placeholder="Departamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Deptos</SelectItem>
-                {memberships.map(m => (
-                  <SelectItem key={m.tenant_id} value={m.tenant_id}>{m.tenant_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Status</SelectItem>
-              {Object.entries(statusLabels).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={priorityFilter} onValueChange={v => { setPriorityFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <SelectValue placeholder="Prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Prioridades</SelectItem>
-              {Object.entries(priorityLabels).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={assignedFilter} onValueChange={v => { setAssignedFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="me">Minhas OS</SelectItem>
-              <SelectItem value="unassigned">Sem responsável</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Advanced filters */}
-        {showAdvancedFilters && (
-          <div className="flex gap-2 flex-wrap pt-1 border-t border-border mt-2">
-            <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v); resetPage(); }}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas Categorias</SelectItem>
-                {categories.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={unitFilter} onValueChange={v => { setUnitFilter(v); resetPage(); }}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas Unidades</SelectItem>
-                {units.map((u: any) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={visibilityFilter} onValueChange={v => { setVisibilityFilter(v); resetPage(); }}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
-                <SelectValue placeholder="Visibilidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="internal">Interna</SelectItem>
-                <SelectItem value="customer">Cliente</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={slaFilter} onValueChange={v => { setSlaFilter(v); resetPage(); }}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="SLA" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos SLA</SelectItem>
-                <SelectItem value="overdue">Somente Atrasadas</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Date range */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {dateFrom ? format(dateFrom, 'dd/MM') : 'De'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={d => { setDateFrom(d); resetPage(); }} locale={ptBR} />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {dateTo ? format(dateTo, 'dd/MM') : 'Até'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateTo} onSelect={d => { setDateTo(d); resetPage(); }} locale={ptBR} />
-              </PopoverContent>
-            </Popover>
           </div>
-        )}
-      </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {memberships.length > 1 && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">Departamento</label>
+                <Select value={deptFilter} onValueChange={v => { setDeptFilter(v); resetPage(); }}>
+                  <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {memberships.map(m => (
+                      <SelectItem key={m.tenant_id} value={m.tenant_id}>{m.tenant_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Status</label>
+              <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {Object.entries(statusLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Prioridade</label>
+              <Select value={priorityFilter} onValueChange={v => { setPriorityFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {Object.entries(priorityLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Responsável</label>
+              <Select value={assignedFilter} onValueChange={v => { setAssignedFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="me">Minhas OS</SelectItem>
+                  <SelectItem value="unassigned">Sem responsável</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Categoria</label>
+              <Select value={categoryFilter} onValueChange={v => { setCategoryFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Unidade</label>
+              <Select value={unitFilter} onValueChange={v => { setUnitFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {units.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Visibilidade</label>
+              <Select value={visibilityFilter} onValueChange={v => { setVisibilityFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="internal">Interna</SelectItem>
+                  <SelectItem value="customer">Cliente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">SLA</label>
+              <Select value={slaFilter} onValueChange={v => { setSlaFilter(v); resetPage(); }}>
+                <SelectTrigger className="h-8 text-xs border-transparent bg-muted/40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="overdue">Atrasadas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Data de</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1 w-full justify-start border-transparent bg-muted/40 font-normal">
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'Selecionar'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={d => { setDateFrom(d); resetPage(); }} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase">Data até</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1 w-full justify-start border-transparent bg-muted/40 font-normal">
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                    {dateTo ? format(dateTo, 'dd/MM/yy') : 'Selecionar'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={d => { setDateTo(d); resetPage(); }} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active filter chips */}
-      {activeFilters.length > 0 && (
+      {activeFilters.length > 0 && !showAdvancedFilters && (
         <div className="flex gap-1.5 flex-wrap">
           {activeFilters.map(f => (
-            <Badge key={f.key} variant="secondary" className="gap-1 cursor-pointer text-xs h-6" onClick={f.clear}>
+            <Badge key={f.key} variant="secondary" className="gap-1 cursor-pointer text-xs h-6 bg-muted/60 hover:bg-muted" onClick={f.clear}>
               {f.label}
               <X className="h-3 w-3" />
             </Badge>
           ))}
-          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => {
-            setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all');
-            setUnitFilter('all'); setAssignedFilter('all'); setSlaFilter('all');
-            setVisibilityFilter('all'); setDeptFilter('all'); setDateFrom(undefined); setDateTo(undefined);
-            setSearch(''); resetPage();
-          }}>
-            Limpar todos
-          </Button>
+          <button className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1" onClick={clearAllFilters}>
+            Limpar
+          </button>
         </div>
       )}
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && canUpdate && (
-        <div className="bg-primary/5 border border-primary/20 rounded-md p-2 flex items-center gap-2 flex-wrap">
+        <div className="bg-primary/5 rounded-xl p-3 flex items-center gap-2 flex-wrap shadow-sm">
           <span className="text-xs font-medium">{selectedIds.size} selecionada(s)</span>
           <div className="flex gap-1.5 ml-auto">
             {canAssign && (
@@ -572,11 +607,11 @@ export default function WorkOrders() {
       {/* Content */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full rounded-md" />)}
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-card border border-border rounded-md py-16 text-center text-muted-foreground">
-          <Filter className="mx-auto h-8 w-8 mb-3 opacity-30" />
+        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] py-16 text-center text-muted-foreground">
+          <Filter className="mx-auto h-8 w-8 mb-3 opacity-20" />
           <p className="text-sm font-medium">Nenhuma OS encontrada</p>
           <p className="text-xs mt-1">Ajuste os filtros ou crie uma nova OS.</p>
         </div>
@@ -586,7 +621,7 @@ export default function WorkOrders() {
           {paginatedData.map((wo: any) => (
             <div
               key={wo.id}
-              className="bg-card border border-border rounded-md p-3 cursor-pointer active:bg-muted/50 transition-colors"
+              className="bg-card rounded-xl shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] p-3.5 cursor-pointer active:bg-muted/50 transition-colors"
               onClick={() => navigate(`/os/${wo.id}`)}
             >
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -594,18 +629,12 @@ export default function WorkOrders() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-mono text-muted-foreground">{wo.code}</span>
                     {memberships.length > 1 && (
-                      <Badge variant="secondary" className="text-[9px] h-4">
-                        <Building2 className="h-2.5 w-2.5 mr-0.5" />{tenantMap[wo.tenant_id] || ''}
-                      </Badge>
-                    )}
-                    {wo.visibility === 'customer' && (
-                      <Badge variant="outline" className="text-[9px] h-4 bg-info/10 text-info border-info/20">Cliente</Badge>
+                      <span className="text-[10px] text-muted-foreground">{tenantMap[wo.tenant_id] || ''}</span>
                     )}
                   </div>
                   <p className="text-sm font-medium truncate mt-0.5">{wo.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Solicitante: {getRequesterName(wo)}</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-1" />
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
@@ -624,9 +653,9 @@ export default function WorkOrders() {
         </div>
       ) : (
         /* Desktop: Row-based list */
-        <div className="bg-card border border-border rounded-md overflow-hidden divide-y divide-border">
+        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] overflow-hidden divide-y divide-border/50">
           {/* Header row */}
-          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/30">
+          <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/20">
             {canUpdate && (
               <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
                 <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
@@ -657,7 +686,7 @@ export default function WorkOrders() {
           {paginatedData.map((wo: any) => (
             <div
               key={wo.id}
-              className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors group"
+              className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors group"
             >
               {canUpdate && (
                 <div className="shrink-0 w-6" onClick={e => e.stopPropagation()}>
@@ -670,7 +699,7 @@ export default function WorkOrders() {
                 <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
               </div>
 
-              {/* Title block — two lines */}
+              {/* Title block */}
               <div className="flex-1 min-w-0 space-y-0.5" onClick={() => navigate(`/os/${wo.id}`)}>
                 <p className="text-sm font-medium truncate">{wo.title}</p>
                 <div className="flex items-center gap-2 md:hidden flex-wrap">
@@ -794,7 +823,7 @@ export default function WorkOrders() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <span>Exibindo {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} de {totalCount}</span>
             <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-              <SelectTrigger className="h-7 w-[70px] text-xs">
+              <SelectTrigger className="h-7 w-[70px] text-xs border-transparent">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -805,7 +834,7 @@ export default function WorkOrders() {
             </Select>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-transparent" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               ‹
             </Button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -815,12 +844,12 @@ export default function WorkOrders() {
               else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
               else pageNum = page - 2 + i;
               return (
-                <Button key={pageNum} variant={page === pageNum ? "default" : "outline"} size="sm" className="h-7 w-7 p-0 text-xs" onClick={() => setPage(pageNum)}>
+                <Button key={pageNum} variant={page === pageNum ? "default" : "ghost"} size="sm" className="h-7 w-7 p-0 text-xs" onClick={() => setPage(pageNum)}>
                   {pageNum}
                 </Button>
               );
             })}
-            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-transparent" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
               ›
             </Button>
           </div>
