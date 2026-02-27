@@ -59,7 +59,7 @@ export default function AdminDashboard() {
 
   const goToDept = (tenantId: string) => {
     switchTenant(tenantId);
-    navigate('/dashboard');
+    navigate('/os');
   };
 
   return (
