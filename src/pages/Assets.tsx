@@ -88,7 +88,7 @@ export default function Assets() {
   const unitMap = useMemo(() => Object.fromEntries(units.map((u: any) => [u.id, u.name])), [units]);
   const locationMap = useMemo(() => Object.fromEntries(allLocations.map((l: any) => [l.id, l])), [allLocations]);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map((c: any) => [c.id, c.name])), [categories]);
-  const collaboratorMap = useMemo(() => Object.fromEntries(collaborators.map((c: any) => [c.id, c.full_name])), [collaborators]);
+  const collaboratorMap = useMemo(() => Object.fromEntries(collaborators.map((c: any) => [c.id, { name: c.full_name, department: c.department }])), [collaborators]);
 
   // Locations filtered by form unit
   const formLocations = useMemo(
@@ -351,7 +351,7 @@ export default function Assets() {
           <SelectContent>
             {collaborators.filter((c: any) => c.is_active).map((c: any) => (
               <SelectItem key={c.id} value={c.id}>
-                {c.full_name}{c.matricula ? ` (${c.matricula})` : ''}
+                {c.full_name}{c.department ? ` — ${c.department}` : ''}{c.matricula ? ` (${c.matricula})` : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -561,7 +561,14 @@ export default function Assets() {
                   <TableCell className="text-xs text-muted-foreground">{unitMap[a.unit_id] || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{locationMap[a.location_id]?.name || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{categoryMap[a.category_id] || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{collaboratorMap[a.collaborator_id] || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {collaboratorMap[a.collaborator_id]
+                      ? <>
+                          {collaboratorMap[a.collaborator_id].name}
+                          {collaboratorMap[a.collaborator_id].department && <span className="text-muted-foreground/60"> — {collaboratorMap[a.collaborator_id].department}</span>}
+                        </>
+                      : '-'}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
