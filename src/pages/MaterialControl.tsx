@@ -10,9 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
@@ -20,7 +23,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   Package, Plus, Search, ChevronLeft, ChevronRight,
   ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar,
-  Download, Loader2, Trash2, X,
+  Download, Loader2, Trash2, X, Check,
   ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -77,6 +80,7 @@ export default function MaterialControl() {
   const [movRef, setMovRef] = useState('');
   const [movMonth, setMovMonth] = useState(() => monthKey(new Date()));
   const [saving, setSaving] = useState(false);
+  const [itemComboOpen, setItemComboOpen] = useState(false);
 
   // Selection & bulk
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -238,7 +242,7 @@ export default function MaterialControl() {
       queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
       queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
       setAddMovOpen(false);
-      setMovItemId(''); setMovQty(''); setMovRef('');
+      setMovItemId(''); setMovQty(''); setMovRef(''); setItemComboOpen(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar');
     } finally { setSaving(false); }
@@ -295,11 +299,51 @@ export default function MaterialControl() {
               <DialogHeader><DialogTitle>Registrar Movimentação</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
-                  <Label>Item</Label>
-                  <Select value={movItemId} onValueChange={setMovItemId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o item" /></SelectTrigger>
-                    <SelectContent>{items.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Label>Item *</Label>
+                  <Popover open={itemComboOpen} onOpenChange={setItemComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={itemComboOpen}
+                        className="w-full justify-between font-normal h-10"
+                      >
+                        {movItemId
+                          ? items.find(i => i.id === movItemId)?.name || 'Item selecionado'
+                          : 'Buscar e selecionar item...'}
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Digite para buscar..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {items.map(i => (
+                              <CommandItem
+                                key={i.id}
+                                value={`${i.name} ${i.sku || ''}`}
+                                onSelect={() => {
+                                  setMovItemId(i.id);
+                                  setItemComboOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", movItemId === i.id ? "opacity-100" : "opacity-0")} />
+                                <div className="flex flex-col">
+                                  <span>{i.name}</span>
+                                  {i.sku && <span className="text-xs text-muted-foreground">{i.sku}</span>}
+                                </div>
+                                <Badge variant="secondary" className="ml-auto text-xs font-mono">
+                                  {i.current_level || 0}
+                                </Badge>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -334,8 +378,38 @@ export default function MaterialControl() {
                   <Label>Referência / Observação</Label>
                   <Input value={movRef} onChange={e => setMovRef(e.target.value)} placeholder="Ex: OS-2025-000123" />
                 </div>
+                {movItemId && movQty && parseInt(movQty) > 0 && (() => {
+                  const selectedItem = items.find(i => i.id === movItemId);
+                  if (!selectedItem) return null;
+                  const currentLevel = selectedItem.current_level || 0;
+                  const qty = parseInt(movQty);
+                  const projected = movType === 'in' ? currentLevel + qty : currentLevel - qty;
+                  return (
+                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Saldo atual</span>
+                        <span className="font-mono font-medium">{currentLevel}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{movType === 'in' ? 'Entrada' : 'Saída'}</span>
+                        <span className={cn("font-mono font-medium", movType === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive')}>
+                          {movType === 'in' ? '+' : '-'}{qty}
+                        </span>
+                      </div>
+                      <div className="border-t border-border/50 pt-1 flex justify-between text-xs">
+                        <span className="font-medium">Saldo projetado</span>
+                        <span className={cn("font-mono font-bold", projected < 0 ? 'text-destructive' : '')}>
+                          {projected}
+                        </span>
+                      </div>
+                      {projected < 0 && (
+                        <p className="text-[11px] text-destructive">⚠ Saldo ficará negativo</p>
+                      )}
+                    </div>
+                  );
+                })()}
                 <Button className="w-full" onClick={handleAddMovement} disabled={saving || !movItemId || !movQty}>
-                  {saving ? 'Salvando...' : 'Registrar'}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Salvando...</> : 'Registrar Movimentação'}
                 </Button>
               </div>
             </DialogContent>
