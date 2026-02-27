@@ -550,23 +550,23 @@ export default function Assets() {
             <TableBody>
               {filtered.map((a: any) => (
                 <TableRow key={a.id} className="group">
-                  <TableCell className="text-sm font-medium">{a.name}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{a.patrimony_code || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{a.serial_number || '-'}</TableCell>
+                  <TableCell className="text-sm font-medium whitespace-nowrap max-w-[200px] truncate">{a.name}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.patrimony_code || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.serial_number || '-'}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`text-[11px] ${statusColorMap[a.status]}`}>
                       {statusLabelsMap[a.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{unitMap[a.unit_id] || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{locationMap[a.location_id]?.name || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{categoryMap[a.category_id] || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{unitMap[a.unit_id] || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{locationMap[a.location_id]?.name || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{categoryMap[a.category_id] || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap max-w-[180px]">
                     {collaboratorMap[a.collaborator_id]
-                      ? <>
+                      ? <div className="truncate" title={`${collaboratorMap[a.collaborator_id].name}${collaboratorMap[a.collaborator_id].department ? ` — ${collaboratorMap[a.collaborator_id].department}` : ''}`}>
                           {collaboratorMap[a.collaborator_id].name}
                           {collaboratorMap[a.collaborator_id].department && <span className="text-muted-foreground/60"> — {collaboratorMap[a.collaborator_id].department}</span>}
-                        </>
+                        </div>
                       : '-'}
                   </TableCell>
                   <TableCell className="text-right">
