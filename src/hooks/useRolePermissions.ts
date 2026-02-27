@@ -43,7 +43,7 @@ export function useRolePermissions() {
       const headers = await getAuthHeaders();
       // Use upsert (POST with on_conflict) so new permissions that don't have rows yet still work
       const res = await fetch(
-        `${BASE_URL}/rest/v1/role_permissions`,
+        `${BASE_URL}/rest/v1/role_permissions?on_conflict=role,permission`,
         {
           method: 'POST',
           headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
