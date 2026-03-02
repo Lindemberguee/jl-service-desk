@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, useScroll, useTransform, useInView, useSpring } from 'framer-motion';
 import {
   ClipboardList, BarChart3, Bell, Package, Shield, Users, Zap, Clock,
   Star, CheckCircle2, ArrowRight, ChevronDown, Wrench, Gauge, Eye,
   Smartphone, Globe, Lock, TrendingUp, Award, Headphones,
   Palette, StickyNote, AlarmClock, Calendar, Layout, UserCheck,
-  Building2, MapPin, FileText, ListChecks, Timer, Pause, Play,
-  RotateCcw, Download, Upload, Search, Filter, Settings, Activity,
-  ShieldCheck, Layers, MonitorSmartphone, Share2, Undo2, Redo2,
-  Maximize, Image, PenTool, Bookmark, FolderOpen, Tag, Hash,
+  Building2, MapPin, FileText, ListChecks, Timer, Settings, Activity,
+  ShieldCheck, Layers, MonitorSmartphone, Share2,
+  Maximize, Bookmark, FolderOpen, Tag,
   BellRing, History, Cpu, Database, Key, CircleDot, Network,
   BarChart, PieChart, Workflow, ClipboardCheck, Boxes, AlertTriangle,
-  Plug, Bot
+  Bot, Target, Sparkles, Play, ChevronRight, Menu, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ import screenshotWorkorders from '@/assets/showcase/screenshot-workorders.jpg';
 import screenshotStock from '@/assets/showcase/screenshot-stock.jpg';
 
 /* ------------------------------------------------------------------ */
-/*  Animated counter                                                   */
+/*  AnimatedCounter                                                    */
 /* ------------------------------------------------------------------ */
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
   const ref = useRef(null);
@@ -47,28 +46,29 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
 }
 
 /* ------------------------------------------------------------------ */
-/*  Floating particles background                                     */
+/*  Particles                                                          */
 /* ------------------------------------------------------------------ */
 function ParticlesOverlay() {
+  const particles = useMemo(() =>
+    Array.from({ length: 40 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: 3 + Math.random() * 5,
+      delay: Math.random() * 3,
+      size: Math.random() > 0.7 ? 'w-1.5 h-1.5' : 'w-1 h-1',
+    }))
+  , []);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 30 }).map((_, i) => (
+      {particles.map(p => (
         <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full bg-blue-400/30"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.2, 0.6, 0.2],
-          }}
-          transition={{
-            duration: 3 + Math.random() * 4,
-            repeat: Infinity,
-            delay: Math.random() * 3,
-          }}
+          key={p.id}
+          className={cn("absolute rounded-full bg-blue-400/20", p.size)}
+          style={{ left: p.left, top: p.top }}
+          animate={{ y: [0, -40, 0], opacity: [0.1, 0.5, 0.1] }}
+          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay }}
         />
       ))}
     </div>
@@ -76,20 +76,20 @@ function ParticlesOverlay() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section wrapper with reveal animation                             */
+/*  Section with parallax                                              */
 /* ------------------------------------------------------------------ */
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-100px' });
+  const inView = useInView(ref, { once: true, margin: '-80px' });
 
   return (
     <motion.section
       ref={ref}
       id={id}
       className={cn('relative py-24 md:py-32', className)}
-      initial={{ opacity: 0, y: 50 }}
+      initial={{ opacity: 0, y: 60 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, ease: 'easeOut' }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
     >
       {children}
     </motion.section>
@@ -97,11 +97,11 @@ function Section({ children, className, id }: { children: React.ReactNode; class
 }
 
 /* ------------------------------------------------------------------ */
-/*  Glowing card component                                             */
+/*  GlowCard                                                           */
 /* ------------------------------------------------------------------ */
 function GlowCard({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-50px' });
+  const inView = useInView(ref, { once: true, margin: '-40px' });
 
   return (
     <motion.div
@@ -122,13 +122,13 @@ function GlowCard({ children, className, delay = 0 }: { children: React.ReactNod
 }
 
 /* ------------------------------------------------------------------ */
-/*  Feature detail card with sub-features                              */
+/*  Feature card                                                       */
 /* ------------------------------------------------------------------ */
 function FeatureDetailCard({ icon: Icon, title, desc, color, subFeatures, delay = 0 }: {
   icon: any; title: string; desc: string; color: string; subFeatures: string[]; delay?: number;
 }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-50px' });
+  const inView = useInView(ref, { once: true, margin: '-40px' });
 
   return (
     <motion.div
@@ -159,9 +159,23 @@ function FeatureDetailCard({ icon: Icon, title, desc, color, subFeatures, delay 
 }
 
 /* ------------------------------------------------------------------ */
+/*  Parallax image section                                             */
+/* ------------------------------------------------------------------ */
+function ParallaxImage({ src, alt }: { src: string; alt: string }) {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const y = useTransform(scrollYProgress, [0, 1], ['-10%', '10%']);
+
+  return (
+    <div ref={ref} className="relative overflow-hidden rounded-2xl">
+      <motion.img src={src} alt={alt} className="w-full h-auto scale-110" style={{ y }} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Data                                                               */
 /* ------------------------------------------------------------------ */
-
 const coreModules = [
   {
     icon: ClipboardList, title: 'Ordens de Serviço', color: 'from-blue-500 to-cyan-500',
@@ -170,30 +184,24 @@ const coreModules = [
       'Workflow: Abrir → Triagem → Execução → Concluir → Encerrar',
       'Cronômetro em tempo real (Iniciar, Pausar, Retomar)',
       'SLA inteligente com prazos de resposta e resolução',
-      'Prioridades: Baixa, Média, Alta, Crítica',
       'Checklists dinâmicos com templates por categoria',
-      'Anexos com storage privado e rastreabilidade',
       'Custos de mão de obra e materiais integrados',
-      'Filtros avançados, ordenação e paginação server-side',
-      'Ações em massa: alteração de status e atribuição em lote',
-      'Exportação CSV completa',
-      'Visibilidade: Interna ou para Solicitante',
-      'Tags dinâmicas com atalhos de teclado',
+      'Ações em massa e exportação CSV completa',
+      'Tags dinâmicas, filtros avançados e paginação',
+      'Nota técnica com controle de visibilidade por permissão',
+      'Avaliação de qualidade e tempo pelo solicitante',
     ]
   },
   {
     icon: Package, title: 'Controle de Estoque', color: 'from-amber-500 to-orange-500',
     desc: 'Inventário inteligente com rastreabilidade por OS e alertas automáticos.',
     subFeatures: [
-      'CRUD completo de itens com SKU e unidade',
-      'Alertas visuais de nível mínimo/crítico',
+      'CRUD completo com SKU, marca, modelo e unidade',
+      'Alertas visuais de nível mínimo e crítico',
       'Movimentações: Entrada, Saída e Ajuste',
-      'Vinculação direta com Ordens de Serviço',
-      'Histórico detalhado de movimentações',
+      'Vinculação automática com Ordens de Serviço',
       'Importação/Exportação CSV (UTF-8 e Windows-1252)',
       'Download de modelo oficial para importação',
-      'Seleção e exclusão em massa',
-      'Busca com debounce e paginação',
     ]
   },
   {
@@ -205,58 +213,75 @@ const coreModules = [
       'Indicadores de SLA e tempo médio de resolução',
       'Custos consolidados (mão de obra + materiais)',
       'OS recentes com acesso rápido',
-      'Filtros por período e departamento',
     ]
   },
   {
     icon: Bell, title: 'Notificações em Tempo Real', color: 'from-violet-500 to-purple-500',
-    desc: 'Sistema de alertas instantâneos via Supabase Realtime para toda a equipe.',
+    desc: 'Sistema de alertas instantâneos via Realtime para toda a equipe.',
     subFeatures: [
       'Notificações push com toast e som',
       'Badge com contador de não lidas',
       'Sincronização entre múltiplos dispositivos',
-      'Alertas de atribuição, mudança de status e comentários',
+      'Alertas de atribuição, status e comentários',
       'Marcação individual e em massa como lida',
-      'Links diretos para os registros relevantes',
+    ]
+  },
+  {
+    icon: Target, title: 'KPIs & OKRs', color: 'from-indigo-500 to-violet-500',
+    desc: 'Indicadores de performance e objetivos estratégicos para gestão orientada por dados.',
+    subFeatures: [
+      'Dashboard de KPIs com gráficos e metas',
+      'Ciclos de OKR (trimestral, semestral, anual)',
+      'Key Results com check-ins periódicos',
+      'Indicadores de confiança e progresso visual',
+      'Vinculação entre KPIs e resultados-chave',
+    ]
+  },
+  {
+    icon: Wrench, title: 'Gestão de Manutenção', color: 'from-teal-500 to-green-500',
+    desc: 'Manutenção preventiva, corretiva e preditiva com controle total do ciclo.',
+    subFeatures: [
+      'Tipos: Preventiva, Corretiva, Preditiva, Instalação',
+      'Status: Agendada, Em andamento, Concluída, Atrasada',
+      'Vinculação com ativos e ordens de serviço',
+      'Registro de custo, peças utilizadas e observações',
+      'Agendamento e rastreio de técnico responsável',
     ]
   },
 ];
 
 const accessControl = [
   {
-    icon: Shield, title: 'Controle de Acesso (RBAC)', color: 'from-rose-500 to-pink-500',
-    desc: 'Sistema robusto de permissões baseado em 7 cargos com isolamento multi-tenant.',
+    icon: Shield, title: 'RBAC com 7 Cargos', color: 'from-rose-500 to-pink-500',
+    desc: 'Sistema robusto de permissões com isolamento multi-tenant.',
     subFeatures: [
       '7 cargos: Super Admin, Admin, Coordenador, Técnico, Analista, Solicitante, Leitura',
       'Matriz visual de permissões com toggles dinâmicos',
-      'Permissões granulares por módulo e ação (ler, criar, editar, excluir)',
-      'Tabela role_permissions com prioridade sobre fallbacks estáticos',
+      'Permissões granulares por módulo e ação',
       'PermissionGuard em todas as rotas protegidas',
-      'Redirecionamento automático para destinos permitidos',
+      'Controle de visibilidade de nota técnica',
     ]
   },
   {
-    icon: Building2, title: 'Multi-departamento (Multi-tenant)', color: 'from-indigo-500 to-blue-500',
-    desc: 'Arquitetura de banco compartilhado com isolamento total via Row Level Security.',
+    icon: Building2, title: 'Multi-departamento', color: 'from-indigo-500 to-blue-500',
+    desc: 'Arquitetura multi-tenant com isolamento total via Row Level Security.',
     subFeatures: [
-      'Isolamento completo de dados por departamento (tenant_id)',
-      'RLS nativo do PostgreSQL em todas as tabelas',
+      'Isolamento completo de dados por departamento',
+      'RLS nativo em todas as tabelas',
       'Suporte a múltiplos departamentos por usuário',
-      'Super Admin com bypass global para gestão total',
-      'Coordenador restrito ao escopo do seu departamento',
-      'Configurações independentes por tenant (cores, logo, dark mode)',
+      'Super Admin com bypass global',
+      'Configurações independentes por tenant',
     ]
   },
   {
     icon: History, title: 'Auditoria Global', color: 'from-emerald-500 to-teal-500',
-    desc: 'Rastreamento completo de todas as ações do sistema com retenção configurável.',
+    desc: 'Rastreamento completo de todas as ações com retenção configurável.',
     subFeatures: [
       'Log de criação, edição e exclusão em todos os módulos',
-      'Captura de: autor, tenant_id, diff de dados',
-      'Metadados: IP público, Navegador, SO e Dispositivo',
-      'Aba Global para ações de Super Admin sem tenant',
+      'Metadados: IP, navegador, SO e dispositivo',
       'Gráfico de tendências (auth vs operações)',
-      'Paginação server-side (50 registros) e retenção configurável',
+      'Paginação server-side e retenção configurável',
+      'Aba Global para ações de Super Admin',
     ]
   },
 ];
@@ -264,41 +289,34 @@ const accessControl = [
 const toolsFeatures = [
   {
     icon: Palette, title: 'Canvas Colaborativo', color: 'from-purple-500 to-fuchsia-500',
-    desc: 'Ferramenta de diagramação avançada com colaboração em tempo real entre equipes.',
+    desc: 'Diagramação avançada com colaboração em tempo real.',
     subFeatures: [
-      '15 tipos de nós (retângulo, círculo, diamante, texto, etc.)',
-      '8 handles direcionais com indicadores de entrada/saída',
-      'Criação automática de blocos por arrasto de conexão',
+      '15+ tipos de nós com 8 handles direcionais',
       'Setas personalizáveis: reto, curva ou angulado',
       'Efeitos neon, labels editáveis e espessura variável',
-      'Colaboração em tempo real via Supabase Realtime',
-      'Compartilhamento com permissões (visualizar/editar)',
-      'Histórico completo: Undo/Redo (Ctrl+Z / Ctrl+Y)',
-      'Exportação PNG e modo tela cheia (F11/ESC)',
-      'Salvamento automático com debounce de 1.5s',
+      'Colaboração em tempo real com presença',
+      'Undo/Redo, exportação PNG e modo tela cheia',
+      'Compartilhamento público com token seguro',
     ]
   },
   {
     icon: StickyNote, title: 'Anotações Enterprise', color: 'from-yellow-500 to-amber-500',
-    desc: 'Editor profissional com sincronização robusta e proteção contra perda de dados.',
+    desc: 'Editor profissional com sincronização robusta.',
     subFeatures: [
-      'Editor híbrido: Rich Text (com cores) + Markdown (split-view)',
-      'Motor de sincronização com fila, retry (3x) e flush em navegação',
-      'Proteção via beforeunload contra perda de dados',
-      'Indicador visual de estado de sincronização',
+      'Editor híbrido: Rich Text + Markdown (split-view)',
+      'Motor de sincronização com fila e retry automático',
+      'Proteção contra perda de dados (beforeunload)',
       'Organização por pastas e tags personalizadas',
-      'Compartilhamento interno com permissões (leitura/edição)',
-      'Fixar notas importantes no topo',
+      'Compartilhamento interno com permissões',
     ]
   },
   {
     icon: AlarmClock, title: 'Lembretes Inteligentes', color: 'from-green-500 to-emerald-500',
-    desc: 'Sistema completo de lembretes com recorrência e categorização.',
+    desc: 'Lembretes com recorrência e categorização completa.',
     subFeatures: [
       'Prioridades: Baixa, Média, Alta',
+      'Recorrência: diária, semanal, mensal',
       'Categorias e tags personalizadas',
-      'Data e hora de vencimento',
-      'Recorrência configurável (diária, semanal, mensal)',
       'Marcação de conclusão com timestamp',
       'Filtros e busca avançada',
     ]
@@ -310,63 +328,60 @@ const operationalFeatures = [
     icon: MonitorSmartphone, title: 'Painel do Técnico', color: 'from-teal-500 to-cyan-500',
     desc: 'Interface mobile-first exclusiva para técnicos em campo.',
     subFeatures: [
-      'Navegação inferior otimizada para mobile',
-      'Visualização restrita às OS atribuídas ao técnico',
-      'Cronômetro em tempo real para rastreio de mão de obra',
-      'Preenchimento de checklists e lançamento de materiais',
-      'Workflow completo: Iniciar, Pausar, Retomar, Resolver',
+      'Navegação inferior estilo app com glassmorphism',
+      'Hero card para tarefa em execução',
+      'Cronômetro em tempo real para mão de obra',
+      'Checklists e lançamento de materiais',
+      'Workflow: Iniciar, Pausar, Retomar, Resolver',
     ]
   },
   {
     icon: UserCheck, title: 'Portal do Solicitante', color: 'from-sky-500 to-blue-500',
-    desc: 'Portal simplificado para abertura e acompanhamento de chamados.',
+    desc: 'Portal simplificado para abertura e acompanhamento.',
     subFeatures: [
-      'Interface limpa e intuitiva sem elementos técnicos',
-      'Abertura de novos chamados com descrição e prioridade',
+      'Interface limpa sem elementos técnicos',
+      'Abertura de chamados com prioridade',
       'Acompanhamento de status em tempo real',
-      'Notificações de atualizações',
+      'Avaliação de qualidade e tempo',
       'Perfil pessoal com dados de contato',
     ]
   },
   {
     icon: Settings, title: 'Painel Administrativo', color: 'from-gray-500 to-slate-500',
-    desc: 'Gestão centralizada para Super Admins com controle total do ecossistema.',
+    desc: 'Gestão centralizada para Super Admins.',
     subFeatures: [
-      'Gestão de departamentos (dados operacionais)',
-      'Criação e gestão de usuários por departamento',
+      'Gestão de departamentos e usuários',
       'Redefinição administrativa de senhas',
-      'Ativação/desativação de perfis',
-      'Configurações globais do sistema',
-      'Módulo de Saúde do Sistema (performance)',
+      'Módulo de Saúde do Sistema',
       'Cadastro fechado: sem self-signup público',
+      'Identidade Visual personalizada por tenant',
     ]
   },
   {
-    icon: FileText, title: 'Dados Mestres (Cadastros)', color: 'from-orange-500 to-red-500',
-    desc: 'CRUD completo de todas as entidades base do sistema.',
+    icon: FileText, title: 'Dados Mestres', color: 'from-orange-500 to-red-500',
+    desc: 'CRUD completo de todas as entidades base.',
     subFeatures: [
-      'Unidades (Prédios/Campus)',
-      'Locais (Salas/Espaços) — hierárquico por unidade',
-      'Categorias de OS com subcategorias',
+      'Unidades, Locais, Categorias e Subcategorias',
       'Solicitantes com criação de conta de acesso',
+      'Colaboradores com matrícula e departamento',
       'Campos: cargo, setor, documentos, observações',
-      'Controle de ativação/desativação de acesso',
+      'Controle de ativação/desativação',
     ]
   },
   {
     icon: Boxes, title: 'Gestão de Ativos', color: 'from-lime-500 to-green-500',
-    desc: 'Controle de patrimônio com vínculo direto às ordens de serviço.',
+    desc: 'Controle de patrimônio vinculado às OS.',
     subFeatures: [
-      'Cadastro com número de série e código patrimonial',
+      'Nº de série e código patrimonial',
       'Status: Ativo, Inativo, Em Manutenção, Descartado',
-      'Vinculação a unidade, local e categoria',
+      'Componentes com vínculo ao estoque',
+      'Histórico completo de manutenções',
       'Metadados flexíveis em JSON',
-      'Histórico de manutenções via OS',
     ]
   },
   {
     icon: BarChart, title: 'Relatórios', color: 'from-pink-500 to-rose-500',
-    desc: 'Relatórios operacionais com exportação e visualizações gráficas.',
+    desc: 'Relatórios operacionais com gráficos.',
     subFeatures: [
       'Relatórios por status, prioridade e período',
       'Métricas de SLA e produtividade',
@@ -386,15 +401,15 @@ const screenshots = [
 const plans = [
   {
     name: 'Starter', price: 'Grátis', period: '', desc: 'Para começar', popular: false,
-    features: ['3 usuários', '50 OS/mês', 'Dashboard básico', '1 departamento', 'Notificações básicas', 'Estoque (50 itens)'],
+    features: ['3 usuários', '50 OS/mês', 'Dashboard básico', '1 departamento', 'Notificações', 'Estoque (50 itens)'],
   },
   {
     name: 'Professional', price: 'R$ 149', period: '/mês', desc: 'Para crescer', popular: true,
     features: [
       '25 usuários', 'OS ilimitadas', 'Relatórios completos', 'Multi-departamento',
       'SLA + Custos integrados', 'Estoque ilimitado', 'Auditoria completa',
-      'Canvas colaborativo', 'Anotações Enterprise', 'Lembretes', 'Portal do Solicitante',
-      'Painel do Técnico mobile', 'Importação/Exportação CSV',
+      'Canvas colaborativo', 'Anotações Enterprise', 'KPIs & OKRs',
+      'Portal do Solicitante', 'Painel do Técnico mobile', 'Importação/Exportação CSV',
     ],
   },
   {
@@ -402,7 +417,7 @@ const plans = [
     features: [
       'Ilimitado em tudo', 'Tudo do Professional', 'API + Integrações',
       'SSO / SAML', 'Suporte dedicado 24/7', 'SLA premium contratual',
-      'Ambiente dedicado', 'Personalização de marca', 'Treinamento incluso',
+      'Ambiente dedicado', 'Personalização total', 'Treinamento incluso',
     ],
   },
 ];
@@ -410,29 +425,29 @@ const plans = [
 const testimonials = [
   { name: 'Carlos Mendes', role: 'Gerente de Manutenção', company: 'Indústria Nova', text: 'Reduzimos o tempo de resposta em 60%. O canvas colaborativo revolucionou nosso planejamento de manutenção preventiva.', rating: 5 },
   { name: 'Ana Lucia Silva', role: 'Coord. Facilities', company: 'Hospital São Lucas', text: 'O controle de acesso multi-departamento é incrível. Cada equipe vê apenas seus dados, mas eu tenho visão total.', rating: 5 },
-  { name: 'Roberto Farias', role: 'Diretor de Operações', company: 'Grupo TechPark', text: 'Gerenciamos 5 unidades com uma única plataforma. A auditoria e o SLA nos dão a confiança que precisamos.', rating: 5 },
+  { name: 'Roberto Farias', role: 'Dir. Operações', company: 'Grupo TechPark', text: 'Gerenciamos 5 unidades com uma única plataforma. A auditoria e o SLA nos dão a confiança que precisamos.', rating: 5 },
   { name: 'Mariana Costa', role: 'Supervisora Técnica', company: 'Logística Express', text: 'O painel do técnico mobile é perfeito. Minha equipe em campo registra tudo em tempo real, sem papel.', rating: 5 },
 ];
 
 const techStack = [
-  { icon: Zap, title: 'Tempo real', desc: 'Supabase Realtime em toda a plataforma' },
+  { icon: Zap, title: 'Tempo real', desc: 'Comunicação instantânea em toda a plataforma' },
   { icon: Database, title: 'PostgreSQL', desc: 'Banco robusto com RLS nativo' },
   { icon: Lock, title: 'RLS por tenant', desc: 'Isolamento total no nível do banco' },
   { icon: Smartphone, title: '100% Responsivo', desc: 'Desktop, tablet e mobile' },
   { icon: Globe, title: 'Cloud nativo', desc: 'Infraestrutura escalável e distribuída' },
-  { icon: ShieldCheck, title: 'Auditoria total', desc: 'Cada ação é rastreada e registrada' },
+  { icon: ShieldCheck, title: 'Auditoria total', desc: 'Cada ação é rastreada' },
   { icon: TrendingUp, title: 'Atualizações contínuas', desc: 'Novas funcionalidades todo mês' },
   { icon: Headphones, title: 'Suporte humano', desc: 'Time dedicado para sua operação' },
 ];
 
 const roleDetails = [
-  { role: 'Super Admin', desc: 'Acesso total ao ecossistema. Gerencia todos os departamentos, usuários e configurações globais.', color: 'text-red-400' },
-  { role: 'Administrador', desc: 'Gestão completa do departamento. Cria usuários, define permissões e monitora operações.', color: 'text-orange-400' },
-  { role: 'Coordenador', desc: 'Gerencia workflow de OS, cadastros setoriais e equipe técnica do seu departamento.', color: 'text-yellow-400' },
-  { role: 'Técnico', desc: 'Executa OS atribuídas com cronômetro, checklists e lançamento de materiais via painel mobile.', color: 'text-green-400' },
-  { role: 'Analista', desc: 'Permissões de gestão em estoque e materiais. Pode criar OS mas não atribuir responsáveis.', color: 'text-cyan-400' },
-  { role: 'Solicitante', desc: 'Abre chamados pelo portal simplificado e acompanha o status em tempo real.', color: 'text-blue-400' },
-  { role: 'Leitura', desc: 'Visualização completa do portal sem permissão de edição. Ideal para supervisão.', color: 'text-slate-400' },
+  { role: 'Super Admin', desc: 'Acesso total. Gerencia departamentos, usuários e configurações globais.', color: 'text-red-400', icon: Key },
+  { role: 'Administrador', desc: 'Gestão completa do departamento, cria usuários e define permissões.', color: 'text-orange-400', icon: Settings },
+  { role: 'Coordenador', desc: 'Gerencia workflow de OS, cadastros e equipe do departamento.', color: 'text-yellow-400', icon: Workflow },
+  { role: 'Técnico', desc: 'Executa OS com cronômetro, checklists e materiais via painel mobile.', color: 'text-green-400', icon: Wrench },
+  { role: 'Analista', desc: 'Gestão de estoque, materiais, relatórios e KPIs.', color: 'text-cyan-400', icon: BarChart },
+  { role: 'Solicitante', desc: 'Abre chamados pelo portal simplificado e acompanha o status.', color: 'text-blue-400', icon: UserCheck },
+  { role: 'Leitura', desc: 'Visualização completa sem edição. Ideal para supervisão.', color: 'text-slate-400', icon: Eye },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -440,69 +455,111 @@ const roleDetails = [
 /* ------------------------------------------------------------------ */
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
-  const headerOpacity = useTransform(scrollYProgress, [0, 0.05], [0, 1]);
+  const headerOpacity = useTransform(scrollYProgress, [0, 0.03], [0, 1]);
   const springProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
   const [activeScreenshot, setActiveScreenshot] = useState(0);
+  const [mobileMenu, setMobileMenu] = useState(false);
+
+  // Hero parallax
+  const heroRef = useRef(null);
+  const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const heroY = useTransform(heroProgress, [0, 1], ['0%', '40%']);
+  const heroScale = useTransform(heroProgress, [0, 1], [1, 1.15]);
+  const heroOpacity = useTransform(heroProgress, [0, 0.8], [1, 0]);
 
   useEffect(() => {
     const timer = setInterval(() => setActiveScreenshot(p => (p + 1) % screenshots.length), 5000);
     return () => clearInterval(timer);
   }, []);
 
+  const navLinks = [
+    { href: '#modules', label: 'Módulos' },
+    { href: '#tools', label: 'Ferramentas' },
+    { href: '#access', label: 'Segurança' },
+    { href: '#screenshots', label: 'Sistema' },
+    { href: '#roles', label: 'Perfis' },
+    { href: '#pricing', label: 'Planos' },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       {/* Progress bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-500 z-50 origin-left"
+        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-500 z-50 origin-left"
         style={{ scaleX: springProgress }}
       />
 
       {/* Sticky header */}
       <motion.header
         className="fixed top-0 inset-x-0 z-40 backdrop-blur-xl border-b border-slate-800/50"
-        style={{ opacity: headerOpacity, backgroundColor: 'rgba(2, 6, 23, 0.8)' }}
+        style={{ opacity: headerOpacity, backgroundColor: 'rgba(2, 6, 23, 0.85)' }}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Wrench className="h-6 w-6 text-blue-500" />
-            <span className="font-bold text-lg">JL Service Desk</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
+              <span className="text-white font-extrabold text-sm">O</span>
+            </div>
+            <span className="font-bold text-lg tracking-tight">
+              Ord<span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Fy</span>
+            </span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-slate-400">
-            <a href="#modules" className="hover:text-white transition-colors">Módulos</a>
-            <a href="#tools" className="hover:text-white transition-colors">Ferramentas</a>
-            <a href="#access" className="hover:text-white transition-colors">Controle de Acesso</a>
-            <a href="#screenshots" className="hover:text-white transition-colors">Sistema</a>
-            <a href="#roles" className="hover:text-white transition-colors">Perfis</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Planos</a>
+            {navLinks.map(l => (
+              <a key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</a>
+            ))}
           </nav>
-          <a href="/login">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6">
-              Acessar
-            </Button>
-          </a>
+          <div className="flex items-center gap-3">
+            <a href="/login" className="hidden md:block">
+              <Button className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white rounded-xl px-6 shadow-lg shadow-blue-500/20">
+                Acessar
+              </Button>
+            </a>
+            <button className="md:hidden text-slate-400" onClick={() => setMobileMenu(!mobileMenu)}>
+              {mobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile menu */}
+        {mobileMenu && (
+          <motion.div
+            className="md:hidden bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 px-6 py-4 space-y-3"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {navLinks.map(l => (
+              <a key={l.href} href={l.href} onClick={() => setMobileMenu(false)} className="block text-sm text-slate-300 hover:text-white py-2">{l.label}</a>
+            ))}
+            <a href="/login"><Button className="w-full mt-2 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl">Acessar</Button></a>
+          </motion.div>
+        )}
       </motion.header>
 
       {/* ============================================================ */}
-      {/*  HERO                                                         */}
+      {/*  HERO with Parallax                                           */}
       {/* ============================================================ */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/80 to-slate-950" />
-        </div>
-
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <motion.div className="absolute inset-0" style={{ y: heroY, scale: heroScale }}>
+          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-30" />
+        </motion.div>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/70 to-slate-950" />
+        
         <ParticlesOverlay />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
+        {/* Glowing orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <motion.div className="relative z-10 max-w-6xl mx-auto px-6 text-center" style={{ opacity: heroOpacity }}>
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <Badge className="mb-8 text-sm px-5 py-2 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/15 backdrop-blur-sm">
-              🚀 Plataforma completa de gestão de manutenção e facilities
+            <Badge className="mb-8 text-sm px-5 py-2.5 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/15 backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5 mr-2" />
+              Plataforma completa de gestão de manutenção e facilities
             </Badge>
           </motion.div>
 
           <motion.h1
-            className="text-5xl md:text-7xl lg:text-[5.5rem] font-extrabold tracking-tight leading-[1.05]"
+            className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05]"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15 }}
@@ -522,8 +579,8 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            Ordens de serviço, estoque, equipes, canvas colaborativo, anotações, lembretes,
-            auditoria e relatórios — tudo integrado com 7 perfis de acesso,
+            Ordens de serviço, estoque, ativos, manutenção, equipes, canvas colaborativo,
+            KPIs, anotações, auditoria e relatórios — tudo integrado com 7 perfis de acesso,
             multi-departamento e notificações instantâneas.
           </motion.p>
 
@@ -534,45 +591,45 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.45 }}
           >
             <a href="/login">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-10 text-lg h-14 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white px-10 text-lg h-14 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all">
                 Começar grátis <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </a>
             <a href="/showcase">
               <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800/50 px-8 text-lg h-14 rounded-xl backdrop-blur-sm">
-                <Eye className="mr-2 h-5 w-5" /> Ver apresentação
+                <Play className="mr-2 h-5 w-5" /> Ver apresentação
               </Button>
             </a>
           </motion.div>
 
           <motion.div
-            className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto"
+            className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
             {[
+              { value: 18, suffix: '+', label: 'Módulos integrados' },
               { value: 7, suffix: '', label: 'Perfis de acesso' },
-              { value: 15, suffix: '+', label: 'Tipos de nó no Canvas' },
               { value: 10, suffix: '+', label: 'Status de OS' },
               { value: 100, suffix: '%', label: 'Tempo real' },
             ].map(s => (
               <div key={s.label} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                <div className="text-3xl md:text-5xl font-extrabold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   <AnimatedCounter target={s.value} suffix={s.suffix} />
                 </div>
-                <div className="text-xs text-slate-500 mt-1 uppercase tracking-wider">{s.label}</div>
+                <div className="text-xs text-slate-500 mt-2 uppercase tracking-widest">{s.label}</div>
               </div>
             ))}
           </motion.div>
-        </div>
+        </motion.div>
 
         <motion.div
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 8, 0] }}
+          animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <ChevronDown className="h-6 w-6 text-slate-500" />
+          <ChevronDown className="h-7 w-7 text-slate-500" />
         </motion.div>
       </section>
 
@@ -588,13 +645,12 @@ export default function LandingPage() {
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">operação</span>
             </h2>
             <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
-              Módulos integrados que cobrem todo o ciclo operacional, do chamado à conclusão
+              Módulos integrados que cobrem todo o ciclo operacional
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {coreModules.map((f, i) => (
-              <FeatureDetailCard key={f.title} {...f} delay={i * 0.1} />
+              <FeatureDetailCard key={f.title} {...f} delay={i * 0.08} />
             ))}
           </div>
         </div>
@@ -612,10 +668,9 @@ export default function LandingPage() {
               <span className="bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">além das OS</span>
             </h2>
             <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
-              Canvas colaborativo, anotações enterprise e lembretes — ferramentas profissionais integradas ao seu fluxo
+              Canvas colaborativo, anotações enterprise e lembretes integrados ao seu fluxo
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {toolsFeatures.map((f, i) => (
               <FeatureDetailCard key={f.title} {...f} delay={i * 0.1} />
@@ -625,7 +680,7 @@ export default function LandingPage() {
       </Section>
 
       {/* ============================================================ */}
-      {/*  ACCESS CONTROL & SECURITY                                    */}
+      {/*  ACCESS CONTROL                                               */}
       {/* ============================================================ */}
       <Section id="access" className="bg-slate-950">
         <div className="max-w-7xl mx-auto px-6">
@@ -635,11 +690,7 @@ export default function LandingPage() {
               Segurança{' '}
               <span className="bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">enterprise</span>
             </h2>
-            <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
-              RBAC com 7 cargos, isolamento multi-tenant via RLS e auditoria completa de todas as ações
-            </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {accessControl.map((f, i) => (
               <FeatureDetailCard key={f.title} {...f} delay={i * 0.1} />
@@ -649,7 +700,7 @@ export default function LandingPage() {
       </Section>
 
       {/* ============================================================ */}
-      {/*  ROLES DETAIL                                                 */}
+      {/*  ROLES                                                        */}
       {/* ============================================================ */}
       <Section id="roles" className="bg-gradient-to-b from-slate-950 via-slate-900/30 to-slate-950">
         <div className="max-w-7xl mx-auto px-6">
@@ -660,13 +711,12 @@ export default function LandingPage() {
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">um para cada necessidade</span>
             </h2>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {roleDetails.map((r, i) => (
               <GlowCard key={r.role} delay={i * 0.06} className="p-5">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
-                    <Users className={cn('h-4 w-4', r.color)} />
+                  <div className="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center">
+                    <r.icon className={cn('h-4 w-4', r.color)} />
                   </div>
                   <h4 className={cn('font-bold text-sm', r.color)}>{r.role}</h4>
                 </div>
@@ -688,11 +738,7 @@ export default function LandingPage() {
               Cada perfil,{' '}
               <span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">sua interface</span>
             </h2>
-            <p className="text-slate-400 mt-4 max-w-2xl mx-auto">
-              Painéis dedicados para técnicos e solicitantes, gestão administrativa centralizada e cadastros completos
-            </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {operationalFeatures.map((f, i) => (
               <FeatureDetailCard key={f.title} {...f} delay={i * 0.08} />
@@ -702,7 +748,7 @@ export default function LandingPage() {
       </Section>
 
       {/* ============================================================ */}
-      {/*  SCREENSHOTS                                                  */}
+      {/*  SCREENSHOTS with Parallax                                    */}
       {/* ============================================================ */}
       <Section id="screenshots" className="bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
         <div className="max-w-7xl mx-auto px-6">
@@ -732,6 +778,7 @@ export default function LandingPage() {
           </div>
 
           <div className="relative max-w-6xl mx-auto">
+            {/* Browser chrome */}
             <div className="bg-slate-800/80 rounded-t-2xl border border-slate-700/50 border-b-0 px-4 py-3 flex items-center gap-2">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-500/60" />
@@ -740,7 +787,7 @@ export default function LandingPage() {
               </div>
               <div className="flex-1 ml-4">
                 <div className="bg-slate-700/50 rounded-lg px-4 py-1.5 text-xs text-slate-400 max-w-md mx-auto text-center">
-                  jl-service-desk.lovable.app
+                  ordfy.app/{screenshots[activeScreenshot].title.toLowerCase().replace(/ /g, '-')}
                 </div>
               </div>
             </div>
@@ -772,7 +819,7 @@ export default function LandingPage() {
       </Section>
 
       {/* ============================================================ */}
-      {/*  TECH STACK / ADVANTAGES                                      */}
+      {/*  TECH STACK                                                    */}
       {/* ============================================================ */}
       <Section className="py-16 bg-slate-950">
         <div className="max-w-7xl mx-auto px-6">
@@ -844,7 +891,7 @@ export default function LandingPage() {
                       : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
                   )}
                 >
-                  Começar agora
+                  {p.popular ? 'Começar agora' : 'Saiba mais'}
                 </Button>
               </GlowCard>
             ))}
@@ -902,7 +949,9 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <Gauge className="h-14 w-14 text-blue-400 mx-auto mb-6" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center mx-auto mb-6">
+              <span className="text-white font-extrabold text-2xl">O</span>
+            </div>
             <h2 className="text-4xl md:text-6xl font-extrabold leading-tight">
               Pronto para transformar sua{' '}
               <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
@@ -910,8 +959,8 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-6 text-lg text-slate-400 max-w-xl mx-auto">
-              7 perfis de acesso, canvas colaborativo, auditoria global, SLA inteligente e muito mais.
-              Comece agora, sem cartão de crédito.
+              18+ módulos integrados, 7 perfis de acesso, SLA inteligente, auditoria global
+              e muito mais. Comece agora, sem cartão de crédito.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a href="/login">
@@ -921,7 +970,7 @@ export default function LandingPage() {
               </a>
               <a href="/showcase">
                 <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800/50 px-8 text-lg h-14 rounded-xl">
-                  <Eye className="mr-2 h-5 w-5" /> Ver apresentação interativa
+                  <Play className="mr-2 h-5 w-5" /> Apresentação interativa
                 </Button>
               </a>
             </div>
@@ -935,10 +984,14 @@ export default function LandingPage() {
       <footer className="border-t border-slate-800/50 py-12 bg-slate-950">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-blue-500" />
-              <span className="font-bold">JL Service Desk</span>
-              <span className="text-slate-600 text-sm ml-2">© 2026</span>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
+                <span className="text-white font-extrabold text-xs">O</span>
+              </div>
+              <span className="font-bold">
+                Ord<span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Fy</span>
+              </span>
+              <span className="text-slate-600 text-sm ml-2">© {new Date().getFullYear()}</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-slate-500">
               <a href="#" className="hover:text-white transition-colors">Termos</a>
