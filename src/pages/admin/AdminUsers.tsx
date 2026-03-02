@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,6 +70,7 @@ interface AuditLogEntry {
 
 export default function AdminUsers() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const [search, setSearch] = useState('');
@@ -279,8 +281,16 @@ export default function AdminUsers() {
     },
   });
 
+  const isSelfMembership = (membershipId: string) => {
+    const membership = memberships.find((m: any) => m.id === membershipId);
+    return membership?.user_id === user?.id;
+  };
+
   const toggleMembershipActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      if (!is_active && isSelfMembership(id)) {
+        throw new Error('SELF_ACTION');
+      }
       const { error } = await supabase.from('user_memberships').update({ is_active }).eq('id', id);
       if (error) throw error;
     },
@@ -289,10 +299,18 @@ export default function AdminUsers() {
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Acesso atualizado!' });
     },
+    onError: (err: any) => {
+      if (err.message === 'SELF_ACTION') {
+        toast({ title: 'Ação bloqueada', description: 'Você não pode desativar seu próprio acesso.', variant: 'destructive' });
+      }
+    },
   });
 
   const removeMembership = useMutation({
     mutationFn: async (id: string) => {
+      if (isSelfMembership(id)) {
+        throw new Error('SELF_ACTION');
+      }
       const { error } = await supabase.from('user_memberships').delete().eq('id', id);
       if (error) throw error;
     },
@@ -300,6 +318,11 @@ export default function AdminUsers() {
       await logAudit({ entity: 'membership', entityId: id, action: 'membership.deleted' });
       qc.invalidateQueries({ queryKey: ['admin_memberships'] });
       toast({ title: 'Acesso removido!' });
+    },
+    onError: (err: any) => {
+      if (err.message === 'SELF_ACTION') {
+        toast({ title: 'Ação bloqueada', description: 'Você não pode remover seu próprio acesso.', variant: 'destructive' });
+      }
     },
   });
 
