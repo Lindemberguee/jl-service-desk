@@ -662,6 +662,219 @@ export type Database = {
           },
         ]
       }
+      document_versions: {
+        Row: {
+          change_notes: string | null
+          created_at: string
+          document_id: string
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          storage_key: string | null
+          tenant_id: string
+          uploaded_by: string | null
+          version_number: number
+        }
+        Insert: {
+          change_notes?: string | null
+          created_at?: string
+          document_id: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          storage_key?: string | null
+          tenant_id: string
+          uploaded_by?: string | null
+          version_number?: number
+        }
+        Update: {
+          change_notes?: string | null
+          created_at?: string
+          document_id?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          storage_key?: string | null
+          tenant_id?: string
+          uploaded_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          asset_id: string | null
+          category: string | null
+          created_at: string
+          current_version: number | null
+          description: string | null
+          file_name: string
+          file_size: number | null
+          folder: string
+          id: string
+          is_archived: boolean | null
+          mime_type: string | null
+          storage_key: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+          work_order_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          category?: string | null
+          created_at?: string
+          current_version?: number | null
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          folder?: string
+          id?: string
+          is_archived?: boolean | null
+          mime_type?: string | null
+          storage_key?: string | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_id: string
+          work_order_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          category?: string | null
+          created_at?: string
+          current_version?: number | null
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          folder?: string
+          id?: string
+          is_archived?: boolean | null
+          mime_type?: string | null
+          storage_key?: string | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_articles: {
+        Row: {
+          author_id: string
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          is_published: boolean | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          views_count: number | null
+        }
+        Insert: {
+          author_id: string
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Update: {
+          author_id?: string
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_articles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_entries: {
         Row: {
           created_at: string
@@ -1747,6 +1960,127 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vault_access_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip: string | null
+          tenant_id: string
+          user_agent: string | null
+          user_id: string
+          vault_entry_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          tenant_id: string
+          user_agent?: string | null
+          user_id: string
+          vault_entry_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          tenant_id?: string
+          user_agent?: string | null
+          user_id?: string
+          vault_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_access_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_access_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_access_logs_vault_entry_id_fkey"
+            columns: ["vault_entry_id"]
+            isOneToOne: false
+            referencedRelation: "vault_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vault_entries: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string
+          id: string
+          last_rotated_at: string | null
+          notes_encrypted: string | null
+          password_encrypted: string | null
+          service_name: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          url: string | null
+          username_encrypted: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          last_rotated_at?: string | null
+          notes_encrypted?: string | null
+          password_encrypted?: string | null
+          service_name?: string | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          url?: string | null
+          username_encrypted?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_rotated_at?: string | null
+          notes_encrypted?: string | null
+          password_encrypted?: string | null
+          service_name?: string | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+          username_encrypted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
