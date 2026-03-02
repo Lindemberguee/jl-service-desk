@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.audit-auth-hook]
 verify_jwt = false
+
+[functions.vault-crypto]
+verify_jwt = false
