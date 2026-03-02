@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
-  UserCircle, Contact, Target, FileText,
+  UserCircle, Contact, Target, FileText, Trash2,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,7 @@ const infraItems: MenuItem[] = [
   { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read' },
   { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
   { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
+  { label: 'Descarte', icon: Trash2, path: '/descarte', permission: 'disposal:read' },
 ];
 
 const managementItems: MenuItem[] = [

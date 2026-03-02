@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target, Key,
+  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target, Key, Trash2,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -166,6 +166,14 @@ const permissionGroups: PermissionGroup[] = [
     permissions: [
       { key: 'kb:read', label: 'Visualizar', description: 'Acessar artigos da base de conhecimento' },
       { key: 'kb:manage', label: 'Gerenciar', description: 'Criar, editar e publicar artigos' },
+    ],
+  },
+  {
+    label: 'Descarte',
+    icon: Trash2,
+    permissions: [
+      { key: 'disposal:read', label: 'Visualizar', description: 'Acessar módulo de descarte e itens depreciados' },
+      { key: 'disposal:manage', label: 'Gerenciar', description: 'Registrar, aprovar e rejeitar descartes' },
     ],
   },
   {

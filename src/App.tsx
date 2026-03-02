@@ -41,6 +41,7 @@ import LandingPage from "@/pages/LandingPage";
 import PublicCanvasPage from "@/pages/PublicCanvasPage";
 import ApiDocsPage from "@/pages/ApiDocsPage";
 import DocumentsPage from "@/pages/DocumentsPage";
+import DisposalPage from "@/pages/DisposalPage";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
@@ -210,6 +211,7 @@ const App = () => (
               <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
               <Route path="kpis" element={<PermissionGuard permission="kpis:read"><KpisOkrsPage /></PermissionGuard>} />
               <Route path="documentos" element={<PermissionGuard permission="docs:read"><DocumentsPage /></PermissionGuard>} />
+              <Route path="descarte" element={<PermissionGuard permission="disposal:read"><DisposalPage /></PermissionGuard>} />
               <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
               <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
               <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />
