@@ -146,7 +146,23 @@ export function VaultManager() {
                       </Select>
                     </div>
                   </div>
-                  <div><Label>URL</Label><Input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} className="mt-1" placeholder="https://..." /></div>
+                  <div>
+                    <Label>URL</Label>
+                    <Input
+                      value={form.url}
+                      onChange={e => setForm(p => ({ ...p, url: e.target.value }))}
+                      onBlur={() => {
+                        if (form.url && !/^https?:\/\//i.test(form.url) && !/^\\\\/.test(form.url)) {
+                          setForm(p => ({ ...p, url: 'https://' + p.url }));
+                        }
+                      }}
+                      onFocus={() => {
+                        if (!form.url) setForm(p => ({ ...p, url: 'https://' }));
+                      }}
+                      className="mt-1"
+                      placeholder="https://..."
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Usuário</Label><Input value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value }))} className="mt-1" autoComplete="off" /></div>
                     <div><Label>Senha</Label><Input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} className="mt-1" autoComplete="new-password" /></div>
