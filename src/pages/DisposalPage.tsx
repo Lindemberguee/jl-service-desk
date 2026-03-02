@@ -307,6 +307,12 @@ export default function DisposalPage() {
     setEditingDetail(false);
   };
 
+  const handleReopen = async (d: Disposal) => {
+    await updateDisposal.mutateAsync({ id: d.id, status: 'pendente' as any, approved_by: null as any, approved_at: null as any, rejection_note: null as any });
+    toast.success('Descarte reaberto');
+    setShowDetail({ ...d, status: 'pendente' as any });
+  };
+
   const handleDelete = async () => {
     if (!showDetail) return;
     await deleteDisposal.mutateAsync(showDetail.id);
@@ -431,7 +437,7 @@ export default function DisposalPage() {
                               </TooltipTrigger>
                               <TooltipContent>Detalhes</TooltipContent>
                             </Tooltip>
-                            {canManage && d.status === 'pendente' && (
+                            {canManage && (
                               <>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -682,7 +688,7 @@ export default function DisposalPage() {
                     {/* Action buttons */}
                     <Separator />
                     <div className="flex gap-2 flex-wrap">
-                      {canManage && d.status === 'pendente' && (
+                      {canManage && (
                         <>
                           <Button variant="outline" size="sm" className="gap-1.5" onClick={startEdit}>
                             <Pencil className="h-3.5 w-3.5" /> Editar
@@ -691,13 +697,22 @@ export default function DisposalPage() {
                             {deleteDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir
                           </Button>
                           <div className="flex-1" />
-                          <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setShowReject(d.id)}>
-                            <XCircle className="h-3.5 w-3.5" /> Rejeitar
-                          </Button>
-                          <Button size="sm" className="gap-1.5" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>
-                            {approveDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                            Aprovar{d.origin_type === 'estoque' ? ' & Baixar' : ''}
-                          </Button>
+                          {d.status === 'pendente' && (
+                            <>
+                              <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setShowReject(d.id)}>
+                                <XCircle className="h-3.5 w-3.5" /> Rejeitar
+                              </Button>
+                              <Button size="sm" className="gap-1.5" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>
+                                {approveDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                Aprovar{d.origin_type === 'estoque' ? ' & Baixar' : ''}
+                              </Button>
+                            </>
+                          )}
+                          {(d.status === 'efetivado' || d.status === 'aprovado' || d.status === 'rejeitado') && (
+                            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleReopen(d)}>
+                              <Clock className="h-3.5 w-3.5" /> Reabrir
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
