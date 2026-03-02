@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Wrench, Plus, Search, Monitor, Cpu, HardDrive, Mouse,
-  Keyboard, MemoryStick, Cable, CircuitBoard, Eye, Pencil,
+  Keyboard, MemoryStick, Cable, CircuitBoard, Pencil,
   Trash2, Link2, Package, Calendar, AlertTriangle, CheckCircle2,
   Clock, XCircle, Activity, Settings2, Laptop, Info, ArrowDownToLine,
   ShieldAlert, Box, Zap, BarChart3,
@@ -120,6 +120,7 @@ export default function MaintenancePage() {
   const [maintenanceDialog, setMaintenanceDialog] = useState(false);
   const [componentDialog, setComponentDialog] = useState(false);
   const [detailDialog, setDetailDialog] = useState<string | null>(null);
+  const [componentDetailTarget, setComponentDetailTarget] = useState<any>(null);
   const [editingMaintenance, setEditingMaintenance] = useState<any>(null);
   const [editingComponent, setEditingComponent] = useState<any>(null);
 
@@ -504,20 +505,19 @@ export default function MaintenancePage() {
                      <TableHead>Técnico</TableHead>
                      <TableHead>Data Agendada</TableHead>
                      <TableHead>Custo</TableHead>
-                     <TableHead className="text-right">Ações</TableHead>
                    </TableRow>
                  </TableHeader>
                 <TableBody>
                   <AnimatePresence>
                     {loadingM ? (
-                      <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                       <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Activity className="h-6 w-6 animate-spin" />
                           <span>Carregando manutenções...</span>
                         </div>
                       </TableCell></TableRow>
                     ) : filteredMaintenances.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center py-12">
+                      <TableRow><TableCell colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           <Wrench className="h-8 w-8 opacity-30" />
                           <p className="font-medium">Nenhuma manutenção encontrada</p>
@@ -536,7 +536,8 @@ export default function MaintenancePage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: idx * 0.03 }}
-                          className="group border-b border-border/40 hover:bg-muted/20 transition-colors"
+                          className="group border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => setDetailDialog(m.id)}
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
@@ -569,31 +570,6 @@ export default function MaintenancePage() {
                           </TableCell>
                           <TableCell className="text-sm font-medium">
                             {m.cost && Number(m.cost) > 0 ? `R$ ${Number(m.cost).toFixed(2)}` : '—'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailDialog(m.id)}>
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>Detalhes</TooltipContent></Tooltip>
-                              {canManage && (
-                                <>
-                                  <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMaintenance(m)}>
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
-                                  <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => {
-                                      if (confirm('Remover esta manutenção?')) deleteMaintenance.mutate(m.id);
-                                    }}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </TooltipTrigger><TooltipContent>Excluir</TooltipContent></Tooltip>
-                                </>
-                              )}
-                            </div>
                           </TableCell>
                         </motion.tr>
                       );
@@ -633,20 +609,19 @@ export default function MaintenancePage() {
                     <TableHead>Nº Série</TableHead>
                     <TableHead>Item de Estoque</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <AnimatePresence>
                     {loadingC ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Activity className="h-6 w-6 animate-spin" />
                           <span>Carregando peças...</span>
                         </div>
                       </TableCell></TableRow>
                     ) : filteredComponents.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-12">
+                      <TableRow><TableCell colSpan={6} className="text-center py-12">
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           <CircuitBoard className="h-8 w-8 opacity-30" />
                           <p className="font-medium">Nenhuma peça registrada</p>
@@ -665,7 +640,8 @@ export default function MaintenancePage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: idx * 0.03 }}
-                          className="group border-b border-border/40 hover:bg-muted/20 transition-colors"
+                          className="group border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => setComponentDetailTarget(c)}
                         >
                           <TableCell>
                             <div className="flex items-center gap-2.5">
@@ -695,26 +671,6 @@ export default function MaintenancePage() {
                             ) : <span className="text-muted-foreground text-xs">Sem vínculo</span>}
                           </TableCell>
                           <TableCell><Badge variant="outline" className={statusInfo.color}>{statusInfo.label}</Badge></TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {canManage && (
-                                <>
-                                  <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditComponent(c)}>
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
-                                  <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => {
-                                      if (confirm('Remover esta peça?')) deleteComponent.mutate(c.id);
-                                    }}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </TooltipTrigger><TooltipContent>Excluir</TooltipContent></Tooltip>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
                         </motion.tr>
                       );
                     })}
@@ -1007,7 +963,7 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Detail Dialog ─── */}
+      {/* ─── Maintenance Detail Dialog ─── */}
       <Dialog open={!!detailDialog} onOpenChange={() => setDetailDialog(null)}>
         <DialogContent className="max-w-lg">
           {(() => {
@@ -1026,6 +982,7 @@ export default function MaintenancePage() {
                     <Wrench className="h-5 w-5 text-primary" />
                     {m.title}
                   </DialogTitle>
+                  <DialogDescription>Detalhes da manutenção</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="flex gap-2 flex-wrap">
@@ -1084,6 +1041,79 @@ export default function MaintenancePage() {
                     </div>
                   )}
                 </div>
+                {canManage && (
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setDetailDialog(null); openEditMaintenance(m); }}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => {
+                      if (confirm('Remover esta manutenção?')) { deleteMaintenance.mutate(m.id); setDetailDialog(null); }
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </Button>
+                  </DialogFooter>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Component Detail Dialog ─── */}
+      <Dialog open={!!componentDetailTarget} onOpenChange={() => setComponentDetailTarget(null)}>
+        <DialogContent className="max-w-lg">
+          {(() => {
+            const c = componentDetailTarget;
+            if (!c) return null;
+            const asset = assetMap[c.asset_id];
+            const stock = c.stock_item_id ? stockMap[c.stock_item_id] : null;
+            const statusInfo = COMPONENT_STATUS[c.status] || COMPONENT_STATUS.ativo;
+            const CompIcon = getComponentIcon(c.component_type);
+            const typeLabel = COMPONENT_TYPES.find(t => t.value === c.component_type)?.label || c.component_type;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <CompIcon className="h-5 w-5 text-primary" />
+                    {typeLabel}
+                  </DialogTitle>
+                  <DialogDescription>Detalhes do componente instalado</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Badge variant="outline" className={statusInfo.color}>{statusInfo.label}</Badge>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                    <div><span className="text-muted-foreground block text-xs">Ativo</span> <strong>{asset?.name || '—'}</strong></div>
+                    <div><span className="text-muted-foreground block text-xs">Patrimônio</span> {asset?.patrimony_code || '—'}</div>
+                    <div><span className="text-muted-foreground block text-xs">Marca</span> {c.brand || '—'}</div>
+                    <div><span className="text-muted-foreground block text-xs">Modelo</span> {c.model || '—'}</div>
+                    <div><span className="text-muted-foreground block text-xs">Nº Série</span> <span className="font-mono">{c.serial_number || '—'}</span></div>
+                    <div><span className="text-muted-foreground block text-xs">Item de Estoque</span> {stock ? (
+                      <Badge variant="outline" className="gap-1 bg-primary/5 text-primary border-primary/20 mt-0.5">
+                        <Package className="h-3 w-3" />{stock.name}
+                      </Badge>
+                    ) : '—'}</div>
+                    <div><span className="text-muted-foreground block text-xs">Instalado em</span> {c.installed_at ? format(new Date(c.installed_at), 'dd/MM/yy') : c.created_at ? format(new Date(c.created_at), 'dd/MM/yy') : '—'}</div>
+                  </div>
+                  {c.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                      <p className="text-sm bg-muted/30 p-2.5 rounded-md">{c.notes}</p>
+                    </div>
+                  )}
+                </div>
+                {canManage && (
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setComponentDetailTarget(null); openEditComponent(c); }}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => {
+                      if (confirm('Remover esta peça?')) { deleteComponent.mutate(c.id); setComponentDetailTarget(null); }
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </Button>
+                  </DialogFooter>
+                )}
               </>
             );
           })()}
