@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -23,7 +24,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Loader2, Search, Pencil, X, Users, Phone, Hash, Mail,
-  PlusCircle, GripVertical, Building2,
+  PlusCircle, Building2, UserCheck, UserX,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -55,6 +56,7 @@ export default function CollaboratorsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [detailTarget, setDetailTarget] = useState<any>(null);
   const [form, setForm] = useState<CollaboratorForm>({ ...emptyForm });
   const [editId, setEditId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -68,6 +70,14 @@ export default function CollaboratorsPage() {
         .some(v => v?.toLowerCase().includes(s));
     });
   }, [collaborators, debouncedSearch]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const active = collaborators.filter((c: any) => c.is_active).length;
+    const inactive = collaborators.length - active;
+    const departments = new Set(collaborators.map((c: any) => c.department).filter(Boolean)).size;
+    return { total: collaborators.length, active, inactive, departments };
+  }, [collaborators]);
 
   const resetForm = useCallback(() => setForm({ ...emptyForm }), []);
 
@@ -134,6 +144,7 @@ export default function CollaboratorsPage() {
       custom_fields: customFields,
     });
     setEditId(item.id);
+    setDetailTarget(null);
     setEditOpen(true);
   };
 
@@ -183,7 +194,6 @@ export default function CollaboratorsPage() {
 
   const renderFormFields = () => (
     <div className="space-y-4">
-      {/* Basic fields */}
       <div className="space-y-1.5">
         <Label className="text-xs font-medium">Nome Completo <span className="text-destructive">*</span></Label>
         <Input value={form.full_name} onChange={e => setField('full_name', e.target.value)} required placeholder="Ex: João da Silva" className="h-9 text-sm" />
@@ -234,18 +244,8 @@ export default function CollaboratorsPage() {
               className="flex items-start gap-2"
             >
               <div className="flex-1 grid grid-cols-2 gap-2">
-                <Input
-                  value={cf.label}
-                  onChange={e => updateCustomField(idx, 'label', e.target.value)}
-                  placeholder="Nome do campo"
-                  className="h-8 text-xs"
-                />
-                <Input
-                  value={cf.value}
-                  onChange={e => updateCustomField(idx, 'value', e.target.value)}
-                  placeholder="Valor"
-                  className="h-8 text-xs"
-                />
+                <Input value={cf.label} onChange={e => updateCustomField(idx, 'label', e.target.value)} placeholder="Nome do campo" className="h-8 text-xs" />
+                <Input value={cf.value} onChange={e => updateCustomField(idx, 'value', e.target.value)} placeholder="Valor" className="h-8 text-xs" />
               </div>
               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeCustomField(idx)}>
                 <X className="h-3.5 w-3.5" />
@@ -260,6 +260,13 @@ export default function CollaboratorsPage() {
     </div>
   );
 
+  const summaryCards = [
+    { label: 'Total', value: stats.total, icon: Users, color: 'text-primary' },
+    { label: 'Ativos', value: stats.active, icon: UserCheck, color: 'text-green-500' },
+    { label: 'Inativos', value: stats.inactive, icon: UserX, color: 'text-muted-foreground' },
+    { label: 'Departamentos', value: stats.departments, icon: Building2, color: 'text-blue-500' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -267,7 +274,7 @@ export default function CollaboratorsPage() {
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Colaboradores</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {filtered.length} de {collaborators.length} registro(s)
+            Gerencie pessoas vinculadas a ativos e ordens de serviço.
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) resetForm(); }}>
@@ -294,6 +301,25 @@ export default function CollaboratorsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Summary Cards */}
+      {!isLoading && collaborators.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {summaryCards.map((card) => (
+            <Card key={card.label} className="border-border shadow-none">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className={`rounded-lg bg-muted/50 p-2 ${card.color}`}>
+                  <card.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold leading-none">{card.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{card.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Search */}
       {collaborators.length > 0 && (
@@ -330,43 +356,28 @@ export default function CollaboratorsPage() {
         </div>
       ) : isMobile ? (
         <div className="space-y-2">
-          {filtered.map((item: any) => {
-            const customFields: CustomField[] = Array.isArray(item.custom_fields) ? item.custom_fields : [];
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-xl p-4 shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-medium truncate">{item.full_name}</p>
-                      <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[9px] h-4 px-1.5">
-                        {item.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-                    {item.matricula && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />{item.matricula}</p>}
-                    {item.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{item.phone}</p>}
-                    {item.email && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{item.email}</p>}
-                    {item.department && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Building2 className="h-3 w-3" />{item.department}</p>}
-                    {customFields.filter((f: CustomField) => f.label).map((f: CustomField, i: number) => (
-                      <p key={i} className="text-[11px] text-muted-foreground"><span className="font-medium">{f.label}:</span> {f.value || '-'}</p>
-                    ))}
+          {filtered.map((item: any) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card rounded-xl p-4 shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] cursor-pointer hover:bg-accent/30 transition-colors"
+              onClick={() => setDetailTarget(item)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium truncate">{item.full_name}</p>
+                    <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[9px] h-4 px-1.5">
+                      {item.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(item)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
+                  {item.department && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Building2 className="h-3 w-3" />{item.department}</p>}
+                  {item.matricula && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" />{item.matricula}</p>}
                 </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       ) : (
         <div className="bg-card rounded-xl overflow-hidden shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)]">
@@ -376,34 +387,28 @@ export default function CollaboratorsPage() {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Nome</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Matrícula</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Telefone</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">E-mail</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Depto/Setor</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Status</TableHead>
-                <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((item: any) => (
-                <TableRow key={item.id} className="group">
-                  <TableCell className="text-sm font-medium whitespace-nowrap">{item.full_name}</TableCell>
+                <TableRow
+                  key={item.id}
+                  className="cursor-pointer hover:bg-accent/30 transition-colors"
+                  onClick={() => setDetailTarget(item)}
+                >
+                  <TableCell>
+                    <p className="text-sm font-medium">{item.full_name}</p>
+                    {item.email && <p className="text-[11px] text-muted-foreground">{item.email}</p>}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.matricula || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.phone || '-'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.email || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{item.department || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[10px] h-5 px-2">
                       {item.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(item)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -411,6 +416,82 @@ export default function CollaboratorsPage() {
           </Table>
         </div>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailTarget} onOpenChange={(v) => { if (!v) setDetailTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailTarget?.full_name}
+              {detailTarget && (
+                <Badge variant={detailTarget.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                  {detailTarget.is_active ? 'Ativo' : 'Inativo'}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Detalhes do colaborador</DialogDescription>
+          </DialogHeader>
+          {detailTarget && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {detailTarget.matricula && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">Matrícula</p>
+                    <p className="font-medium flex items-center gap-1"><Hash className="h-3 w-3 text-muted-foreground" />{detailTarget.matricula}</p>
+                  </div>
+                )}
+                {detailTarget.phone && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">Telefone</p>
+                    <p className="font-medium flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{detailTarget.phone}</p>
+                  </div>
+                )}
+                {detailTarget.email && (
+                  <div className="col-span-2">
+                    <p className="text-[11px] text-muted-foreground mb-0.5">E-mail</p>
+                    <p className="font-medium flex items-center gap-1"><Mail className="h-3 w-3 text-muted-foreground" />{detailTarget.email}</p>
+                  </div>
+                )}
+                {detailTarget.department && (
+                  <div className="col-span-2">
+                    <p className="text-[11px] text-muted-foreground mb-0.5">Departamento</p>
+                    <p className="font-medium flex items-center gap-1"><Building2 className="h-3 w-3 text-muted-foreground" />{detailTarget.department}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Custom fields */}
+              {(() => {
+                const cf: CustomField[] = Array.isArray(detailTarget.custom_fields) ? detailTarget.custom_fields : [];
+                const visibleCf = cf.filter(f => f.label);
+                if (visibleCf.length === 0) return null;
+                return (
+                  <div className="border-t border-border pt-3">
+                    <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">Campos Personalizados</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {visibleCf.map((f, i) => (
+                        <div key={i}>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">{f.label}</p>
+                          <p className="font-medium">{f.value || '-'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => openEdit(detailTarget)}>
+                  <Pencil className="h-3 w-3" /> Editar
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => { setDetailTarget(null); setDeleteTarget(detailTarget); }}>
+                  <Trash2 className="h-3 w-3" /> Excluir
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { resetForm(); setEditId(null); } }}>
