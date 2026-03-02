@@ -171,6 +171,33 @@ export default function WorkOrderDetail() {
     onSuccess: () => { setComment(''); qc.invalidateQueries({ queryKey: ['work_order_events', id] }); toast({ title: 'Comentário adicionado!' }); },
   });
 
+  const resetSlaMutation = useMutation({
+    mutationFn: async () => {
+      if (!wo) throw new Error('OS não encontrada');
+      const now = new Date();
+      const updates: Record<string, any> = {
+        total_paused_ms: 0,
+        paused_at: null,
+      };
+      // Recalculate due dates from now, preserving original SLA windows
+      if (wo.response_due_at && wo.created_at) {
+        const originalWindow = new Date(wo.response_due_at).getTime() - new Date(wo.created_at).getTime();
+        updates.response_due_at = new Date(now.getTime() + originalWindow).toISOString();
+      }
+      if (wo.resolve_due_at && wo.created_at) {
+        const originalWindow = new Date(wo.resolve_due_at).getTime() - new Date(wo.created_at).getTime();
+        updates.resolve_due_at = new Date(now.getTime() + originalWindow).toISOString();
+      }
+      // Reset started_at if not yet in execution
+      if (!['em_execucao'].includes(wo.status)) {
+        updates.started_at = null;
+      }
+      await updateWO(updates, 'status_changed', { action: 'sla_reset', reset_by: user?.id });
+      await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.sla_reset', tenantId: currentTenantId, diff: { old_response_due: wo.response_due_at, old_resolve_due: wo.resolve_due_at } });
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: 'SLA resetado com sucesso!', description: 'Os prazos foram recalculados a partir de agora.' }); },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('work_orders').update({ deleted_at: new Date().toISOString() } as any).eq('id', id!);
@@ -494,11 +521,37 @@ export default function WorkOrderDetail() {
               {(wo.response_due_at || wo.resolve_due_at) && (
                 <Card className={`shadow-none rounded-xl ${sla.responseOverdue || sla.resolveOverdue ? 'border-destructive/40 bg-destructive/5' : 'border-border'}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${sla.responseOverdue || sla.resolveOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
-                      SLA
-                      {isPaused && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">Pausado</Badge>}
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <AlertTriangle className={`h-4 w-4 ${sla.responseOverdue || sla.resolveOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        SLA
+                        {isPaused && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">Pausado</Badge>}
+                      </CardTitle>
+                      {canManage && !isClosed && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-muted-foreground hover:text-foreground">
+                              <RotateCcw className="h-3 w-3" />
+                              Resetar SLA
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Resetar SLA</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Os prazos de resposta e solução serão recalculados a partir de agora, mantendo a janela de tempo original da política SLA. O tempo pausado acumulado será zerado.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => resetSlaMutation.mutate()} disabled={resetSlaMutation.isPending}>
+                                Confirmar Reset
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
