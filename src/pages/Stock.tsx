@@ -20,7 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Minus, Package, Loader2, ArrowDown, ArrowUp, Search,
-  AlertTriangle, Eye, History, Link2, Filter, RotateCcw,
+  AlertTriangle, History, Link2, Filter, RotateCcw,
   Pencil, Trash2, Save, Download, Upload, FileDown,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X,
 } from 'lucide-react';
@@ -714,7 +714,7 @@ export default function Stock() {
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Atual</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[100px]">Nível Mín.</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Status</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[120px]">Ações</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground w-[80px]">Mov.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -722,11 +722,11 @@ export default function Stock() {
                     const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
                     const isSelected = selectedIds.has(item.id);
                     return (
-                      <TableRow key={item.id} className={`cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}>
+                      <TableRow key={item.id} className={`cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => setDetailItem(item)}>
                         <TableCell onClick={e => e.stopPropagation()}>
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(item.id)} />
                         </TableCell>
-                        <TableCell className="text-sm font-medium" onClick={() => setDetailItem(item)}>{item.name}</TableCell>
+                        <TableCell className="text-sm font-medium">{item.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.sku || '-'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground font-mono">{item.patrimony_code || '-'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -747,9 +747,6 @@ export default function Stock() {
                             </Button>
                             <Button variant="outline" size="icon" className="h-7 w-7 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10" onClick={() => openQuickMove(item, 'in')} title="Entrada">
                               <Plus className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailItem(item)}>
-                              <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
