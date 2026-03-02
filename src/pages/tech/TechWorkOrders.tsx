@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,13 +49,18 @@ export default function TechWorkOrders() {
   const [unitFilter, setUnitFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('all');
   const [sortBy, setSortBy] = useState<'sla' | 'updated' | 'priority'>('sla');
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // Reset visible count when filters change
+  useEffect(() => { setVisibleCount(10); }, [statusFilter, priorityFilter, unitFilter, activeView, debouncedSearch, sortBy]);
 
   const applyView = (view: SavedView) => {
     setActiveView(view.id);
     setStatusFilter(view.filters.status || 'all');
     setPriorityFilter(view.filters.priority || 'all');
+    setVisibleCount(10);
   };
 
   // Only my OS
@@ -177,7 +182,7 @@ export default function TechWorkOrders() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((wo: any) => {
+          {filtered.slice(0, visibleCount).map((wo: any) => {
             const sla = calculateSlaStatus(wo);
             const isPaused = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'].includes(wo.status);
             const isOpen = ['aberta', 'reaberta'].includes(wo.status);
@@ -257,6 +262,19 @@ export default function TechWorkOrders() {
               </Card>
             );
           })}
+
+          {visibleCount < filtered.length && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5"
+                onClick={() => setVisibleCount(prev => prev + 10)}
+              >
+                Carregar mais ({filtered.length - visibleCount} restantes)
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
