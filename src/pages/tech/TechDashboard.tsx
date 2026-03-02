@@ -142,17 +142,19 @@ function ActivityHeatmap({ workOrders }: { workOrders: any[] }) {
   );
 }
 
-/* ── Weekly Bar Chart ── */
-function WeeklyChart({ workOrders }: { workOrders: any[] }) {
-  const weekData = useMemo(() => {
+/* ── Production Bar Chart ── */
+function ProductionChart({ workOrders, days }: { workOrders: any[]; days: number }) {
+  const chartData = useMemo(() => {
     const now = new Date();
     const result: { label: string; done: number; received: number }[] = [];
     
-    for (let i = 6; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const day = new Date(now);
       day.setDate(day.getDate() - i);
       const dayStr = day.toDateString();
-      const label = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      const label = days <= 15
+        ? day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+        : day.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       
       const done = workOrders.filter((wo: any) => {
         if (!wo.resolved_at) return false;
@@ -166,14 +168,14 @@ function WeeklyChart({ workOrders }: { workOrders: any[] }) {
       result.push({ label, done, received });
     }
     return result;
-  }, [workOrders]);
+  }, [workOrders, days]);
 
-  const maxVal = Math.max(1, ...weekData.flatMap(d => [d.done, d.received]));
+  const maxVal = Math.max(1, ...chartData.flatMap(d => [d.done, d.received]));
 
   return (
-    <div className="flex items-end gap-1.5 h-28">
-      {weekData.map((day, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+    <div className="flex items-end gap-px h-28 overflow-hidden">
+      {chartData.map((day, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
           <div className="flex gap-px items-end flex-1 w-full">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -194,7 +196,9 @@ function WeeklyChart({ workOrders }: { workOrders: any[] }) {
               <TooltipContent className="text-xs">{day.done} concluídas</TooltipContent>
             </Tooltip>
           </div>
-          <span className="text-[9px] text-muted-foreground font-medium capitalize">{day.label}</span>
+          {days <= 15 && (
+            <span className="text-[9px] text-muted-foreground font-medium capitalize truncate w-full text-center">{day.label}</span>
+          )}
         </div>
       ))}
     </div>
@@ -209,6 +213,7 @@ export default function TechDashboard() {
   const qc = useQueryClient();
   const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
+  const [productionDays, setProductionDays] = useState(7);
   const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const myOs = workOrders.filter((wo: any) => wo.assigned_to_id === user?.id);
@@ -462,13 +467,33 @@ export default function TechDashboard() {
 
       {/* Charts Row */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Weekly Production Chart */}
+        {/* Production Chart with period filter */}
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              Produção dos últimos 7 dias
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Produção
+              </CardTitle>
+              <div className="flex gap-1">
+                {([
+                  { label: '7d', value: 7 },
+                  { label: '15d', value: 15 },
+                  { label: '30d', value: 30 },
+                  { label: '3m', value: 90 },
+                ] as const).map(opt => (
+                  <Button
+                    key={opt.value}
+                    variant={productionDays === opt.value ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`h-6 px-2 text-[10px] ${productionDays === opt.value ? 'shadow-sm' : ''}`}
+                    onClick={() => setProductionDays(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-3 mt-1">
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <span className="w-2 h-2 rounded-sm bg-primary/30" /> Recebidas
@@ -479,7 +504,7 @@ export default function TechDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pb-4">
-            {isLoading ? <Skeleton className="h-28 w-full" /> : <WeeklyChart workOrders={myOs} />}
+            {isLoading ? <Skeleton className="h-28 w-full" /> : <ProductionChart workOrders={myOs} days={productionDays} />}
           </CardContent>
         </Card>
 
