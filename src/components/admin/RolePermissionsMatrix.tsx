@@ -145,6 +145,30 @@ const permissionGroups: PermissionGroup[] = [
     ],
   },
   {
+    label: 'Documentos',
+    icon: BookOpen,
+    permissions: [
+      { key: 'docs:read', label: 'Visualizar', description: 'Acessar biblioteca de documentos' },
+      { key: 'docs:manage', label: 'Gerenciar', description: 'Upload, editar e excluir documentos' },
+    ],
+  },
+  {
+    label: 'Cofre de Senhas',
+    icon: Shield,
+    permissions: [
+      { key: 'vault:read', label: 'Visualizar', description: 'Ver entradas do cofre de senhas' },
+      { key: 'vault:manage', label: 'Gerenciar', description: 'Criar, editar e excluir senhas no cofre' },
+    ],
+  },
+  {
+    label: 'Base de Conhecimento',
+    icon: BookOpen,
+    permissions: [
+      { key: 'kb:read', label: 'Visualizar', description: 'Acessar artigos da base de conhecimento' },
+      { key: 'kb:manage', label: 'Gerenciar', description: 'Criar, editar e publicar artigos' },
+    ],
+  },
+  {
     label: 'API',
     icon: Key,
     permissions: [
