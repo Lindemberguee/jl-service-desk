@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
 import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink, Printer } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -114,6 +115,30 @@ export default function WorkOrderDetail() {
     queryKey: ['customers', woTenantId],
     queryFn: async () => { const { data } = await supabase.from('customers').select('*').eq('tenant_id', woTenantId!); return data || []; },
     enabled: !!woTenantId,
+  });
+
+  // Checklist
+  const { data: checklist = [], refetch: refetchChecklist } = useQuery({
+    queryKey: ['wo_checklist', id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('work_order_checklist_items').select('*').eq('work_order_id', id!).order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Checklist mutation
+  const checkMutation = useMutation({
+    mutationFn: async ({ itemId, checked }: { itemId: string; checked: boolean }) => {
+      const { error } = await supabase.from('work_order_checklist_items').update({
+        is_checked: checked,
+        checked_at: checked ? new Date().toISOString() : null,
+        checked_by: user?.id || null,
+      } as any).eq('id', itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchChecklist(),
   });
 
   // Mutations
@@ -409,6 +434,7 @@ export default function WorkOrderDetail() {
         <TabsList className="bg-card border border-border h-10 rounded-lg p-1">
           <TabsTrigger value="resumo" className="text-xs h-8 rounded-md gap-1.5"><Info className="h-3.5 w-3.5" />Resumo</TabsTrigger>
           <TabsTrigger value="timeline" className="text-xs h-8 rounded-md gap-1.5"><MessageSquare className="h-3.5 w-3.5" />Timeline ({events.length})</TabsTrigger>
+          {checklist.length > 0 && <TabsTrigger value="checklist" className="text-xs h-8 rounded-md gap-1.5"><CheckSquare className="h-3.5 w-3.5" />Checklist ({checklist.length})</TabsTrigger>}
           <TabsTrigger value="anexos" className="text-xs h-8 rounded-md gap-1.5"><Package className="h-3.5 w-3.5" />Anexos</TabsTrigger>
           <TabsTrigger value="custos" className="text-xs h-8 rounded-md gap-1.5"><Shield className="h-3.5 w-3.5" />Custos</TabsTrigger>
         </TabsList>
@@ -787,6 +813,40 @@ export default function WorkOrderDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ─── Checklist ─── */}
+        {checklist.length > 0 && (
+          <TabsContent value="checklist" className="mt-4">
+            <Card className="border-border shadow-none rounded-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                  Checklist ({checklist.filter((i: any) => i.is_checked).length}/{checklist.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {checklist.map((item: any) => (
+                  <div key={item.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
+                    <Checkbox
+                      checked={item.is_checked}
+                      onCheckedChange={(checked) => checkMutation.mutate({ itemId: item.id, checked: !!checked })}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${item.is_checked ? 'line-through text-muted-foreground' : ''}`}>{item.label}</p>
+                      {item.observation && <p className="text-xs text-muted-foreground mt-0.5">{item.observation}</p>}
+                      {item.checked_at && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          ✓ {profiles.find((p: any) => p.id === item.checked_by)?.name || ''} em {new Date(item.checked_at).toLocaleString('pt-BR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="anexos" className="mt-4">
           <WorkOrderAttachments workOrderId={wo.id} resolvedAt={wo.resolved_at} />

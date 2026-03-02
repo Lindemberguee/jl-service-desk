@@ -220,7 +220,7 @@ export function ChecklistTemplatesSection({ readOnly }: { readOnly: boolean }) {
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs font-medium">Categoria (opcional)</Label>
-        <Select value={categoryId} onValueChange={setCategoryId}>
+        <Select value={categoryId || 'none'} onValueChange={v => setCategoryId(v === 'none' ? '' : v)}>
           <SelectTrigger className="h-9 text-sm">
             <SelectValue placeholder="Vincular a uma categoria" />
           </SelectTrigger>
