@@ -1824,6 +1824,7 @@ export type Database = {
           patrimony_code: string | null
           serial_number: string | null
           sku: string | null
+          status: Database["public"]["Enums"]["stock_item_status"]
           tenant_id: string
           unit: string | null
           updated_at: string
@@ -1841,6 +1842,7 @@ export type Database = {
           patrimony_code?: string | null
           serial_number?: string | null
           sku?: string | null
+          status?: Database["public"]["Enums"]["stock_item_status"]
           tenant_id: string
           unit?: string | null
           updated_at?: string
@@ -1858,6 +1860,7 @@ export type Database = {
           patrimony_code?: string | null
           serial_number?: string | null
           sku?: string | null
+          status?: Database["public"]["Enums"]["stock_item_status"]
           tenant_id?: string
           unit?: string | null
           updated_at?: string
@@ -2751,6 +2754,7 @@ export type Database = {
         | "encerrada"
         | "reaberta"
       os_visibility: "internal" | "customer"
+      stock_item_status: "ativo" | "inativo" | "descartado"
       stock_movement_type: "in" | "out" | "adjust"
       tenant_plan: "free" | "pro" | "enterprise"
     }
@@ -2945,6 +2949,7 @@ export const Constants = {
         "reaberta",
       ],
       os_visibility: ["internal", "customer"],
+      stock_item_status: ["ativo", "inativo", "descartado"],
       stock_movement_type: ["in", "out", "adjust"],
       tenant_plan: ["free", "pro", "enterprise"],
     },

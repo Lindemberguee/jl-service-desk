@@ -62,6 +62,7 @@ export default function Stock() {
   const [editPatrimonyCode, setEditPatrimonyCode] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editSerialNumber, setEditSerialNumber] = useState('');
+  const [editStatus, setEditStatus] = useState<string>('ativo');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
@@ -113,7 +114,8 @@ export default function Stock() {
       const s = debouncedSearch.toLowerCase();
       const matchSearch = !debouncedSearch || item.name?.toLowerCase().includes(s) || item.sku?.toLowerCase().includes(s) || item.brand?.toLowerCase().includes(s) || item.model?.toLowerCase().includes(s) || item.patrimony_code?.toLowerCase().includes(s);
       const isLow = (item.current_level || 0) <= (item.min_level || 0) && item.min_level > 0;
-      const matchStatus = statusFilter === 'all' || (statusFilter === 'low' && isLow) || (statusFilter === 'normal' && !isLow);
+      const itemStatus = item.status || 'ativo';
+      const matchStatus = statusFilter === 'all' || (statusFilter === 'low' && isLow) || (statusFilter === 'normal' && !isLow) || (statusFilter === 'ativo' && itemStatus === 'ativo') || (statusFilter === 'inativo' && itemStatus === 'inativo') || (statusFilter === 'descartado' && itemStatus === 'descartado');
       return matchSearch && matchStatus;
     });
     return result;
@@ -634,14 +636,17 @@ export default function Stock() {
               <Input placeholder="Buscar por nome ou SKU..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectTrigger className="h-8 w-[170px] text-xs">
                 <Filter className="h-3 w-3 mr-1" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
+                <SelectItem value="descartado">Descartado</SelectItem>
                 <SelectItem value="low">Estoque Baixo</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="normal">Nível Normal</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -668,8 +673,8 @@ export default function Stock() {
                             <p className="text-sm font-medium">{item.name}</p>
                             {item.sku && <p className="text-[11px] text-muted-foreground mt-0.5">SKU: {item.sku}</p>}
                           </div>
-                          <Badge variant="outline" className={`text-[10px] h-5 shrink-0 ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
-                            {isLow ? 'Baixo' : 'Normal'}
+                          <Badge variant="outline" className={`text-[10px] h-5 shrink-0 ${item.status === 'descartado' ? 'bg-muted text-muted-foreground' : item.status === 'inativo' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
+                            {item.status === 'descartado' ? 'Descartado' : item.status === 'inativo' ? 'Inativo' : isLow ? 'Baixo' : 'Ativo'}
                           </Badge>
                         </div>
                         <div className="flex items-center justify-between mt-2">
@@ -731,8 +736,8 @@ export default function Stock() {
                         <TableCell className="text-sm font-medium">{item.current_level}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{item.min_level}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[11px] ${isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
-                            {isLow ? 'Baixo' : 'Normal'}
+                          <Badge variant="outline" className={`text-[11px] ${item.status === 'descartado' ? 'bg-muted text-muted-foreground' : item.status === 'inativo' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : isLow ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>
+                            {item.status === 'descartado' ? 'Descartado' : item.status === 'inativo' ? 'Inativo' : isLow ? 'Baixo' : 'Ativo'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -912,6 +917,7 @@ export default function Stock() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className={`text-[10px] ml-1 ${detailItem.status === 'descartado' ? 'bg-muted text-muted-foreground' : detailItem.status === 'inativo' ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>{detailItem.status === 'descartado' ? 'Descartado' : detailItem.status === 'inativo' ? 'Inativo' : 'Ativo'}</Badge></div>
                 {detailItem.sku && <div><span className="text-muted-foreground">SKU:</span> {detailItem.sku}</div>}
                 {detailItem.patrimony_code && <div><span className="text-muted-foreground">Patrimônio:</span> <span className="font-mono">{detailItem.patrimony_code}</span></div>}
                 {detailItem.brand && <div><span className="text-muted-foreground">Marca:</span> {detailItem.brand}</div>}
@@ -935,6 +941,7 @@ export default function Stock() {
                   setEditPatrimonyCode(detailItem.patrimony_code || '');
                   setEditDescription(detailItem.description || '');
                   setEditSerialNumber(detailItem.serial_number || '');
+                  setEditStatus(detailItem.status || 'ativo');
                   setEditMode(true);
                 }}>
                   <Pencil className="h-3 w-3" /> Editar
@@ -1011,10 +1018,11 @@ export default function Stock() {
                   brand: editBrand || null, model: editModel || null,
                   component_type: editComponentType || null, patrimony_code: editPatrimonyCode || null,
                   description: editDescription || null, serial_number: editSerialNumber || null,
+                  status: editStatus,
                 });
-                await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.updated', tenantId: currentTenantId, diff: { name: editName, sku: editSku, min_level: editMinLevel } });
+                await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.updated', tenantId: currentTenantId, diff: { name: editName, sku: editSku, min_level: editMinLevel, status: editStatus } });
                 toast({ title: 'Item atualizado!' });
-                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0, brand: editBrand, model: editModel, component_type: editComponentType, patrimony_code: editPatrimonyCode, description: editDescription, serial_number: editSerialNumber });
+                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0, brand: editBrand, model: editModel, component_type: editComponentType, patrimony_code: editPatrimonyCode, description: editDescription, serial_number: editSerialNumber, status: editStatus });
                 setEditMode(false);
               } catch (err: any) {
                 toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -1036,6 +1044,17 @@ export default function Stock() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label className="text-xs">Quantidade atual</Label><Input type="number" min="0" value={editCurrentLevel} onChange={e => setEditCurrentLevel(e.target.value)} className="h-9" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nível mínimo</Label><Input type="number" min="0" value={editMinLevel} onChange={e => setEditMinLevel(e.target.value)} className="h-9" /></div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                    <SelectItem value="descartado">Descartado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={editDescription} onChange={e => setEditDescription(e.target.value)} className="h-9" /></div>
               <div className="flex gap-2">

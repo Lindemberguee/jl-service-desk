@@ -121,7 +121,16 @@ export function useDisposals() {
 
       const disposal = (await res.json())[0] as Disposal;
 
-      // If origin is stock and should create movement
+      // Update asset status to 'descartado' if origin is asset
+      if (disposal.asset_id) {
+        await fetch(`${BASE_URL}/rest/v1/assets?id=eq.${disposal.asset_id}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'descartado' }),
+        });
+      }
+
+      // If origin is stock: create movement and update stock item status
       if (createStockMovement && disposal.stock_item_id) {
         const mvRes = await fetch(`${BASE_URL}/rest/v1/stock_movements`, {
           method: 'POST',
@@ -137,18 +146,33 @@ export function useDisposals() {
         });
         if (mvRes.ok) {
           const mv = (await mvRes.json())[0];
-          // Link movement to disposal
+          // Link movement to disposal and mark as effected
           await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
             method: 'PATCH',
             headers: { ...headers, Prefer: 'return=minimal' },
             body: JSON.stringify({ stock_movement_id: mv.id, status: 'efetivado' }),
           });
+          // Update stock item status to 'descartado'
+          await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
+            method: 'PATCH',
+            headers: { ...headers, Prefer: 'return=minimal' },
+            body: JSON.stringify({ status: 'descartado' }),
+          });
         }
+      } else if (disposal.asset_id) {
+        // Mark disposal as effected for assets too
+        await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'efetivado' }),
+        });
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['disposals'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
       toast.success('Descarte aprovado e efetivado');
     },
     onError: (err: any) => toast.error(err.message),
