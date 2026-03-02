@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -512,8 +513,8 @@ export default function DisposalPage() {
                 <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} disabled={!!selectedItem} />
               </div>
               <div className="space-y-2">
-                <Label>Valor Residual (R$)</Label>
-                <Input type="number" min={0} step={0.01} value={form.residual_value} onChange={e => setForm(f => ({ ...f, residual_value: Number(e.target.value) }))} />
+                <Label>Valor Residual</Label>
+                <CurrencyInput value={String(form.residual_value || '')} onValueChange={v => setForm(f => ({ ...f, residual_value: v ? Number(v) : 0 }))} />
               </div>
             </div>
 
