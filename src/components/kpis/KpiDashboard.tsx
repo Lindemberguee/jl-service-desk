@@ -81,14 +81,18 @@ export function KpiDashboard() {
     return format(d, 'yyyy-MM-dd');
   });
 
-  const trendData = last30.map(date => {
-    const point: Record<string, any> = { date: format(parseISO(date), 'dd/MM', { locale: ptBR }) };
-    activeKpis.slice(0, 4).forEach(kpi => {
-      const entry = entries.find(e => e.kpi_id === kpi.id && e.period_end === date);
-      point[kpi.name] = entry?.value ?? null;
+  const trendData = (() => {
+    const lastKnown: Record<string, number | null> = {};
+    return last30.map(date => {
+      const point: Record<string, any> = { date: format(parseISO(date), 'dd/MM', { locale: ptBR }) };
+      activeKpis.slice(0, 4).forEach(kpi => {
+        const entry = entries.find(e => e.kpi_id === kpi.id && e.period_end === date);
+        if (entry) lastKnown[kpi.name] = entry.value;
+        point[kpi.name] = entry?.value ?? lastKnown[kpi.name] ?? null;
+      });
+      return point;
     });
-    return point;
-  });
+  })();
 
   // OKR summary
   const avgObjectiveProgress = cycleObjectives.length > 0
