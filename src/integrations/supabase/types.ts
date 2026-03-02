@@ -662,6 +662,124 @@ export type Database = {
           },
         ]
       }
+      disposals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          asset_id: string | null
+          attachments: Json
+          category: string | null
+          created_at: string
+          created_by: string
+          id: string
+          item_description: string | null
+          item_name: string
+          origin_type: Database["public"]["Enums"]["disposal_origin"]
+          quantity: number
+          reason: Database["public"]["Enums"]["disposal_reason"]
+          reason_detail: string | null
+          rejection_note: string | null
+          residual_value: number | null
+          status: Database["public"]["Enums"]["disposal_status"]
+          stock_item_id: string | null
+          stock_movement_id: string | null
+          tenant_id: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          asset_id?: string | null
+          attachments?: Json
+          category?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          item_description?: string | null
+          item_name: string
+          origin_type?: Database["public"]["Enums"]["disposal_origin"]
+          quantity?: number
+          reason?: Database["public"]["Enums"]["disposal_reason"]
+          reason_detail?: string | null
+          rejection_note?: string | null
+          residual_value?: number | null
+          status?: Database["public"]["Enums"]["disposal_status"]
+          stock_item_id?: string | null
+          stock_movement_id?: string | null
+          tenant_id: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          asset_id?: string | null
+          attachments?: Json
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          origin_type?: Database["public"]["Enums"]["disposal_origin"]
+          quantity?: number
+          reason?: Database["public"]["Enums"]["disposal_reason"]
+          reason_detail?: string | null
+          rejection_note?: string | null
+          residual_value?: number | null
+          status?: Database["public"]["Enums"]["disposal_status"]
+          stock_item_id?: string | null
+          stock_movement_id?: string | null
+          tenant_id?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disposals_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_versions: {
         Row: {
           change_notes: string | null
@@ -2584,6 +2702,16 @@ export type Database = {
         | "leitura"
       asset_status: "ativo" | "inativo" | "em_manutencao" | "descartado"
       customer_type: "internal" | "external"
+      disposal_origin: "estoque" | "ativo" | "manual"
+      disposal_reason:
+        | "queimado"
+        | "obsoleto"
+        | "vencido"
+        | "defeituoso"
+        | "depreciado"
+        | "extravio"
+        | "outro"
+      disposal_status: "pendente" | "aprovado" | "rejeitado" | "efetivado"
       maintenance_status:
         | "agendada"
         | "em_andamento"
@@ -2763,6 +2891,17 @@ export const Constants = {
       ],
       asset_status: ["ativo", "inativo", "em_manutencao", "descartado"],
       customer_type: ["internal", "external"],
+      disposal_origin: ["estoque", "ativo", "manual"],
+      disposal_reason: [
+        "queimado",
+        "obsoleto",
+        "vencido",
+        "defeituoso",
+        "depreciado",
+        "extravio",
+        "outro",
+      ],
+      disposal_status: ["pendente", "aprovado", "rejeitado", "efetivado"],
       maintenance_status: [
         "agendada",
         "em_andamento",

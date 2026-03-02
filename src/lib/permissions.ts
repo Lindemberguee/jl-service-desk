@@ -17,7 +17,8 @@ export type Permission =
   | 'api:manage'
   | 'docs:read' | 'docs:manage'
   | 'vault:read' | 'vault:manage'
-  | 'kb:read' | 'kb:manage';
+  | 'kb:read' | 'kb:manage'
+  | 'disposal:read' | 'disposal:manage';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
@@ -33,6 +34,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'kpis:read', 'kpis:manage',
     'api:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
+    'disposal:read', 'disposal:manage',
   ],
   admin: [
     'dashboard:read', 'my_os:read',
@@ -45,6 +47,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
+    'disposal:read', 'disposal:manage',
   ],
   coordenador: [
     'dashboard:read', 'my_os:read',
@@ -56,6 +59,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
+    'disposal:read', 'disposal:manage',
   ],
   tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'vault:read', 'kb:read'],
   analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'docs:manage', 'vault:read', 'kb:read'],
