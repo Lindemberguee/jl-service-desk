@@ -326,47 +326,10 @@ const listMaintenance: RouteHandler = async ({ url, supabase, tenantId }) => {
 /*  API Docs endpoint                                                  */
 /* ------------------------------------------------------------------ */
 const getApiDocs: RouteHandler = async () => {
-  const docs = {
-    name: "OrdFy API",
-    version: "1.0.0",
-    description: "API REST pública do OrdFy para integração com sistemas externos.",
-    authentication: {
-      type: "API Key",
-      header: "X-API-Key",
-      description: "Inclua sua API Key no header X-API-Key de cada requisição.",
-    },
-    base_url: "https://www.ordfy.com.br/functions/v1/api",
-    pagination: {
-      description: "Endpoints de listagem suportam paginação via query params.",
-      params: { page: "Número da página (default: 1)", per_page: "Itens por página (default: 20, max: 100)" },
-    },
-    endpoints: [
-      { method: "GET", path: "/docs", description: "Documentação da API" },
-      { method: "GET", path: "/work-orders", description: "Listar ordens de serviço", filters: ["status", "priority", "category_id"] },
-      { method: "GET", path: "/work-orders/:id", description: "Detalhes de uma OS (inclui eventos, checklist, custos)" },
-      { method: "POST", path: "/work-orders", description: "Criar nova OS", body: { title: "required", description: "optional", priority: "baixa|media|alta|critica", category_id: "uuid", unit_id: "uuid" } },
-      { method: "PATCH", path: "/work-orders/:id", description: "Atualizar OS", body: { title: "optional", status: "optional", priority: "optional" } },
-      { method: "GET", path: "/assets", description: "Listar ativos", filters: ["status"] },
-      { method: "GET", path: "/assets/:id", description: "Detalhes de um ativo (inclui componentes e manutenções)" },
-      { method: "GET", path: "/stock", description: "Listar itens de estoque" },
-      { method: "GET", path: "/stock/:id", description: "Detalhes de um item (inclui movimentações)" },
-      { method: "GET", path: "/categories", description: "Listar categorias" },
-      { method: "GET", path: "/units", description: "Listar unidades" },
-      { method: "GET", path: "/locations", description: "Listar locais" },
-      { method: "GET", path: "/kpis", description: "Listar KPIs" },
-      { method: "GET", path: "/kpis/:id/entries", description: "Lançamentos de um KPI" },
-      { method: "GET", path: "/collaborators", description: "Listar colaboradores" },
-      { method: "GET", path: "/customers", description: "Listar solicitantes" },
-      { method: "GET", path: "/maintenance", description: "Listar manutenções", filters: ["status", "type"] },
-    ],
-    permissions: {
-      read: "Acesso de leitura a todos os endpoints GET",
-      write: "Permite POST e PATCH (criação e atualização)",
-      delete: "Permite DELETE (exclusão de recursos)",
-    },
-    rate_limiting: "100 requisições por minuto por API Key",
-  };
-  return json(docs);
+  return new Response(null, {
+    status: 302,
+    headers: { ...corsHeaders, "Location": "https://www.ordfy.com.br/api/docs" },
+  });
 };
 
 /* ------------------------------------------------------------------ */
