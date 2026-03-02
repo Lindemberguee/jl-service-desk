@@ -73,6 +73,7 @@ export default function Assets() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [detailTarget, setDetailTarget] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<AssetForm>({ ...emptyForm });
@@ -502,7 +503,7 @@ export default function Assets() {
       ) : isMobile ? (
         <div className="space-y-2">
           {filtered.map((a: any) => (
-            <div key={a.id} className="bg-card border border-border rounded-lg p-3 space-y-2">
+            <div key={a.id} className="bg-card border border-border rounded-lg p-3 space-y-2 cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetailTarget(a)}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{a.name}</p>
@@ -520,14 +521,6 @@ export default function Assets() {
                 {a.location_id && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{locationMap[a.location_id]?.name}</span>}
                 {a.category_id && <span className="flex items-center gap-0.5"><FolderOpen className="h-3 w-3" />{categoryMap[a.category_id]}</span>}
               </div>
-              <div className="flex justify-end gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(a)}>
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
             </div>
           ))}
         </div>
@@ -544,12 +537,11 @@ export default function Assets() {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[120px]">Local</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[100px]">Categoria</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9 w-[130px]">Responsável</TableHead>
-                <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((a: any) => (
-                <TableRow key={a.id} className="group">
+                <TableRow key={a.id} className="cursor-pointer hover:bg-accent/30" onClick={() => setDetailTarget(a)}>
                   <TableCell className="text-sm font-medium whitespace-nowrap max-w-[200px] truncate">{a.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.patrimony_code || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.serial_number || '-'}</TableCell>
@@ -569,22 +561,66 @@ export default function Assets() {
                         </div>
                       : '-'}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
-                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(a)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <Dialog open={!!detailTarget} onOpenChange={v => { if (!v) setDetailTarget(null); }}>
+        <DialogContent className="max-w-md">
+          {detailTarget && (() => {
+            const a = detailTarget;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Wrench className="h-5 w-5" /> {a.name}
+                  </DialogTitle>
+                  <DialogDescription>Detalhes do ativo</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={statusColorMap[a.status]}>
+                      {statusLabelsMap[a.status]}
+                    </Badge>
+                    {a.category_id && categoryMap[a.category_id] && (
+                      <Badge variant="outline" className="gap-1 text-xs">
+                        <FolderOpen className="h-3 w-3" /> {categoryMap[a.category_id]}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Patrimônio:</span> <strong>{a.patrimony_code || '-'}</strong></div>
+                    <div><span className="text-muted-foreground">Nº Série:</span> <strong>{a.serial_number || '-'}</strong></div>
+                    <div><span className="text-muted-foreground">Unidade:</span> <strong>{unitMap[a.unit_id] || '-'}</strong></div>
+                    <div><span className="text-muted-foreground">Local:</span> <strong>{locationMap[a.location_id]?.name || '-'}</strong></div>
+                    {collaboratorMap[a.collaborator_id] && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Responsável:</span>{' '}
+                        <strong>{collaboratorMap[a.collaborator_id].name}</strong>
+                        {collaboratorMap[a.collaborator_id].department && (
+                          <span className="text-muted-foreground"> — {collaboratorMap[a.collaborator_id].department}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 pt-2 border-t border-border">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setDetailTarget(null); openEdit(a); }}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => { setDetailTarget(null); setDeleteTarget(a); }}>
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { resetForm(); setEditId(null); } }}>
