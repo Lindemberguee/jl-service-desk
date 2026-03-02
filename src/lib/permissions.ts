@@ -2,7 +2,7 @@ export type AppRole = 'super_admin' | 'admin' | 'coordenador' | 'tecnico' | 'ana
 
 export type Permission =
   | 'dashboard:read'
-  | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage' | 'os:comment'
+  | 'os:read' | 'os:create' | 'os:update' | 'os:assign' | 'os:close' | 'os:manage' | 'os:comment' | 'os:view_technical_note'
   | 'my_os:read'
   | 'assets:read' | 'assets:manage'
   | 'stock:read' | 'stock:manage'
@@ -19,7 +19,7 @@ export type Permission =
 const rolePermissions: Record<AppRole, Permission[]> = {
   super_admin: [
     'dashboard:read', 'my_os:read',
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment', 'os:view_technical_note',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'collaborators:read', 'collaborators:manage',
@@ -30,7 +30,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
   ],
   admin: [
     'dashboard:read', 'my_os:read',
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:manage', 'os:comment', 'os:view_technical_note',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'collaborators:read', 'collaborators:manage',
@@ -41,7 +41,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
   ],
   coordenador: [
     'dashboard:read', 'my_os:read',
-    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:comment',
+    'os:read', 'os:create', 'os:update', 'os:assign', 'os:close', 'os:comment', 'os:view_technical_note',
     'assets:read', 'assets:manage', 'stock:read', 'stock:manage',
     'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'collaborators:read', 'collaborators:manage',
