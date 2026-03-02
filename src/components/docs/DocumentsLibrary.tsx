@@ -14,8 +14,9 @@ import { Upload, FileText, Trash2, Download, Search, FolderOpen, Calendar, User,
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
+import { useModuleCategories } from '@/hooks/useModuleCategories';
+import { CategoryManager } from './CategoryManager';
 
-const CATEGORIES = ['Geral', 'Nota Fiscal', 'Contrato', 'Manual Técnico', 'Infraestrutura', 'Licença', 'Procedimento', 'Outro'];
 const FOLDERS = ['Geral', 'Notas Fiscais', 'Contratos', 'Manuais', 'Infraestrutura', 'Licenças', 'Procedimentos'];
 
 function formatFileSize(bytes: number) {
@@ -26,6 +27,7 @@ function formatFileSize(bytes: number) {
 
 export function DocumentsLibrary() {
   const { documentsQuery, uploadDocument, deleteDocument } = useDocuments();
+  const { categories: CATEGORIES } = useModuleCategories('library');
   const [search, setSearch] = useState('');
   const [filterFolder, setFilterFolder] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -103,6 +105,7 @@ export function DocumentsLibrary() {
               {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+          <CategoryManager module="library" label="Biblioteca" />
           <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2"><Upload className="h-4 w-4" /> Enviar</Button>

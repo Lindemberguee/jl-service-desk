@@ -17,8 +17,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
-
-const KB_CATEGORIES = ['Geral', 'Hardware', 'Software', 'Rede', 'Segurança', 'Infraestrutura', 'Procedimentos', 'Troubleshooting'];
+import { useModuleCategories } from '@/hooks/useModuleCategories';
+import { CategoryManager } from './CategoryManager';
 
 interface ArticleForm {
   title: string; content: string; category: string; tags: string; is_published: boolean;
@@ -29,6 +29,7 @@ const emptyForm: ArticleForm = { title: '', content: '', category: 'Geral', tags
 export function KnowledgeBaseManager() {
   const { articlesQuery, createArticle, updateArticle, deleteArticle } = useKnowledgeBase();
   const { currentRole, rolePermissions, user } = useAuth();
+  const { categories: KB_CATEGORIES } = useModuleCategories('knowledge');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -84,6 +85,7 @@ export function KnowledgeBaseManager() {
               {KB_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+          {canManage && <CategoryManager module="knowledge" label="Base de Conhecimento" />}
           {canManage && (
             <Dialog open={formOpen} onOpenChange={v => { setFormOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
               <DialogTrigger asChild>
