@@ -173,7 +173,11 @@ export default function PortalWorkOrderDetail() {
 
   const getProfileName = (userId: string | null) => {
     if (!userId) return null;
-    return profiles.find((p: any) => p.id === userId)?.name || 'Equipe';
+    const name = profiles.find((p: any) => p.id === userId)?.name;
+    if (!name) return 'Equipe';
+    // If sender is NOT the requester, show "Equipe · Name"
+    if (userId !== user?.id) return `Equipe · ${name}`;
+    return name;
   };
 
   if (isLoading) {
