@@ -10,7 +10,7 @@ import {
   Maximize, Bookmark, FolderOpen, Tag,
   BellRing, History, Cpu, Database, Key, CircleDot, Network,
   BarChart, PieChart, Workflow, ClipboardCheck, Boxes, AlertTriangle,
-  Bot, Target, Sparkles, Play, ChevronRight, Menu, X
+  Bot, Target, Sparkles, Play, ChevronRight, Menu, X, HelpCircle, Plus, Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -427,6 +427,59 @@ const roleDetails = [
   { role: 'Leitura', desc: 'Visualização completa sem edição. Ideal para supervisão.', color: 'text-slate-400', icon: Eye },
 ];
 
+const faqItems = [
+  { q: 'O que é o OrdFy?', a: 'O OrdFy é uma plataforma completa de gestão de manutenção e facilities. Ele centraliza ordens de serviço, estoque, ativos, KPIs, OKRs, auditoria, canvas colaborativo, anotações e muito mais — tudo em tempo real com 7 perfis de acesso e multi-departamento.' },
+  { q: 'Preciso instalar alguma coisa?', a: 'Não! O OrdFy é 100% web e funciona em qualquer navegador moderno. Basta acessar pelo computador, tablet ou celular. O painel do técnico é otimizado para uso mobile em campo.' },
+  { q: 'Quantos usuários posso ter?', a: 'Depende do plano contratado. Podemos personalizar de acordo com a sua operação. Entre em contato pelo WhatsApp para receber uma proposta sob medida.' },
+  { q: 'Como funciona o controle de acesso?', a: 'O sistema possui 7 perfis (Super Admin, Admin, Coordenador, Técnico, Analista, Solicitante e Leitura) com matriz de permissões granulares. Cada perfil vê apenas o que precisa e cada departamento tem isolamento total de dados.' },
+  { q: 'Posso usar em múltiplos departamentos?', a: 'Sim! A arquitetura multi-tenant permite gerenciar departamentos independentes com isolamento total de dados via Row Level Security. Cada departamento tem seus próprios cadastros, OS, estoque e configurações.' },
+  { q: 'Meus dados estão seguros?', a: 'Absolutamente. Utilizamos PostgreSQL com RLS (Row Level Security) nativo, auditoria global de todas as ações, HTTPS em toda a plataforma e infraestrutura cloud de alta disponibilidade.' },
+  { q: 'Existe período de teste?', a: 'Sim! Oferecemos um período de avaliação para você conhecer todas as funcionalidades. Fale conosco pelo WhatsApp para começar.' },
+  { q: 'O OrdFy se integra com outros sistemas?', a: 'Sim, oferecemos integrações via API e também suporte a importação/exportação em CSV. Para integrações personalizadas, entre em contato para discutirmos a melhor solução.' },
+];
+
+function FaqAccordion() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <div className="space-y-3">
+      {faqItems.map((item, i) => {
+        const isOpen = openIndex === i;
+        return (
+          <motion.div
+            key={i}
+            className={cn(
+              'rounded-xl border overflow-hidden transition-all duration-300',
+              isOpen ? 'border-blue-500/30 bg-slate-900/80' : 'border-slate-700/50 bg-slate-900/50 hover:border-slate-600/50'
+            )}
+            initial={false}
+          >
+            <button
+              onClick={() => setOpenIndex(isOpen ? null : i)}
+              className="w-full flex items-center justify-between px-6 py-5 text-left"
+            >
+              <span className={cn('text-sm font-semibold transition-colors', isOpen ? 'text-white' : 'text-slate-300')}>
+                {item.q}
+              </span>
+              <motion.div animate={{ rotate: isOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
+                <Plus className={cn('h-5 w-5 shrink-0', isOpen ? 'text-blue-400' : 'text-slate-500')} />
+              </motion.div>
+            </button>
+            <motion.div
+              initial={false}
+              animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <p className="px-6 pb-5 text-sm text-slate-400 leading-relaxed">{item.a}</p>
+            </motion.div>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main Landing Page                                                  */
 /* ------------------------------------------------------------------ */
@@ -455,6 +508,7 @@ export default function LandingPage() {
     { href: '#access', label: 'Segurança' },
     { href: '#screenshots', label: 'Sistema' },
     { href: '#roles', label: 'Perfis' },
+    { href: '#faq', label: 'FAQ' },
   ];
 
   return (
@@ -898,6 +952,22 @@ export default function LandingPage() {
       </Section>
 
       {/* ============================================================ */}
+      {/*  FAQ                                                           */}
+      {/* ============================================================ */}
+      <Section id="faq" className="bg-gradient-to-b from-slate-950 via-slate-900/30 to-slate-950">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-sky-500/10 text-sky-400 border-sky-500/20">Perguntas Frequentes</Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mt-4">
+              Tire suas{' '}
+              <span className="bg-gradient-to-r from-sky-400 to-blue-400 bg-clip-text text-transparent">dúvidas</span>
+            </h2>
+          </div>
+          <FaqAccordion />
+        </div>
+      </Section>
+
+      {/* ============================================================ */}
       {/*  FOOTER                                                       */}
       {/* ============================================================ */}
       <footer className="border-t border-slate-800/50 py-12 bg-slate-950">
@@ -925,7 +995,7 @@ export default function LandingPage() {
       {/*  FLOATING WHATSAPP BUTTON                                     */}
       {/* ============================================================ */}
       <motion.a
-        href="https://wa.me/5500000000000?text=Olá!%20Tenho%20interesse%20no%20OrdFy%20e%20gostaria%20de%20saber%20mais."
+        href="https://wa.me/5512996543522?text=Olá!%20Tenho%20interesse%20no%20OrdFy%20e%20gostaria%20de%20saber%20mais."
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white pl-5 pr-6 py-3.5 rounded-full shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all duration-300 group"
