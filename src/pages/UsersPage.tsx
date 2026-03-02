@@ -1,14 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { roleLabels, hasPermission, statusLabels } from '@/lib/permissions';
-import { Users, Shield, Lock, ClipboardList, Star, Timer, BarChart3 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { roleLabels, hasPermission } from '@/lib/permissions';
+import { Users, Shield, Lock, Star, Timer, BarChart3, ClipboardList, UserCheck, UserX } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { differenceInHours, parseISO } from 'date-fns';
 
@@ -25,7 +28,8 @@ export default function UsersPage() {
   const { data: workOrders = [] } = useTenantQuery<any>('work_orders_team', 'work_orders');
   const { data: events = [] } = useTenantQuery<any>('wo_events_team', 'work_order_events');
 
-  // Compute team performance metrics
+  const [detailTarget, setDetailTarget] = useState<any>(null);
+
   const teamMetrics = useMemo(() => {
     const techs = memberships.filter((m: any) => ['tecnico', 'coordenador', 'admin', 'super_admin'].includes(m.role));
     return techs.map((t: any) => {
@@ -36,7 +40,6 @@ export default function UsersPage() {
         ? Math.round(resolved.reduce((a: number, wo: any) => a + differenceInHours(parseISO(wo.resolved_at), parseISO(wo.created_at)), 0) / resolved.length)
         : 0;
 
-      // Get ratings for this tech
       const techRatings = events.filter((ev: any) => {
         if (ev.type !== 'closed' || !(ev.payload as any)?.rating) return false;
         const wo = workOrders.find((w: any) => w.id === ev.work_order_id);
@@ -63,10 +66,15 @@ export default function UsersPage() {
     }).sort((a, b) => b.activeCount - a.activeCount);
   }, [memberships, workOrders, events]);
 
-  // Non-tech members (solicitantes, leitura)
-  const otherMembers = memberships.filter((m: any) => !['tecnico', 'coordenador', 'admin', 'super_admin'].includes(m.role));
-
   const maxActive = Math.max(...teamMetrics.map(t => t.activeCount), 1);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const active = memberships.filter((m: any) => m.is_active).length;
+    const techs = teamMetrics.length;
+    const totalOs = teamMetrics.reduce((a, t) => a + t.totalAssigned, 0);
+    return { total: memberships.length, active, inactive: memberships.length - active, techs, totalOs };
+  }, [memberships, teamMetrics]);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -76,6 +84,13 @@ export default function UsersPage() {
       default: return 'outline' as const;
     }
   };
+
+  const summaryCards = [
+    { label: 'Membros', value: stats.total, icon: Users, color: 'text-primary' },
+    { label: 'Ativos', value: stats.active, icon: UserCheck, color: 'text-green-500' },
+    { label: 'Técnicos', value: stats.techs, icon: Shield, color: 'text-blue-500' },
+    { label: 'OS Atribuídas', value: stats.totalOs, icon: ClipboardList, color: 'text-muted-foreground' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -95,6 +110,25 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* Summary Cards */}
+      {!isLoading && memberships.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {summaryCards.map((card) => (
+            <Card key={card.label} className="border-border shadow-none">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className={`rounded-lg bg-muted/50 p-2 ${card.color}`}>
+                  <card.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold leading-none">{card.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{card.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <Tabs defaultValue="workload">
         <TabsList className="bg-card border border-border h-9">
           <TabsTrigger value="workload" className="text-xs h-7 gap-1"><BarChart3 className="h-3 w-3" />Carga de Trabalho</TabsTrigger>
@@ -111,7 +145,11 @@ export default function UsersPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {teamMetrics.map((t) => (
-                <Card key={t.id} className="border-border shadow-none">
+                <Card
+                  key={t.id}
+                  className="border-border shadow-none cursor-pointer hover:bg-accent/30 transition-colors"
+                  onClick={() => setDetailTarget(t)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="min-w-0">
@@ -124,7 +162,6 @@ export default function UsersPage() {
                       </Badge>
                     </div>
 
-                    {/* Workload bar */}
                     <div className="mb-3">
                       <div className="flex items-center justify-between text-[11px] mb-1">
                         <span className="text-muted-foreground">OS ativas</span>
@@ -133,7 +170,6 @@ export default function UsersPage() {
                       <Progress value={(t.activeCount / maxActive) * 100} className="h-2" />
                     </div>
 
-                    {/* Quick stats */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="text-center bg-muted/30 rounded-md p-2">
                         <p className="text-[10px] text-muted-foreground">Total</p>
@@ -164,7 +200,11 @@ export default function UsersPage() {
           ) : isMobile ? (
             <div className="space-y-2">
               {teamMetrics.map((t) => (
-                <Card key={t.id} className="border-border shadow-none">
+                <Card
+                  key={t.id}
+                  className="border-border shadow-none cursor-pointer hover:bg-accent/30 transition-colors"
+                  onClick={() => setDetailTarget(t)}
+                >
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <p className="text-sm font-medium truncate">{t.name}</p>
@@ -214,7 +254,11 @@ export default function UsersPage() {
                   </TableHeader>
                   <TableBody>
                     {teamMetrics.map((t) => (
-                      <TableRow key={t.id}>
+                      <TableRow
+                        key={t.id}
+                        className="cursor-pointer hover:bg-accent/30 transition-colors"
+                        onClick={() => setDetailTarget(t)}
+                      >
                         <TableCell>
                           <p className="text-sm font-medium">{t.name}</p>
                           <p className="text-[11px] text-muted-foreground">{t.email}</p>
@@ -254,10 +298,7 @@ export default function UsersPage() {
         {/* Members Tab */}
         <TabsContent value="members" className="mt-3">
           <Card className="border-border shadow-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">Todos os Membros ({memberships.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {isLoading ? (
                 <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
               ) : memberships.length === 0 ? (
@@ -265,7 +306,20 @@ export default function UsersPage() {
               ) : isMobile ? (
                 <div className="space-y-2">
                   {memberships.map((m: any) => (
-                    <div key={m.id} className="border border-border rounded-md p-3">
+                    <div
+                      key={m.id}
+                      className="border border-border rounded-md p-3 cursor-pointer hover:bg-accent/30 transition-colors"
+                      onClick={() => {
+                        const metric = teamMetrics.find(tm => tm.userId === m.user_id);
+                        setDetailTarget(metric || {
+                          id: m.id, userId: m.user_id,
+                          name: m.profiles?.name || '-', email: m.profiles?.email || '-',
+                          role: m.role, isActive: m.is_active,
+                          totalAssigned: 0, activeCount: 0, resolvedCount: 0,
+                          avgResolutionHours: 0, avgRating: null, ratingCount: 0,
+                        });
+                      }}
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{m.profiles?.name || '-'}</p>
@@ -287,31 +341,45 @@ export default function UsersPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="hover:bg-transparent">
                       <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Nome</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Email</TableHead>
                       <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Papel</TableHead>
                       <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberships.map((m: any) => (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-medium">{m.profiles?.name || '-'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{m.profiles?.email || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={getRoleBadgeVariant(m.role)} className="gap-1 text-[11px]">
-                            <Shield className="h-3 w-3" />
-                            {roleLabels[m.role as keyof typeof roleLabels] || m.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[11px]">
-                            {m.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {memberships.map((m: any) => {
+                      const metric = teamMetrics.find(tm => tm.userId === m.user_id);
+                      return (
+                        <TableRow
+                          key={m.id}
+                          className="cursor-pointer hover:bg-accent/30 transition-colors"
+                          onClick={() => setDetailTarget(metric || {
+                            id: m.id, userId: m.user_id,
+                            name: m.profiles?.name || '-', email: m.profiles?.email || '-',
+                            role: m.role, isActive: m.is_active,
+                            totalAssigned: 0, activeCount: 0, resolvedCount: 0,
+                            avgResolutionHours: 0, avgRating: null, ratingCount: 0,
+                          })}
+                        >
+                          <TableCell>
+                            <p className="text-sm font-medium">{m.profiles?.name || '-'}</p>
+                            <p className="text-[11px] text-muted-foreground">{m.profiles?.email || '-'}</p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getRoleBadgeVariant(m.role)} className="gap-1 text-[11px]">
+                              <Shield className="h-3 w-3" />
+                              {roleLabels[m.role as keyof typeof roleLabels] || m.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[11px]">
+                              {m.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -319,6 +387,71 @@ export default function UsersPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailTarget} onOpenChange={(v) => { if (!v) setDetailTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailTarget?.name}
+              {detailTarget && (
+                <Badge variant={getRoleBadgeVariant(detailTarget.role)} className="text-[10px] gap-1">
+                  <Shield className="h-2.5 w-2.5" />
+                  {roleLabels[detailTarget.role as keyof typeof roleLabels] || detailTarget.role}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>{detailTarget?.email}</DialogDescription>
+          </DialogHeader>
+          {detailTarget && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={detailTarget.isActive ? 'default' : 'secondary'} className="text-[10px]">
+                  {detailTarget.isActive ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+
+              {/* Performance metrics */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/30 rounded-lg p-3 text-center">
+                  <ClipboardList className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                  <p className="text-lg font-bold">{detailTarget.totalAssigned}</p>
+                  <p className="text-[10px] text-muted-foreground">OS Total</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 text-center">
+                  <BarChart3 className="h-4 w-4 mx-auto text-primary mb-1" />
+                  <p className="text-lg font-bold">{detailTarget.activeCount}</p>
+                  <p className="text-[10px] text-muted-foreground">OS Ativas</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 text-center">
+                  <UserCheck className="h-4 w-4 mx-auto text-green-500 mb-1" />
+                  <p className="text-lg font-bold text-green-500">{detailTarget.resolvedCount}</p>
+                  <p className="text-[10px] text-muted-foreground">Resolvidas</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 text-center">
+                  <Timer className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                  <p className="text-lg font-bold">{detailTarget.avgResolutionHours}h</p>
+                  <p className="text-[10px] text-muted-foreground">Tempo Médio</p>
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div className="border-t border-border pt-3">
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">Avaliação dos Solicitantes</p>
+                {detailTarget.avgRating ? (
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xl font-bold">{detailTarget.avgRating}</span>
+                    <span className="text-xs text-muted-foreground">({detailTarget.ratingCount} avaliações)</span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Sem avaliações registradas.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
