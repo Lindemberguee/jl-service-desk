@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Trash2, Plus, Search, Filter, CheckCircle2, XCircle, Clock,
   Package, Wrench, Upload, Eye, AlertTriangle, Loader2, ChevronsUpDown, Check,
+  Pencil, Save,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -65,13 +66,15 @@ async function getAuthHeaders() {
 
 export default function DisposalPage() {
   const { currentRole, rolePermissions, currentTenantId } = useAuth();
-  const { disposals, isLoading, createDisposal, approveDisposal, rejectDisposal, deleteDisposal } = useDisposals();
+  const { disposals, isLoading, createDisposal, updateDisposal, approveDisposal, rejectDisposal, deleteDisposal } = useDisposals();
   const canManage = currentRole ? hasPermission(currentRole, 'disposal:manage', undefined, rolePermissions) : false;
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [showCreate, setShowCreate] = useState(false);
   const [showDetail, setShowDetail] = useState<Disposal | null>(null);
+  const [editingDetail, setEditingDetail] = useState(false);
+  const [editForm, setEditForm] = useState({ reason: '', reason_detail: '', category: '', residual_value: 0, item_description: '', quantity: 1 });
   const [showReject, setShowReject] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
 
@@ -259,6 +262,46 @@ export default function DisposalPage() {
     setShowDetail(null);
   };
 
+  const openDetail = (d: Disposal) => {
+    setShowDetail(d);
+    setEditingDetail(false);
+  };
+
+  const startEdit = () => {
+    if (!showDetail) return;
+    setEditForm({
+      reason: showDetail.reason,
+      reason_detail: showDetail.reason_detail || '',
+      category: showDetail.category || 'Geral',
+      residual_value: showDetail.residual_value || 0,
+      item_description: showDetail.item_description || '',
+      quantity: showDetail.quantity,
+    });
+    setEditingDetail(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!showDetail) return;
+    await updateDisposal.mutateAsync({
+      id: showDetail.id,
+      reason: editForm.reason as any,
+      reason_detail: editForm.reason_detail,
+      category: editForm.category,
+      residual_value: editForm.residual_value,
+      item_description: editForm.item_description,
+      quantity: editForm.quantity,
+    });
+    toast.success('Descarte atualizado');
+    setShowDetail({ ...showDetail, ...editForm });
+    setEditingDetail(false);
+  };
+
+  const handleDelete = async () => {
+    if (!showDetail) return;
+    await deleteDisposal.mutateAsync(showDetail.id);
+    setShowDetail(null);
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -345,7 +388,7 @@ export default function DisposalPage() {
                   const OriginIcon = origin.icon;
                   const StatusIcon = sc.icon;
                   return (
-                    <TableRow key={d.id} className="cursor-pointer hover:bg-accent/30" onClick={() => setShowDetail(d)}>
+                    <TableRow key={d.id} className="cursor-pointer hover:bg-accent/30" onClick={() => openDetail(d)}>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium text-sm truncate max-w-[200px]">{d.item_name}</span>
@@ -371,7 +414,7 @@ export default function DisposalPage() {
                           <div className="flex items-center justify-end gap-1">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setShowDetail(d); }}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d); }}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
@@ -555,9 +598,9 @@ export default function DisposalPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Detail Dialog */}
-      <Dialog open={!!showDetail} onOpenChange={() => setShowDetail(null)}>
-        <DialogContent className="max-w-lg">
+      {/* Detail / Edit Dialog */}
+      <Dialog open={!!showDetail} onOpenChange={v => { if (!v) { setShowDetail(null); setEditingDetail(false); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {showDetail && (() => {
             const d = showDetail;
             const sc = statusConfig[d.status];
@@ -571,58 +614,119 @@ export default function DisposalPage() {
                   </DialogTitle>
                   <DialogDescription>Detalhes do descarte</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className={cn("gap-1", sc.color)}>
-                      <StatusIcon className="h-3 w-3" /> {sc.label}
-                    </Badge>
-                    <Badge variant="outline" className="gap-1">
-                      <origin.icon className="h-3 w-3" /> {origin.label}
-                    </Badge>
-                    <Badge variant="outline">{reasonLabels[d.reason]}</Badge>
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Quantidade:</span> <strong>{d.quantity} {d.unit}</strong></div>
-                    <div><span className="text-muted-foreground">Categoria:</span> <strong>{d.category}</strong></div>
-                    <div><span className="text-muted-foreground">Valor Residual:</span> <strong>R$ {(d.residual_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></div>
-                    <div><span className="text-muted-foreground">Data:</span> <strong>{format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</strong></div>
-                  </div>
-                  {d.item_description && (
-                    <div className="text-sm"><span className="text-muted-foreground">Descrição:</span><p className="mt-1">{d.item_description}</p></div>
-                  )}
-                  {d.reason_detail && (
-                    <div className="text-sm"><span className="text-muted-foreground">Justificativa:</span><p className="mt-1">{d.reason_detail}</p></div>
-                  )}
-                  {d.rejection_note && (
-                    <div className="text-sm p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                      <span className="text-destructive font-medium">Motivo da rejeição:</span>
-                      <p className="mt-1">{d.rejection_note}</p>
+
+                {!editingDetail ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className={cn("gap-1", sc.color)}>
+                        <StatusIcon className="h-3 w-3" /> {sc.label}
+                      </Badge>
+                      <Badge variant="outline" className="gap-1">
+                        <origin.icon className="h-3 w-3" /> {origin.label}
+                      </Badge>
+                      <Badge variant="outline">{reasonLabels[d.reason]}</Badge>
                     </div>
-                  )}
-                  {Array.isArray(d.attachments) && d.attachments.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">Anexos:</span>
-                      <div className="flex gap-2 flex-wrap">
-                        {d.attachments.map((a: any, i: number) => (
-                          <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
-                            Arquivo {i + 1}
-                          </a>
-                        ))}
+                    <Separator />
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-muted-foreground">Quantidade:</span> <strong>{d.quantity} {d.unit}</strong></div>
+                      <div><span className="text-muted-foreground">Categoria:</span> <strong>{d.category}</strong></div>
+                      <div><span className="text-muted-foreground">Valor Residual:</span> <strong>R$ {(d.residual_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></div>
+                      <div><span className="text-muted-foreground">Data:</span> <strong>{format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</strong></div>
+                    </div>
+                    {d.item_description && (
+                      <div className="text-sm"><span className="text-muted-foreground">Descrição:</span><p className="mt-1">{d.item_description}</p></div>
+                    )}
+                    {d.reason_detail && (
+                      <div className="text-sm"><span className="text-muted-foreground">Justificativa:</span><p className="mt-1">{d.reason_detail}</p></div>
+                    )}
+                    {d.rejection_note && (
+                      <div className="text-sm p-3 rounded-lg bg-destructive/5 border border-destructive/20">
+                        <span className="text-destructive font-medium">Motivo da rejeição:</span>
+                        <p className="mt-1">{d.rejection_note}</p>
+                      </div>
+                    )}
+                    {Array.isArray(d.attachments) && d.attachments.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-sm text-muted-foreground">Anexos:</span>
+                        <div className="flex gap-2 flex-wrap">
+                          {d.attachments.map((a: any, i: number) => (
+                            <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
+                              Arquivo {i + 1}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <Separator />
+                    <div className="flex gap-2 flex-wrap">
+                      {canManage && d.status === 'pendente' && (
+                        <>
+                          <Button variant="outline" size="sm" className="gap-1.5" onClick={startEdit}>
+                            <Pencil className="h-3.5 w-3.5" /> Editar
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleteDisposal.isPending}>
+                            {deleteDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir
+                          </Button>
+                          <div className="flex-1" />
+                          <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setShowReject(d.id)}>
+                            <XCircle className="h-3.5 w-3.5" /> Rejeitar
+                          </Button>
+                          <Button size="sm" className="gap-1.5" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>
+                            {approveDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                            Aprovar{d.origin_type === 'estoque' ? ' & Baixar' : ''}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Edit mode */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Motivo</Label>
+                        <Select value={editForm.reason} onValueChange={v => setEditForm(f => ({ ...f, reason: v }))}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(reasonLabels).map(([k, l]) => (
+                              <SelectItem key={k} value={k}>{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Categoria</Label>
+                        <Input value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="h-9" />
                       </div>
                     </div>
-                  )}
-                </div>
-                {canManage && d.status === 'pendente' && (
-                  <DialogFooter className="gap-2">
-                    <Button variant="outline" className="text-destructive" onClick={() => setShowReject(d.id)}>
-                      <XCircle className="h-4 w-4 mr-2" /> Rejeitar
-                    </Button>
-                    <Button className="gap-2" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>
-                      {approveDisposal.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      Aprovar {d.origin_type === 'estoque' ? '& Baixar Estoque' : ''}
-                    </Button>
-                  </DialogFooter>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Quantidade</Label>
+                        <Input type="number" min={1} value={editForm.quantity} onChange={e => setEditForm(f => ({ ...f, quantity: Number(e.target.value) }))} className="h-9" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Valor Residual</Label>
+                        <CurrencyInput value={String(editForm.residual_value || '')} onValueChange={v => setEditForm(f => ({ ...f, residual_value: v ? Number(v) : 0 }))} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Descrição</Label>
+                      <Textarea value={editForm.item_description} onChange={e => setEditForm(f => ({ ...f, item_description: e.target.value }))} rows={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Justificativa</Label>
+                      <Textarea value={editForm.reason_detail} onChange={e => setEditForm(f => ({ ...f, reason_detail: e.target.value }))} rows={2} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setEditingDetail(false)}>Cancelar</Button>
+                      <Button className="flex-1 gap-1.5" onClick={handleSaveEdit} disabled={updateDisposal.isPending}>
+                        {updateDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </>
             );
