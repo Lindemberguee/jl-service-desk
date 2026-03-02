@@ -15,8 +15,8 @@ import { Plus, Shield, Eye, EyeOff, Copy, Search, Trash2, Edit, Globe, Key, Lock
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
-
-const VAULT_CATEGORIES = ['Geral', 'Servidores', 'Rede', 'Wi-Fi', 'Aplicações', 'E-mail', 'Banco de Dados', 'VPN', 'Cloud', 'Outro'];
+import { useModuleCategories } from '@/hooks/useModuleCategories';
+import { CategoryManager } from './CategoryManager';
 
 interface VaultFormData {
   title: string; service_name: string; url: string;
@@ -29,6 +29,7 @@ const emptyForm: VaultFormData = { title: '', service_name: '', url: '', usernam
 export function VaultManager() {
   const { listQuery, decryptEntry, createEntry, updateEntry, deleteEntry } = useVault();
   const { currentRole, rolePermissions } = useAuth();
+  const { categories: VAULT_CATEGORIES } = useModuleCategories('vault');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -126,6 +127,7 @@ export function VaultManager() {
               {VAULT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+          {canManage && <CategoryManager module="vault" label="Cofre" />}
           {canManage && (
             <Dialog open={formOpen} onOpenChange={v => { setFormOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
               <DialogTrigger asChild>
