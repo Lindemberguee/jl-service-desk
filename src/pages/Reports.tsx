@@ -9,14 +9,14 @@ import { Progress } from '@/components/ui/progress';
 import { statusLabels, priorityLabels } from '@/lib/permissions';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, RadialBarChart, RadialBar,
+  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area,
 } from 'recharts';
 import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
-  Target, Gauge, CalendarDays, Layers, ShieldCheck,
+  Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck,
 } from 'lucide-react';
-import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, startOfDay, eachDayOfInterval } from 'date-fns';
+import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   baixa: 'hsl(215, 14%, 46%)', media: 'hsl(213, 94%, 38%)',
   alta: 'hsl(25, 95%, 53%)', critica: 'hsl(0, 72%, 45%)',
 };
-const CHART_COLORS = ['hsl(217, 91%, 60%)', 'hsl(262, 60%, 55%)', 'hsl(38, 92%, 50%)', 'hsl(142, 71%, 45%)', 'hsl(0, 72%, 51%)', 'hsl(199, 89%, 48%)', 'hsl(330, 70%, 55%)', 'hsl(170, 60%, 45%)'];
 const tooltipStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px', boxShadow: '0 8px 30px -12px hsl(var(--foreground) / 0.15)' };
 
 type Period = '7d' | '30d' | '90d' | '12m';
@@ -70,6 +69,7 @@ export default function Reports() {
   const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
   const overdue = activeWO.filter((wo: any) => wo.resolve_due_at && new Date(wo.resolve_due_at) < new Date()).length;
   const slaCompliance = total > 0 ? Math.round(((total - overdue) / total) * 100) : 100;
+  const reopenedCount = filteredWO.filter((wo: any) => wo.status === 'reaberta').length;
 
   const avgResolutionHours = useMemo(() => {
     const r = filteredWO.filter((wo: any) => wo.resolved_at);
@@ -99,16 +99,11 @@ export default function Reports() {
   const trendData = useMemo(() => {
     const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
     const groups: Record<string, { created: number; closed: number }> = {};
-
-    // Pre-fill days for smoother line
     if (period !== '12m') {
-      const days = eachDayOfInterval({ start: cutoff, end: new Date() });
-      days.forEach(d => {
-        const key = format(d, fmt, { locale: ptBR });
-        groups[key] = { created: 0, closed: 0 };
+      eachDayOfInterval({ start: cutoff, end: new Date() }).forEach(d => {
+        groups[format(d, fmt, { locale: ptBR })] = { created: 0, closed: 0 };
       });
     }
-
     filteredWO.forEach((wo: any) => {
       const key = format(parseISO(wo.created_at), fmt, { locale: ptBR });
       if (!groups[key]) groups[key] = { created: 0, closed: 0 };
@@ -123,16 +118,6 @@ export default function Reports() {
     return Object.entries(groups).map(([name, v]) => ({ name, ...v }));
   }, [filteredWO, closedWO, period, cutoff]);
 
-  // ─── Categories ───────────────────────────────────────────
-  const categoryData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredWO.forEach((wo: any) => {
-      const cat = wo.category_id ? 'Com categoria' : 'Sem categoria';
-      counts[cat] = (counts[cat] || 0) + 1;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [filteredWO]);
-
   // ─── Heatmap (day of week x hour) ────────────────────────
   const heatmapData = useMemo(() => {
     const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -142,8 +127,7 @@ export default function Reports() {
       const day = dayLabels[d.getDay()];
       const hour = d.getHours();
       const periodLabel = hour < 6 ? 'Madrugada' : hour < 12 ? 'Manhã' : hour < 18 ? 'Tarde' : 'Noite';
-      const key = `${day}-${periodLabel}`;
-      grid[key] = (grid[key] || 0) + 1;
+      grid[`${day}-${periodLabel}`] = (grid[`${day}-${periodLabel}`] || 0) + 1;
     });
     const periods = ['Madrugada', 'Manhã', 'Tarde', 'Noite'];
     return dayLabels.map(day => {
@@ -152,6 +136,54 @@ export default function Reports() {
       return row;
     });
   }, [filteredWO]);
+
+  // ─── Backlog Aging ────────────────────────────────────────
+  const agingData = useMemo(() => {
+    const now = new Date();
+    const bands = [
+      { label: '0-2 dias', min: 0, max: 2 },
+      { label: '3-7 dias', min: 3, max: 7 },
+      { label: '8-15 dias', min: 8, max: 15 },
+      { label: '16-30 dias', min: 16, max: 30 },
+      { label: '30+ dias', min: 31, max: Infinity },
+    ];
+    const openWO = workOrders.filter((wo: any) => !['concluida', 'aprovada', 'encerrada'].includes(wo.status));
+    return bands.map(band => {
+      const count = openWO.filter((wo: any) => {
+        const age = differenceInDays(now, parseISO(wo.created_at));
+        return age >= band.min && age <= band.max;
+      }).length;
+      return { name: band.label, value: count };
+    });
+  }, [workOrders]);
+
+  const totalBacklog = agingData.reduce((a, b) => a + b.value, 0);
+
+  // ─── Resolution Time Trend ────────────────────────────────
+  const resolutionTrendData = useMemo(() => {
+    const resolvedWO = filteredWO.filter((wo: any) => wo.resolved_at);
+    if (resolvedWO.length === 0) return [];
+
+    const isWeekly = period === '90d' || period === '12m';
+    const fmtStr = period === '12m' ? 'MMM/yy' : 'dd/MM';
+    const groups: Record<string, { totalHrs: number; count: number }> = {};
+
+    resolvedWO.forEach((wo: any) => {
+      const resolvedDate = parseISO(wo.resolved_at);
+      const key = isWeekly
+        ? `Sem ${format(startOfWeek(resolvedDate, { locale: ptBR }), 'dd/MM', { locale: ptBR })}`
+        : format(resolvedDate, fmtStr, { locale: ptBR });
+
+      if (!groups[key]) groups[key] = { totalHrs: 0, count: 0 };
+      groups[key].totalHrs += differenceInHours(resolvedDate, parseISO(wo.created_at));
+      groups[key].count++;
+    });
+
+    return Object.entries(groups).map(([name, v]) => ({
+      name,
+      avgHours: Math.round(v.totalHrs / v.count),
+    }));
+  }, [filteredWO, period]);
 
   // ─── Tech performance ─────────────────────────────────────
   const techPerformance = useMemo(() => {
@@ -163,7 +195,7 @@ export default function Reports() {
         ? Math.round(resolvedList.reduce((a: number, wo: any) => a + differenceInHours(parseISO(wo.resolved_at), parseISO(wo.created_at)), 0) / resolvedList.length)
         : 0;
       const rate = assigned.length > 0 ? Math.round((resolvedList.length / assigned.length) * 100) : 0;
-      return { name: t.profiles?.name || 'Sem nome', total: assigned.length, resolved: resolvedList.length, avgHours: avgHrs, rate };
+      return { name: t.profiles?.name || 'Sem nome', userId: t.user_id, total: assigned.length, resolved: resolvedList.length, avgHours: avgHrs, rate };
     }).filter(t => t.total > 0).sort((a, b) => b.resolved - a.resolved);
   }, [memberships, filteredWO]);
 
@@ -182,6 +214,37 @@ export default function Reports() {
     name: `${star}★`, value: ratingEvents.filter((ev: any) => (ev.payload as any)?.rating === star).length,
   })), [ratingEvents]);
 
+  // ─── Satisfaction Trend ───────────────────────────────────
+  const satisfactionTrend = useMemo(() => {
+    if (ratingEvents.length === 0) return [];
+    const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
+    const groups: Record<string, { total: number; count: number }> = {};
+    ratingEvents.forEach((ev: any) => {
+      const key = format(parseISO(ev.created_at), fmt, { locale: ptBR });
+      if (!groups[key]) groups[key] = { total: 0, count: 0 };
+      groups[key].total += (ev.payload as any)?.rating || 0;
+      groups[key].count++;
+    });
+    return Object.entries(groups).map(([name, v]) => ({
+      name,
+      avgRating: +(v.total / v.count).toFixed(1),
+    }));
+  }, [ratingEvents, period]);
+
+  // ─── Satisfaction by Technician ───────────────────────────
+  const techSatisfaction = useMemo(() => {
+    const techs = memberships.filter((m: any) => ['tecnico', 'coordenador', 'admin', 'super_admin'].includes(m.role));
+    return techs.map((t: any) => {
+      const techRatings = ratingEvents.filter((ev: any) => {
+        const wo = workOrders.find((w: any) => w.id === ev.work_order_id);
+        return wo?.assigned_to_id === t.user_id;
+      });
+      if (techRatings.length === 0) return null;
+      const avg = +(techRatings.reduce((a: number, ev: any) => a + ((ev.payload as any)?.rating || 0), 0) / techRatings.length).toFixed(1);
+      return { name: t.profiles?.name || 'Sem nome', avgRating: avg, count: techRatings.length };
+    }).filter(Boolean).sort((a: any, b: any) => b.avgRating - a.avgRating) as { name: string; avgRating: number; count: number }[];
+  }, [memberships, ratingEvents, workOrders]);
+
   // ─── Stock ────────────────────────────────────────────────
   const lowStockItems = stockItems.filter((i: any) => (i.current_level || 0) <= (i.min_level || 0) && i.min_level > 0);
   const stockOutCount = useMemo(() => stockMovements.filter((m: any) => m.type === 'out' && isAfter(parseISO(m.created_at), cutoff)).length, [stockMovements, cutoff]);
@@ -197,7 +260,6 @@ export default function Reports() {
     return Object.values(grouped).sort((a, b) => b.qty - a.qty).slice(0, 10);
   }, [stockMovements, cutoff]);
 
-  // ─── Stock movement trend ─────────────────────────────────
   const stockTrend = useMemo(() => {
     const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
     const groups: Record<string, { entradas: number; saidas: number }> = {};
@@ -233,13 +295,15 @@ export default function Reports() {
       </div>
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <KPICard icon={ClipboardList} label="Total de OS" value={total} />
         <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" />
-        <KPICard icon={Target} label="Taxa de Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} />
+        <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} />
         <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} />
         <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} />
-        <KPICard icon={ShieldCheck} label="SLA Compliance" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} />
+        <KPICard icon={ShieldCheck} label="SLA" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} />
+        <KPICard icon={Hourglass} label="Backlog" value={totalBacklog} accent={totalBacklog > 0 ? 'text-amber-500' : undefined} />
+        <KPICard icon={RotateCcw} label="Reabertas" value={reopenedCount} accent={reopenedCount > 0 ? 'text-destructive' : undefined} />
       </div>
 
       {overdue > 0 && (
@@ -316,6 +380,61 @@ export default function Reports() {
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Backlog Aging */}
+            <ChartCard title="Envelhecimento do Backlog" subtitle={`${totalBacklog} OS abertas no total`} icon={Hourglass}>
+              {totalBacklog === 0 ? <EmptyChart /> : (
+                <>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={agingData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Bar dataKey="value" name="OS Abertas" radius={[6, 6, 0, 0]}>
+                        {agingData.map((_, i) => (
+                          <Cell key={i} fill={
+                            i === 0 ? 'hsl(142, 71%, 45%)' :
+                            i === 1 ? 'hsl(213, 94%, 50%)' :
+                            i === 2 ? 'hsl(38, 92%, 50%)' :
+                            i === 3 ? 'hsl(25, 95%, 53%)' :
+                            'hsl(0, 72%, 51%)'
+                          } />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="grid grid-cols-5 gap-1 mt-2">
+                    {agingData.map((band, i) => (
+                      <div key={i} className="text-center">
+                        <p className={cn("text-lg font-bold", 
+                          i >= 3 && band.value > 0 ? 'text-destructive' : 
+                          i >= 2 && band.value > 0 ? 'text-amber-500' : ''
+                        )}>{band.value}</p>
+                        <p className="text-[10px] text-muted-foreground">{band.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </ChartCard>
+
+            {/* Resolution Time Trend */}
+            <ChartCard title="Tendência do Tempo de Resolução" subtitle="Tempo médio (horas) ao longo do período" icon={Timer}>
+              {resolutionTrendData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={resolutionTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} unit="h" />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
+                    <Line type="monotone" dataKey="avgHours" name="Tempo médio" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
+                  </LineChart>
                 </ResponsiveContainer>
               )}
             </ChartCard>
@@ -449,6 +568,52 @@ export default function Reports() {
               )}
             </ChartCard>
           </div>
+
+          {/* Satisfaction Trend */}
+          <ChartCard title="Tendência de Satisfação" subtitle="Evolução da nota média ao longo do período" icon={TrendingUp}>
+            {satisfactionTrend.length === 0 ? <EmptyChart /> : (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={satisfactionTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} domain={[0, 5]} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [value, 'Nota média']} />
+                  <Line type="monotone" dataKey="avgRating" name="Nota média" stroke="hsl(38, 92%, 50%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(38, 92%, 50%)' }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          {/* Satisfaction by Technician */}
+          {techSatisfaction.length > 0 && (
+            <ChartCard title="Satisfação por Técnico" subtitle="Nota média de cada membro da equipe" icon={UserCheck}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {techSatisfaction.map((t, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                    <div className="bg-muted/20 border border-border rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-xs font-bold text-amber-600">
+                          {t.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">{t.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{t.count} avaliações</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <Star key={s} className={cn('h-4 w-4', s <= Math.round(t.avgRating) ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/20')} />
+                          ))}
+                        </div>
+                        <span className="text-lg font-bold">{t.avgRating}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </ChartCard>
+          )}
         </TabsContent>
 
         {/* ═══════════ Stock Tab ═══════════ */}
@@ -461,7 +626,6 @@ export default function Reports() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Movement trend */}
             <ChartCard title="Movimentação de Estoque" subtitle="Entradas vs Saídas" icon={TrendingUp}>
               {stockTrend.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={250}>
@@ -478,7 +642,6 @@ export default function Reports() {
               )}
             </ChartCard>
 
-            {/* Top consumed */}
             <ChartCard title="Itens Mais Consumidos" icon={TrendingDown}>
               {topConsumed.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={Math.max(200, topConsumed.length * 35)}>
@@ -523,13 +686,13 @@ export default function Reports() {
 function KPICard({ icon: Icon, label, value, accent }: { icon: React.ElementType; label: string; value: string | number; accent?: string }) {
   return (
     <Card className="border-border overflow-hidden group">
-      <CardContent className="p-3.5 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
-          <Icon className="h-4.5 w-4.5 text-primary" />
+      <CardContent className="p-3 flex items-center gap-2.5">
+        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+          <Icon className="h-4 w-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] text-muted-foreground truncate">{label}</p>
-          <p className={cn('text-xl font-bold leading-tight tracking-tight', accent)}>{value}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{label}</p>
+          <p className={cn('text-lg font-bold leading-tight tracking-tight', accent)}>{value}</p>
         </div>
       </CardContent>
     </Card>
