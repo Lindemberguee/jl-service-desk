@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,18 +50,19 @@ export default function TechWorkOrders() {
   const [unitFilter, setUnitFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('all');
   const [sortBy, setSortBy] = useState<'sla' | 'updated' | 'priority'>('sla');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const debouncedSearch = useDebounce(search, 300);
 
   // Reset visible count when filters change
-  useEffect(() => { setVisibleCount(10); }, [statusFilter, priorityFilter, unitFilter, activeView, debouncedSearch, sortBy]);
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, priorityFilter, unitFilter, activeView, debouncedSearch, sortBy]);
 
   const applyView = (view: SavedView) => {
     setActiveView(view.id);
     setStatusFilter(view.filters.status || 'all');
     setPriorityFilter(view.filters.priority || 'all');
-    setVisibleCount(10);
+    setCurrentPage(1);
   };
 
   // Only my OS
@@ -182,7 +184,12 @@ export default function TechWorkOrders() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.slice(0, visibleCount).map((wo: any) => {
+          {(() => {
+            const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+            const startIdx = (currentPage - 1) * PAGE_SIZE;
+            const paginatedItems = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+            return paginatedItems;
+          })().map((wo: any) => {
             const sla = calculateSlaStatus(wo);
             const isPaused = ['aguardando_peca', 'aguardando_solicitante', 'aguardando_terceiro'].includes(wo.status);
             const isOpen = ['aberta', 'reaberta'].includes(wo.status);
@@ -263,18 +270,56 @@ export default function TechWorkOrders() {
             );
           })}
 
-          {visibleCount < filtered.length && (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1.5"
-                onClick={() => setVisibleCount(prev => prev + 10)}
-              >
-                Carregar mais ({filtered.length - visibleCount} restantes)
-              </Button>
-            </div>
-          )}
+          {(() => {
+            const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+            if (totalPages <= 1) return null;
+            const getPages = () => {
+              const pages: (number | 'ellipsis')[] = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                if (currentPage > 3) pages.push('ellipsis');
+                for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+                if (currentPage < totalPages - 2) pages.push('ellipsis');
+                pages.push(totalPages);
+              }
+              return pages;
+            };
+            return (
+              <Pagination className="mt-4">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  {getPages().map((page, i) =>
+                    page === 'ellipsis' ? (
+                      <PaginationItem key={`e-${i}`}><PaginationEllipsis /></PaginationItem>
+                    ) : (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          isActive={currentPage === page}
+                          onClick={() => setCurrentPage(page)}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            );
+          })()}
         </div>
       )}
     </div>
