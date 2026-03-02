@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,6 +79,29 @@ export function useDocuments() {
     },
   });
 
+  const updateDocument = useMutation({
+    mutationFn: async ({ id, title, description, folder, category, tags }: {
+      id: string; title: string; description?: string; folder?: string; category?: string; tags?: string[];
+    }) => {
+      const { error } = await supabase.from('documents').update({
+        title,
+        description: description || '',
+        folder: folder || 'Geral',
+        category: category || 'Geral',
+        tags: tags || [],
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', currentTenantId] });
+      toast({ title: 'Documento atualizado' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const deleteDocument = useMutation({
     mutationFn: async (docId: string) => {
       const { data: doc } = await supabase.from('documents').select('storage_key').eq('id', docId).single();
@@ -95,19 +117,10 @@ export function useDocuments() {
     },
   });
 
-  const versionsQuery = (documentId: string) => useQuery({
-    queryKey: ['document-versions', documentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('document_versions')
-        .select('*, profiles!document_versions_uploaded_by_fkey(name)')
-        .eq('document_id', documentId)
-        .order('version_number', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!documentId,
-  });
+  const getSignedUrl = async (storageKey: string) => {
+    const { data } = await supabase.storage.from('documents').createSignedUrl(storageKey, 600);
+    return data?.signedUrl || null;
+  };
 
-  return { documentsQuery, uploadDocument, deleteDocument, versionsQuery };
+  return { documentsQuery, uploadDocument, updateDocument, deleteDocument, getSignedUrl };
 }
