@@ -16,10 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { priorityLabels } from '@/lib/permissions';
-import { Plus, Settings2, Tag, Clock, Star, Shield, ScrollText, Palette } from 'lucide-react';
+import { Plus, Settings2, Tag, Clock, Star, Shield, ScrollText, Palette, Key } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import AuditSettingsTab from '@/components/admin/audit/AuditSettingsTab';
 import BrandingSettingsTab from '@/components/admin/BrandingSettingsTab';
+import ApiKeyTab from '@/components/admin/ApiKeyTab';
 
 const RolePermissionsMatrix = lazy(() => import('@/components/admin/RolePermissionsMatrix'));
 
@@ -145,6 +146,7 @@ export default function AdminSettings() {
           <TabsTrigger value="auditoria"><ScrollText className="h-3 w-3 mr-1" />Auditoria</TabsTrigger>
           <TabsTrigger value="departamento"><Settings2 className="h-3 w-3 mr-1" />Departamento</TabsTrigger>
           <TabsTrigger value="branding"><Palette className="h-3 w-3 mr-1" />Identidade Visual</TabsTrigger>
+          <TabsTrigger value="api"><Key className="h-3 w-3 mr-1" />API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories">
@@ -255,6 +257,10 @@ export default function AdminSettings() {
 
         <TabsContent value="branding">
           <BrandingSettingsTab tenants={tenants} />
+        </TabsContent>
+
+        <TabsContent value="api">
+          <ApiKeyTab tenants={tenants} />
         </TabsContent>
       </Tabs>
 
