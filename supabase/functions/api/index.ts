@@ -335,7 +335,7 @@ const getApiDocs: RouteHandler = async () => {
       header: "X-API-Key",
       description: "Inclua sua API Key no header X-API-Key de cada requisição.",
     },
-    base_url: "https://omaadiydsjiacokhwgjf.supabase.co/functions/v1/api",
+    base_url: "https://www.ordfy.com.br/functions/v1/api",
     pagination: {
       description: "Endpoints de listagem suportam paginação via query params.",
       params: { page: "Número da página (default: 1)", per_page: "Itens por página (default: 20, max: 100)" },
