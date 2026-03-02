@@ -27,8 +27,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Plus, Trash2, Building2, Tag, Users as UsersIcon, MapPin, Loader2,
-  Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff,
-}from 'lucide-react';
+  Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff, CheckSquare,
+} from 'lucide-react';
+import { ChecklistTemplatesSection } from '@/components/cadastros/ChecklistTemplatesSection';
 
 type FieldDef = {
   key: string;
@@ -905,6 +906,9 @@ export default function Cadastros() {
           <TabsTrigger value="customers" className="text-xs h-7 gap-1.5">
             <UsersIcon className="h-3 w-3" /> Solicitantes
           </TabsTrigger>
+          <TabsTrigger value="checklists" className="text-xs h-7 gap-1.5">
+            <CheckSquare className="h-3 w-3" /> Checklists
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="units" className="mt-4">
@@ -960,6 +964,10 @@ export default function Cadastros() {
 
         <TabsContent value="customers" className="mt-4">
           <SolicitantesSection readOnly={readOnly} />
+        </TabsContent>
+
+        <TabsContent value="checklists" className="mt-4">
+          <ChecklistTemplatesSection readOnly={readOnly} />
         </TabsContent>
       </Tabs>
     </div>
