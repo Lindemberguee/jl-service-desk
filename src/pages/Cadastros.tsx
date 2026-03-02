@@ -64,6 +64,7 @@ function CrudSection({
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [detailTarget, setDetailTarget] = useState<any>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -99,6 +100,7 @@ function CrudSection({
     fields.forEach(f => { formData[f.key] = item[f.key] || ''; });
     setForm(formData);
     setEditId(item.id);
+    setDetailTarget(null);
     setEditOpen(true);
   };
 
@@ -245,26 +247,18 @@ function CrudSection({
       ) : isMobile ? (
         <div className="space-y-2">
           {filtered.map((item: any) => (
-            <div key={item.id} className="bg-card border border-border rounded-lg p-3 space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  {tableFields.map((f, i) => (
-                    <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
-                      {i > 0 && <span className="font-medium">{f.label}: </span>}
-                      {getCellValue(f, item)}
-                    </p>
-                  ))}
-                </div>
-                {!readOnly && (
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(item)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                )}
+            <div
+              key={item.id}
+              className="bg-card border border-border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-accent/30 transition-colors"
+              onClick={() => setDetailTarget(item)}
+            >
+              <div className="min-w-0 flex-1">
+                {tableFields.map((f, i) => (
+                  <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
+                    {i > 0 && <span className="font-medium">{f.label}: </span>}
+                    {getCellValue(f, item)}
+                  </p>
+                ))}
               </div>
             </div>
           ))}
@@ -279,35 +273,66 @@ function CrudSection({
                     {f.label}
                   </TableHead>
                 ))}
-                {!readOnly && <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((item: any) => (
-                <TableRow key={item.id} className="group">
+                <TableRow
+                  key={item.id}
+                  className="cursor-pointer hover:bg-accent/30 transition-colors"
+                  onClick={() => setDetailTarget(item)}
+                >
                   {tableFields.map((f, i) => (
                     <TableCell key={f.key} className={i === 0 ? 'text-sm font-medium' : 'text-xs text-muted-foreground'}>
                       {getCellValue(f, item)}
                     </TableCell>
                   ))}
-                  {!readOnly && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(item)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailTarget} onOpenChange={(v) => { if (!v) setDetailTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Detalhes — {title}</DialogTitle>
+            <DialogDescription className="text-xs">Informações completas do registro.</DialogDescription>
+          </DialogHeader>
+          {detailTarget && (
+            <div className="space-y-1">
+              {fields.map(f => (
+                <div key={f.key} className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-3 py-1.5 border-b border-border/50 last:border-0">
+                  <span className="text-[11px] font-medium text-muted-foreground w-28 shrink-0">{f.label}</span>
+                  <span className="text-sm">{getCellValue(f, detailTarget) || '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {!readOnly && detailTarget && (
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-1.5"
+                onClick={() => { setDetailTarget(null); setDeleteTarget(detailTarget); }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Excluir
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => openEdit(detailTarget)}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { resetForm(); setEditId(null); } }}>
@@ -352,6 +377,7 @@ function CrudSection({
     </div>
   );
 }
+
 // ─── Solicitantes Section ─── shows user accounts with solicitante role + customer data
 function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
   const { currentTenantId } = useAuth();
@@ -387,7 +413,6 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
     enabled: !!currentTenantId,
   });
 
-  // Load customer records linked to the solicitante users
   const userIds = useMemo(() => solicitantes.map((s: any) => s.user_id).filter(Boolean), [solicitantes]);
   const { data: customers = [] } = useQuery({
     queryKey: ['solicitante-customers', currentTenantId, userIds],
@@ -410,8 +435,9 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
     return map;
   }, [customers]);
 
-  const enriched = useMemo(() =>
-    solicitantes.map((m: any) => ({ ...m, customer: customerMap[m.user_id] || null })),
+  const enriched = useMemo(
+    () =>
+      solicitantes.map((m: any) => ({ ...m, customer: customerMap[m.user_id] || null })),
     [solicitantes, customerMap]
   );
 
@@ -482,6 +508,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       sector: item.customer?.sector || '',
       notes: item.customer?.notes || '',
     });
+    setDetailOpen(false);
     setEditOpen(true);
   };
 
@@ -489,10 +516,7 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
     if (!selectedItem) return;
     setSaving(true);
     try {
-      // Update profile name
       await supabase.from('profiles').update({ name: form.name.trim() }).eq('id', selectedItem.user_id);
-
-      // Upsert customer record
       if (selectedItem.customer?.id) {
         await supabase.from('customers').update({
           name: form.name.trim(),
@@ -516,7 +540,6 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
           type: 'internal' as const,
         });
       }
-
       await logAudit({ entity: 'customer', entityId: selectedItem.user_id, action: 'customer.updated', tenantId: currentTenantId, diff: { name: form.name.trim(), phone: form.phone, position: form.position, sector: form.sector } });
       toast({ title: 'Solicitante atualizado!' });
       setEditOpen(false);
@@ -690,10 +713,10 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
       ) : isMobile ? (
         <div className="space-y-2">
           {filtered.map((m: any) => (
-            <Card key={m.id} className="border-border shadow-none">
+            <Card key={m.id} className="border-border shadow-none cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => openDetail(m)}>
               <CardContent className="p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1" onClick={() => openDetail(m)} role="button">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{m.profiles?.name || '—'}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
                       <Mail className="h-3 w-3 shrink-0" />
@@ -703,18 +726,9 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
                       <p className="text-[11px] text-muted-foreground mt-0.5">{m.customer.position ? `${m.customer.position} · ` : ''}{m.customer.sector}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                      {m.is_active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                    {!readOnly && (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}>
-                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  <Badge variant={m.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+                    {m.is_active ? 'Ativo' : 'Inativo'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -730,12 +744,11 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Telefone</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Cargo / Setor</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase text-muted-foreground h-9">Status</TableHead>
-                {!readOnly && <TableHead className="w-20 text-right text-[11px] font-semibold uppercase text-muted-foreground h-9">Ações</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((m: any) => (
-                <TableRow key={m.id} className="group cursor-pointer" onClick={() => openDetail(m)}>
+                <TableRow key={m.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => openDetail(m)}>
                   <TableCell className="text-sm font-medium">{m.profiles?.name || '—'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{m.profiles?.email || '—'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{m.customer?.phone || '—'}</TableCell>
@@ -749,18 +762,6 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
                       {m.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </TableCell>
-                  {!readOnly && (
-                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}>
-                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeactivateTarget(m)}>
-                          {m.is_active ? <EyeOff className="h-3.5 w-3.5 text-destructive" /> : <Eye className="h-3.5 w-3.5 text-emerald-500" />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -791,11 +792,21 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             {!readOnly && selectedItem && (
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setDetailOpen(false); openEdit(selectedItem); }}>
-                <Pencil className="h-3.5 w-3.5" /> Editar
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant={selectedItem.is_active ? 'destructive' : 'default'}
+                  className="gap-1.5"
+                  onClick={() => { setDetailOpen(false); setDeactivateTarget(selectedItem); }}
+                >
+                  {selectedItem.is_active ? <><EyeOff className="h-3.5 w-3.5" /> Desativar</> : <><Eye className="h-3.5 w-3.5" /> Reativar</>}
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openEdit(selectedItem)}>
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -828,8 +839,8 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deactivateTarget?.is_active
-                ? `O solicitante "${deactivateTarget?.profiles?.name}" perderá acesso ao portal. Você poderá reativá-lo depois.`
-                : `O solicitante "${deactivateTarget?.profiles?.name}" terá o acesso ao portal restaurado.`}
+                ? `O solicitante \"${deactivateTarget?.profiles?.name}\" perderá acesso ao portal. Você poderá reativá-lo depois.`
+                : `O solicitante \"${deactivateTarget?.profiles?.name}\" terá o acesso ao portal restaurado.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -851,8 +862,26 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
 export default function Cadastros() {
   const { currentRole, currentTenantId } = useAuth();
   const readOnly = !currentRole || !hasPermission(currentRole, 'cadastros:manage');
+  const [activeTab, setActiveTab] = useState('units');
 
   const { data: units = [] } = useTenantQuery<any>('units', 'units');
+  const { data: locations = [] } = useTenantQuery<any>('locations', 'locations');
+  const { data: categories = [] } = useTenantQuery<any>('categories', 'categories');
+  const { data: solicitantes = [] } = useQuery({
+    queryKey: ['solicitantes-count', currentTenantId],
+    queryFn: async () => {
+      if (!currentTenantId) return [];
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select('id')
+        .eq('tenant_id', currentTenantId)
+        .eq('role', 'solicitante');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentTenantId,
+  });
+
   const unitOptions = useMemo(
     () => units.map((u: any) => ({ value: u.id, label: u.name })),
     [units]
@@ -874,6 +903,13 @@ export default function Cadastros() {
     return undefined;
   };
 
+  const stats = [
+    { label: 'Unidades', count: units.length, icon: Building2, tab: 'units' },
+    { label: 'Locais', count: locations.length, icon: MapPin, tab: 'locations' },
+    { label: 'Categorias', count: categories.length, icon: Tag, tab: 'categories' },
+    { label: 'Solicitantes', count: solicitantes.length, icon: UsersIcon, tab: 'customers' },
+  ];
+
   return (
     <div className="space-y-5">
       <div>
@@ -892,22 +928,43 @@ export default function Cadastros() {
         </div>
       )}
 
-      <Tabs defaultValue="units">
-        <TabsList className="bg-card border border-border h-9">
-          <TabsTrigger value="units" className="text-xs h-7 gap-1.5">
-            <Building2 className="h-3 w-3" /> Unidades
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <Card
+            key={s.tab}
+            className={`rounded-xl border-border/50 cursor-pointer transition-all hover:shadow-md ${activeTab === s.tab ? 'ring-2 ring-primary/30 border-primary/40' : ''}`}
+            onClick={() => setActiveTab(s.tab)}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <s.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className="text-xl font-bold">{s.count}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-muted/50 border border-border/50 h-10 p-1 rounded-lg">
+          <TabsTrigger value="units" className="text-xs h-8 gap-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Building2 className="h-3.5 w-3.5" /> Unidades
           </TabsTrigger>
-          <TabsTrigger value="locations" className="text-xs h-7 gap-1.5">
-            <MapPin className="h-3 w-3" /> Locais
+          <TabsTrigger value="locations" className="text-xs h-8 gap-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <MapPin className="h-3.5 w-3.5" /> Locais
           </TabsTrigger>
-          <TabsTrigger value="categories" className="text-xs h-7 gap-1.5">
-            <Tag className="h-3 w-3" /> Categorias
+          <TabsTrigger value="categories" className="text-xs h-8 gap-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Tag className="h-3.5 w-3.5" /> Categorias
           </TabsTrigger>
-          <TabsTrigger value="customers" className="text-xs h-7 gap-1.5">
-            <UsersIcon className="h-3 w-3" /> Solicitantes
+          <TabsTrigger value="customers" className="text-xs h-8 gap-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <UsersIcon className="h-3.5 w-3.5" /> Solicitantes
           </TabsTrigger>
-          <TabsTrigger value="checklists" className="text-xs h-7 gap-1.5">
-            <CheckSquare className="h-3 w-3" /> Checklists
+          <TabsTrigger value="checklists" className="text-xs h-8 gap-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <CheckSquare className="h-3.5 w-3.5" /> Checklists
           </TabsTrigger>
         </TabsList>
 
