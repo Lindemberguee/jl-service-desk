@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 
-const BASE_URL = "https://www.ordfy.com.br/functions/v1/api";
+const BASE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api`;
 
 interface Endpoint {
   method: "GET" | "POST" | "PATCH" | "DELETE";
