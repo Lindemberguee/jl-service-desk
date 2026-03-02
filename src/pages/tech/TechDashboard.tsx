@@ -14,12 +14,17 @@ import { useNavigate } from 'react-router-dom';
 import {
   ClipboardList, Play, Pause, Package, UserCheck, AlertTriangle,
   CheckCircle, ChevronRight, Zap, Building2, TrendingUp, Timer,
-  Flame, Trophy, Clock, BarChart3, Target
+  Flame, Trophy, Clock, BarChart3, Target, CalendarIcon
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
+import { format, differenceInDays, subDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const containerVariants = {
   hidden: {},
@@ -143,14 +148,14 @@ function ActivityHeatmap({ workOrders }: { workOrders: any[] }) {
 }
 
 /* ── Production Bar Chart ── */
-function ProductionChart({ workOrders, days }: { workOrders: any[]; days: number }) {
+function ProductionChart({ workOrders, from, to }: { workOrders: any[]; from: Date; to: Date }) {
   const chartData = useMemo(() => {
-    const now = new Date();
+    const days = differenceInDays(to, from) + 1;
     const result: { label: string; done: number; received: number }[] = [];
     
-    for (let i = days - 1; i >= 0; i--) {
-      const day = new Date(now);
-      day.setDate(day.getDate() - i);
+    for (let i = 0; i < days; i++) {
+      const day = new Date(from);
+      day.setDate(day.getDate() + i);
       const dayStr = day.toDateString();
       const label = days <= 15
         ? day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
@@ -168,8 +173,9 @@ function ProductionChart({ workOrders, days }: { workOrders: any[]; days: number
       result.push({ label, done, received });
     }
     return result;
-  }, [workOrders, days]);
+  }, [workOrders, from, to]);
 
+  const days = differenceInDays(to, from) + 1;
   const maxVal = Math.max(1, ...chartData.flatMap(d => [d.done, d.received]));
 
   return (
@@ -213,7 +219,10 @@ export default function TechDashboard() {
   const qc = useQueryClient();
   const { data: rawWorkOrders = [], isLoading } = useAllTenantsQuery<any>('work_orders_all', 'work_orders');
   const workOrders = rawWorkOrders.filter((wo: any) => !wo.deleted_at);
-  const [productionDays, setProductionDays] = useState(7);
+  const [productionRange, setProductionRange] = useState<{ from: Date; to: Date }>({
+    from: subDays(new Date(), 6),
+    to: new Date(),
+  });
   const tenantMap = Object.fromEntries(memberships.map(m => [m.tenant_id, m.tenant_name || m.tenant_slug || '']));
 
   const myOs = workOrders.filter((wo: any) => wo.assigned_to_id === user?.id);
@@ -470,28 +479,48 @@ export default function TechDashboard() {
         {/* Production Chart with period filter */}
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
                 Produção
               </CardTitle>
-              <div className="flex gap-1">
-                {([
-                  { label: '7d', value: 7 },
-                  { label: '15d', value: 15 },
-                  { label: '30d', value: 30 },
-                  { label: '3m', value: 90 },
-                ] as const).map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant={productionDays === opt.value ? 'default' : 'ghost'}
-                    size="sm"
-                    className={`h-6 px-2 text-[10px] ${productionDays === opt.value ? 'shadow-sm' : ''}`}
-                    onClick={() => setProductionDays(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant={differenceInDays(productionRange.to, productionRange.from) === 6 ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => setProductionRange({ from: subDays(new Date(), 6), to: new Date() })}
+                >
+                  7d
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={differenceInDays(productionRange.to, productionRange.from) !== 6 ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-6 px-2 text-[10px] gap-1"
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {format(productionRange.from, 'dd/MM', { locale: ptBR })} - {format(productionRange.to, 'dd/MM', { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: productionRange.from, to: productionRange.to }}
+                      onSelect={(range) => {
+                        if (range?.from && range?.to) {
+                          setProductionRange({ from: range.from, to: range.to });
+                        } else if (range?.from) {
+                          setProductionRange({ from: range.from, to: range.from });
+                        }
+                      }}
+                      numberOfMonths={1}
+                      locale={ptBR}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <div className="flex gap-3 mt-1">
@@ -504,7 +533,7 @@ export default function TechDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pb-4">
-            {isLoading ? <Skeleton className="h-28 w-full" /> : <ProductionChart workOrders={myOs} days={productionDays} />}
+            {isLoading ? <Skeleton className="h-28 w-full" /> : <ProductionChart workOrders={myOs} from={productionRange.from} to={productionRange.to} />}
           </CardContent>
         </Card>
 
