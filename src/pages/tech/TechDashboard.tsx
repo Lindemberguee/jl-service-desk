@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { logAudit } from '@/lib/audit';
 import { useAllTenantsQuery } from '@/hooks/useAllTenantsQuery';
@@ -5,11 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/lib/permissions';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Play, Pause, Package, UserCheck, AlertTriangle, CheckCircle, ChevronRight, Zap, Building2, TrendingUp, Timer } from 'lucide-react';
+import {
+  ClipboardList, Play, Pause, Package, UserCheck, AlertTriangle,
+  CheckCircle, ChevronRight, Zap, Building2, TrendingUp, Timer,
+  Flame, Trophy, Clock, BarChart3, Target
+} from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +31,174 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
 
+/* ── Live Timer ── */
+function LiveTimer({ startedAt, pausedAt, totalPausedMs }: { startedAt: string | null; pausedAt: string | null; totalPausedMs: number }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!startedAt) return;
+    const start = new Date(startedAt).getTime();
+    const paused = totalPausedMs || 0;
+
+    if (pausedAt) {
+      // Currently paused - show static time
+      const pauseStart = new Date(pausedAt).getTime();
+      setElapsed(pauseStart - start - paused);
+      return;
+    }
+
+    const tick = () => setElapsed(Date.now() - start - paused);
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [startedAt, pausedAt, totalPausedMs]);
+
+  const hours = Math.floor(elapsed / 3600000);
+  const mins = Math.floor((elapsed % 3600000) / 60000);
+  const secs = Math.floor((elapsed % 60000) / 1000);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span className="font-mono text-lg font-bold tabular-nums tracking-wider">
+        {String(hours).padStart(2, '0')}:{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+      </span>
+    </div>
+  );
+}
+
+/* ── Heatmap Component ── */
+function ActivityHeatmap({ workOrders }: { workOrders: any[] }) {
+  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  const heatData = useMemo(() => {
+    const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 3600000;
+    
+    workOrders.forEach((wo: any) => {
+      const d = new Date(wo.created_at);
+      if (d.getTime() < thirtyDaysAgo) return;
+      grid[d.getDay()][d.getHours()]++;
+    });
+    return grid;
+  }, [workOrders]);
+
+  const maxVal = Math.max(1, ...heatData.flat());
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-px">
+        <div className="w-8" />
+        {hours.filter((_, i) => i % 3 === 0).map(h => (
+          <div key={h} className="flex-1 text-[9px] text-muted-foreground text-center font-mono">
+            {String(h).padStart(2, '0')}
+          </div>
+        ))}
+      </div>
+      {days.map((day, di) => (
+        <div key={day} className="flex items-center gap-px">
+          <span className="w-8 text-[10px] text-muted-foreground font-medium shrink-0">{day}</span>
+          <div className="flex gap-px flex-1">
+            {hours.map(h => {
+              const val = heatData[di][h];
+              const intensity = val / maxVal;
+              return (
+                <Tooltip key={h}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex-1 aspect-square rounded-[2px] min-w-[6px] transition-colors cursor-default"
+                      style={{
+                        backgroundColor: val === 0
+                          ? 'hsl(var(--muted) / 0.3)'
+                          : `hsl(var(--primary) / ${0.15 + intensity * 0.85})`,
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent className="text-xs">
+                    {day} {String(h).padStart(2, '0')}h: {val} OS
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="flex items-center justify-end gap-1.5 mt-1">
+        <span className="text-[9px] text-muted-foreground">Menos</span>
+        {[0, 0.25, 0.5, 0.75, 1].map((opacity, i) => (
+          <div
+            key={i}
+            className="w-2.5 h-2.5 rounded-[2px]"
+            style={{ backgroundColor: opacity === 0 ? 'hsl(var(--muted) / 0.3)' : `hsl(var(--primary) / ${0.15 + opacity * 0.85})` }}
+          />
+        ))}
+        <span className="text-[9px] text-muted-foreground">Mais</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Weekly Bar Chart ── */
+function WeeklyChart({ workOrders }: { workOrders: any[] }) {
+  const weekData = useMemo(() => {
+    const now = new Date();
+    const result: { label: string; done: number; received: number }[] = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(now);
+      day.setDate(day.getDate() - i);
+      const dayStr = day.toDateString();
+      const label = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      
+      const done = workOrders.filter((wo: any) => {
+        if (!wo.resolved_at) return false;
+        return new Date(wo.resolved_at).toDateString() === dayStr;
+      }).length;
+      
+      const received = workOrders.filter((wo: any) => {
+        return new Date(wo.created_at).toDateString() === dayStr;
+      }).length;
+      
+      result.push({ label, done, received });
+    }
+    return result;
+  }, [workOrders]);
+
+  const maxVal = Math.max(1, ...weekData.flatMap(d => [d.done, d.received]));
+
+  return (
+    <div className="flex items-end gap-1.5 h-28">
+      {weekData.map((day, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+          <div className="flex gap-px items-end flex-1 w-full">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex-1 rounded-t-sm bg-primary/30 transition-all hover:bg-primary/50 min-h-[2px]"
+                  style={{ height: `${(day.received / maxVal) * 100}%` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">{day.received} recebidas</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex-1 rounded-t-sm bg-emerald-500/60 transition-all hover:bg-emerald-500/80 min-h-[2px]"
+                  style={{ height: `${(day.done / maxVal) * 100}%` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">{day.done} concluídas</TooltipContent>
+            </Tooltip>
+          </div>
+          <span className="text-[9px] text-muted-foreground font-medium capitalize">{day.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Main Dashboard ── */
 export default function TechDashboard() {
   const { profile, user, memberships, currentTenantId } = useAuth();
   const navigate = useNavigate();
@@ -44,12 +218,46 @@ export default function TechDashboard() {
     const sla = calculateSlaStatus(wo);
     return (sla.responseOverdue || sla.resolveOverdue) && !['concluida', 'aprovada', 'encerrada'].includes(wo.status);
   }).length;
-  const doneToday = myOs.filter((wo: any) => {
-    if (!wo.resolved_at) return false;
-    const today = new Date();
-    const resolved = new Date(wo.resolved_at);
-    return resolved.toDateString() === today.toDateString();
-  }).length;
+
+  // Stats for periods
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const doneToday = myOs.filter((wo: any) => wo.resolved_at && new Date(wo.resolved_at).toDateString() === todayStr).length;
+  const doneWeek = myOs.filter((wo: any) => wo.resolved_at && new Date(wo.resolved_at) >= startOfWeek).length;
+  const doneMonth = myOs.filter((wo: any) => wo.resolved_at && new Date(wo.resolved_at) >= startOfMonth).length;
+
+  // Average resolution time (last 30 days, in hours)
+  const avgResolutionTime = useMemo(() => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 3600000;
+    const resolved = myOs.filter((wo: any) => wo.resolved_at && wo.started_at && new Date(wo.resolved_at).getTime() > thirtyDaysAgo);
+    if (resolved.length === 0) return null;
+    const total = resolved.reduce((sum: number, wo: any) => {
+      const start = new Date(wo.started_at).getTime();
+      const end = new Date(wo.resolved_at).getTime();
+      const paused = wo.total_paused_ms || 0;
+      return sum + (end - start - paused);
+    }, 0);
+    return total / resolved.length / 3600000; // in hours
+  }, [myOs]);
+
+  // Streak - consecutive days with at least 1 resolution
+  const streak = useMemo(() => {
+    let count = 0;
+    const d = new Date();
+    for (let i = 0; i < 60; i++) {
+      const dayStr = d.toDateString();
+      const hasResolution = myOs.some((wo: any) => wo.resolved_at && new Date(wo.resolved_at).toDateString() === dayStr);
+      if (i === 0 && !hasResolution) { d.setDate(d.getDate() - 1); continue; } // today may not have one yet
+      if (!hasResolution && i > 0) break;
+      if (hasResolution) count++;
+      d.setDate(d.getDate() - 1);
+    }
+    return count;
+  }, [myOs]);
 
   const stats = [
     { label: 'Abertas', value: open, icon: ClipboardList, gradient: 'from-primary/15 to-primary/5', iconColor: 'text-primary', borderColor: 'border-primary/20' },
@@ -57,7 +265,7 @@ export default function TechDashboard() {
     { label: 'Aguard. Peça', value: awaitPart, icon: Package, gradient: 'from-orange-500/15 to-orange-500/5', iconColor: 'text-orange-500', borderColor: 'border-orange-500/20' },
     { label: 'Aguard. Solic.', value: awaitReq, icon: UserCheck, gradient: 'from-yellow-500/15 to-yellow-500/5', iconColor: 'text-yellow-500', borderColor: 'border-yellow-500/20' },
     { label: 'Atrasadas', value: overdue, icon: AlertTriangle, gradient: 'from-destructive/15 to-destructive/5', iconColor: 'text-destructive', borderColor: 'border-destructive/20' },
-    { label: 'Concluídas Hoje', value: doneToday, icon: TrendingUp, gradient: 'from-emerald-500/15 to-emerald-500/5', iconColor: 'text-emerald-500', borderColor: 'border-emerald-500/20' },
+    { label: 'Hoje', value: doneToday, icon: TrendingUp, gradient: 'from-emerald-500/15 to-emerald-500/5', iconColor: 'text-emerald-500', borderColor: 'border-emerald-500/20' },
   ];
 
   // Critical OS sorted by SLA
@@ -118,7 +326,7 @@ export default function TechDashboard() {
         </p>
       </motion.div>
 
-      {/* Running OS Hero Card */}
+      {/* Running OS Hero Card with LIVE TIMER */}
       {runningOs && (
         <motion.div variants={itemVariants}>
           <Card
@@ -127,9 +335,16 @@ export default function TechDashboard() {
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-8 translate-x-8" />
             <CardContent className="p-4 relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Em execução agora</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Em execução agora</span>
+                </div>
+                <LiveTimer
+                  startedAt={runningOs.started_at}
+                  pausedAt={runningOs.paused_at}
+                  totalPausedMs={runningOs.total_paused_ms || 0}
+                />
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
@@ -168,7 +383,7 @@ export default function TechDashboard() {
 
       {/* KPI Cards */}
       <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {stats.map((stat, i) => (
+        {stats.map((stat) => (
           <motion.div
             key={stat.label}
             variants={itemVariants}
@@ -194,6 +409,90 @@ export default function TechDashboard() {
             </Card>
           </motion.div>
         ))}
+      </motion.div>
+
+      {/* Performance Cards Row */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <Card className="border-border/50 shadow-none">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Semana</span>
+            </div>
+            <div className="text-xl font-extrabold tabular-nums">{doneWeek}</div>
+            <span className="text-[10px] text-muted-foreground">concluídas</span>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 shadow-none">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Mês</span>
+            </div>
+            <div className="text-xl font-extrabold tabular-nums">{doneMonth}</div>
+            <span className="text-[10px] text-muted-foreground">concluídas</span>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 shadow-none">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Tempo Médio</span>
+            </div>
+            <div className="text-xl font-extrabold tabular-nums">
+              {avgResolutionTime !== null ? `${avgResolutionTime.toFixed(1)}h` : '—'}
+            </div>
+            <span className="text-[10px] text-muted-foreground">resolução (30d)</span>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 shadow-none">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Flame className="h-3.5 w-3.5 text-orange-500" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Sequência</span>
+            </div>
+            <div className="text-xl font-extrabold tabular-nums">{streak}</div>
+            <span className="text-[10px] text-muted-foreground">dias consecutivos</span>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Charts Row */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Weekly Production Chart */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Produção dos últimos 7 dias
+            </CardTitle>
+            <div className="flex gap-3 mt-1">
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-sm bg-primary/30" /> Recebidas
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-sm bg-emerald-500/60" /> Concluídas
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-4">
+            {isLoading ? <Skeleton className="h-28 w-full" /> : <WeeklyChart workOrders={myOs} />}
+          </CardContent>
+        </Card>
+
+        {/* Activity Heatmap */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Flame className="h-4 w-4 text-orange-500" />
+              Mapa de calor de atividade
+              <Badge variant="secondary" className="text-[9px] h-4 ml-auto">30 dias</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            {isLoading ? <Skeleton className="h-28 w-full" /> : <ActivityHeatmap workOrders={myOs} />}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Quick actions */}
@@ -250,7 +549,6 @@ export default function TechDashboard() {
                       }`}
                       onClick={() => navigate(`/tech/os/${wo.id}`)}
                     >
-                      {/* Priority indicator bar */}
                       <div className={`w-1 self-stretch rounded-full shrink-0 ${
                         wo.priority === 'critica' ? 'bg-destructive' :
                         wo.priority === 'alta' ? 'bg-orange-500' :
@@ -281,36 +579,19 @@ export default function TechDashboard() {
                         )}
                       </div>
 
-                      {/* Quick actions */}
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         {isOpen && (
-                          <Button
-                            size="sm"
-                            className="h-8 text-[11px] gap-1 shadow-sm"
-                            onClick={() => statusMutation.mutate({ id: wo.id, status: 'em_execucao', wo })}
-                            disabled={statusMutation.isPending}
-                          >
+                          <Button size="sm" className="h-8 text-[11px] gap-1 shadow-sm" onClick={() => statusMutation.mutate({ id: wo.id, status: 'em_execucao', wo })} disabled={statusMutation.isPending}>
                             <Play className="h-3 w-3" /> Iniciar
                           </Button>
                         )}
                         {isRunning && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-[11px] gap-1"
-                            onClick={() => statusMutation.mutate({ id: wo.id, status: 'aguardando_peca', wo })}
-                            disabled={statusMutation.isPending}
-                          >
+                          <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1" onClick={() => statusMutation.mutate({ id: wo.id, status: 'aguardando_peca', wo })} disabled={statusMutation.isPending}>
                             <Pause className="h-3 w-3" /> Pausar
                           </Button>
                         )}
                         {isPaused && (
-                          <Button
-                            size="sm"
-                            className="h-8 text-[11px] gap-1 shadow-sm"
-                            onClick={() => statusMutation.mutate({ id: wo.id, status: 'em_execucao', wo })}
-                            disabled={statusMutation.isPending}
-                          >
+                          <Button size="sm" className="h-8 text-[11px] gap-1 shadow-sm" onClick={() => statusMutation.mutate({ id: wo.id, status: 'em_execucao', wo })} disabled={statusMutation.isPending}>
                             <Play className="h-3 w-3" /> Retomar
                           </Button>
                         )}
