@@ -178,7 +178,10 @@ export default function MyWorkOrderDetail() {
 
   const getProfileName = (userId: string | null) => {
     if (!userId) return null;
-    return profiles.find((p: any) => p.id === userId)?.name || 'Equipe';
+    const name = profiles.find((p: any) => p.id === userId)?.name;
+    if (!name) return 'Equipe';
+    if (userId !== user?.id) return `Equipe · ${name}`;
+    return name;
   };
 
   if (isLoading) {
