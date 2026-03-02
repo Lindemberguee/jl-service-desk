@@ -255,6 +255,32 @@ export default function WorkOrderCreate() {
         }
       }
 
+      // Auto-apply checklist template based on category
+      if (result?.id && categoryId) {
+        try {
+          const { data: templates } = await supabase
+            .from('checklist_templates')
+            .select('items')
+            .eq('tenant_id', currentTenantId!)
+            .eq('category_id', categoryId);
+          if (templates && templates.length > 0) {
+            const items = (templates[0].items as any[]) || [];
+            if (items.length > 0) {
+              const checklistRows = items.map((label: any, idx: number) => ({
+                tenant_id: currentTenantId!,
+                work_order_id: result.id,
+                label: typeof label === 'string' ? label : label.label || label.text || String(label),
+                sort_order: idx,
+                is_checked: false,
+              }));
+              await supabase.from('work_order_checklist_items').insert(checklistRows as any);
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao aplicar checklist:', err);
+        }
+      }
+
       toast({ title: 'OS criada com sucesso!' });
       navigate('/os');
     } catch (err: any) {
