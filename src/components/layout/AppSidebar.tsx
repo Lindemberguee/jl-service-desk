@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
-  Gauge, ScrollText, Hammer, ChevronRight, CircleDot, Activity,
+  Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -30,26 +30,28 @@ interface MenuItem {
 
 const operationalItems: MenuItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
+  { label: 'Minhas OS', icon: UserCircle, path: '/minhas-os', permission: 'my_os:read' },
   { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read' },
   { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create' },
-  { label: 'Minhas OS', icon: UserCircle, path: '/minhas-os', permission: 'my_os:read' },
+];
+
+const infraItems: MenuItem[] = [
+  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
+  { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read' },
+  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
+  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
 ];
 
 const managementItems: MenuItem[] = [
   { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' },
-  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
   { label: 'Colaboradores', icon: Contact, path: '/colaboradores', permission: 'collaborators:read' },
-  { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read' },
-  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
-  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
+  { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' },
   { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' },
   { label: 'KPIs & OKRs', icon: Target, path: '/kpis', permission: 'kpis:read' },
-  { label: 'Documentos & Cofre', icon: FileText, path: '/documentos', permission: 'docs:read' },
-  { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' },
 ];
 
-const toolsItems: MenuItem[] = [
-  { label: 'Ferramentas', icon: Hammer, path: '/ferramentas', permission: 'tools:read', badge: 'Em breve' },
+const knowledgeItems: MenuItem[] = [
+  { label: 'Documentos & Cofre', icon: FileText, path: '/documentos', permission: 'docs:read' },
 ];
 
 const adminItems = [
@@ -176,24 +178,31 @@ export function AppSidebar() {
           <Separator className="bg-sidebar-border/30" />
         </div>
 
+        {/* Infraestrutura */}
+        <SidebarGroup className="py-1">
+          <SectionLabel>Infraestrutura</SectionLabel>
+          {renderMenuGroup(infraItems)}
+        </SidebarGroup>
+
+        <div className="mx-4 my-1">
+          <Separator className="bg-sidebar-border/30" />
+        </div>
+
         {/* Gestão */}
         <SidebarGroup className="py-1">
           <SectionLabel>Gestão</SectionLabel>
           {renderMenuGroup(managementItems)}
         </SidebarGroup>
 
-        {/* Ferramentas */}
-        {currentRole && hasPermission(currentRole, 'tools:read', undefined, rolePermissions) && (
-          <>
-            <div className="mx-4 my-1">
-              <Separator className="bg-sidebar-border/30" />
-            </div>
-            <SidebarGroup className="py-1">
-              <SectionLabel>Avançado</SectionLabel>
-              {renderMenuGroup(toolsItems)}
-            </SidebarGroup>
-          </>
-        )}
+        <div className="mx-4 my-1">
+          <Separator className="bg-sidebar-border/30" />
+        </div>
+
+        {/* Conhecimento */}
+        <SidebarGroup className="py-1">
+          <SectionLabel>Conhecimento</SectionLabel>
+          {renderMenuGroup(knowledgeItems)}
+        </SidebarGroup>
 
         {/* Administração */}
         {isSuperAdmin && (
