@@ -74,12 +74,14 @@ export default function ApiKeyTab({ tenants }: ApiKeyTabProps) {
       const keyHash = await hashKey(key);
       const keyPrefix = key.substring(0, 8);
 
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await (supabase.from as any)('tenant_api_keys').insert({
         tenant_id: form.tenant_id,
         name: form.name,
         key_hash: keyHash,
         key_prefix: keyPrefix,
         permissions: form.permissions,
+        created_by: user?.id || null,
       });
       if (error) throw error;
       return key;
