@@ -114,7 +114,7 @@ export default function ApiKeyTab({ tenants }: ApiKeyTabProps) {
     }));
   };
 
-  const apiBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api`;
+  const apiBaseUrl = "https://www.ordfy.com.br/functions/v1/api";
 
   const [showLogs, setShowLogs] = useState(false);
 
