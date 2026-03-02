@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact,
+  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -123,6 +123,14 @@ const permissionGroups: PermissionGroup[] = [
     permissions: [
       { key: 'reports:read', label: 'Relatórios', description: 'Acessar relatórios e exportações' },
       { key: 'settings:manage', label: 'Configurações', description: 'Alterar configurações do sistema' },
+    ],
+  },
+  {
+    label: 'KPIs & OKRs',
+    icon: Target,
+    permissions: [
+      { key: 'kpis:read', label: 'Visualizar', description: 'Acessar painel de KPIs e OKRs' },
+      { key: 'kpis:manage', label: 'Gerenciar', description: 'Criar, editar e excluir KPIs, objetivos e resultados-chave' },
     ],
   },
   {
