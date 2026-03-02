@@ -63,7 +63,7 @@ function ProtectedRoutes() {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <LandingPage />;
 
   // Solicitante and leitura roles get the simplified portal
   if (currentRole === 'solicitante' || currentRole === 'leitura') {
@@ -134,6 +134,29 @@ function AuthGate() {
   return <Login />;
 }
 
+function HomeGate() {
+  const { user, loading, currentRole } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (user) {
+    if (currentRole === 'solicitante' || currentRole === 'leitura') {
+      return <Navigate to="/portal" replace />;
+    }
+    if (currentRole === 'tecnico') {
+      return <Navigate to="/tech" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <LandingPage />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -142,6 +165,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            
             <Route path="/login" element={<AuthGate />} />
             <Route path="/showcase" element={<ShowcasePage />} />
             <Route path="/landing" element={<LandingPage />} />
