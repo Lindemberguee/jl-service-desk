@@ -41,6 +41,26 @@ const FK_MESSAGES: Record<string, string> = {
     'Esta categoria possui ativos vinculados. Remova os ativos antes de excluir.',
   categories_parent_id_fkey:
     'Esta categoria possui subcategorias. Remova as subcategorias antes de excluir.',
+  work_orders_tenant_id_fkey:
+    'Este departamento possui Ordens de Serviço vinculadas. Remova as OS antes de excluir.',
+  assets_tenant_id_fkey:
+    'Este departamento possui ativos cadastrados. Remova os ativos antes de excluir.',
+  stock_items_tenant_id_fkey:
+    'Este departamento possui itens de estoque. Remova os itens antes de excluir.',
+  locations_tenant_id_fkey:
+    'Este departamento possui locais cadastrados. Remova os locais antes de excluir.',
+  units_tenant_id_fkey:
+    'Este departamento possui unidades cadastradas. Remova as unidades antes de excluir.',
+  categories_tenant_id_fkey:
+    'Este departamento possui categorias cadastradas. Remova as categorias antes de excluir.',
+  customers_tenant_id_fkey:
+    'Este departamento possui solicitantes cadastrados. Remova os solicitantes antes de excluir.',
+  collaborators_tenant_id_fkey:
+    'Este departamento possui colaboradores cadastrados. Remova os colaboradores antes de excluir.',
+  notifications_tenant_id_fkey:
+    'Este departamento possui notificações vinculadas. Remova as notificações antes de excluir.',
+  sla_policies_tenant_id_fkey:
+    'Este departamento possui políticas de SLA. Remova as políticas antes de excluir.',
 };
 
 /**
