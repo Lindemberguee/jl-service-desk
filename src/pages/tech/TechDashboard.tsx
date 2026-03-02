@@ -77,7 +77,10 @@ function ActivityHeatmap({ workOrders }: { workOrders: any[] }) {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 3600000;
     
     workOrders.forEach((wo: any) => {
-      const d = new Date(wo.created_at);
+      // Use resolved_at for activity tracking (when the tech actually completed work)
+      const dateField = wo.resolved_at || wo.started_at;
+      if (!dateField) return;
+      const d = new Date(dateField);
       if (d.getTime() < thirtyDaysAgo) return;
       grid[d.getDay()][d.getHours()]++;
     });
