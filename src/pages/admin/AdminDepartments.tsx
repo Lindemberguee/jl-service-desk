@@ -15,9 +15,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { friendlyErrorMessage } from '@/lib/errorMessages';
+import {
   Plus, Building2, Pencil, Palette, Users, ClipboardList, Search,
   BarChart3, AlertTriangle, CheckCircle2, Clock, TrendingUp, Eye,
-  Shield, Zap, Package, Settings2, Activity,
+  Shield, Zap, Package, Settings2, Activity, Trash2,
 } from 'lucide-react';
 
 interface DeptStats {
@@ -148,6 +153,24 @@ export default function AdminDepartments() {
       await logAudit({ entity: 'tenant', entityId: vars.id, action: vars.is_active ? 'tenant.activated' : 'tenant.deactivated' });
       qc.invalidateQueries({ queryKey: ['admin_tenants'] });
       toast({ title: vars.is_active ? 'Departamento ativado!' : 'Departamento desativado!' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Delete memberships first, then the tenant
+      await supabase.from('user_memberships').delete().eq('tenant_id', id);
+      const { error } = await supabase.from('tenants').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: async (_: any, id: string) => {
+      await logAudit({ entity: 'tenant', entityId: id, action: 'tenant.deleted' });
+      qc.invalidateQueries({ queryKey: ['admin_tenants'] });
+      qc.invalidateQueries({ queryKey: ['admin_memberships_count'] });
+      toast({ title: 'Departamento excluído com sucesso!' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -286,6 +309,30 @@ export default function AdminDepartments() {
                           <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg" onClick={() => openEdit(t)} title="Editar">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-destructive hover:text-destructive" title="Excluir">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir departamento "{t.name}"?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação é irreversível. Todos os vínculos de membros serão removidos. Se houver dados vinculados (OS, ativos, estoque, etc.), a exclusão será bloqueada.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-lg">Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMutation.mutate(t.id)}
+                                >
+                                  Excluir permanentemente
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           <Switch checked={t.is_active} onCheckedChange={v => toggleActive.mutate({ id: t.id, is_active: v })} />
                         </div>
                       </div>
