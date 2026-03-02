@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useModuleCategories } from '@/hooks/useModuleCategories';
 import { CategoryManager } from './CategoryManager';
 
@@ -126,18 +127,84 @@ export function KnowledgeBaseManager() {
 
       {/* View Dialog */}
       <Dialog open={!!viewArticle} onOpenChange={() => setViewArticle(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
           {viewArticle && (
             <>
-              <DialogHeader>
-                <DialogTitle>{viewArticle.title}</DialogTitle>
-                <div className="flex gap-2 items-center text-xs text-muted-foreground mt-1">
+              {/* Header */}
+              <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-6 py-4">
+                <h2 className="text-xl font-bold tracking-tight">{viewArticle.title}</h2>
+                <div className="flex flex-wrap gap-2 items-center mt-2">
                   <Badge variant="secondary">{viewArticle.category}</Badge>
-                  {viewArticle.is_published ? <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Publicado</Badge> : <Badge variant="outline">Rascunho</Badge>}
+                  {viewArticle.is_published ? (
+                    <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Publicado</Badge>
+                  ) : (
+                    <Badge variant="outline">Rascunho</Badge>
+                  )}
+                  {viewArticle.tags?.map((t: string) => (
+                    <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                  ))}
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {viewArticle.profiles?.name && <>{viewArticle.profiles.name} • </>}
+                    {format(new Date(viewArticle.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </span>
                 </div>
-              </DialogHeader>
-              <div className="prose prose-sm dark:prose-invert max-w-none mt-4">
-                <ReactMarkdown>{viewArticle.content}</ReactMarkdown>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-5">
+                <div className="kb-article-content">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-3 pb-2 border-b border-border">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-xl font-semibold mt-5 mb-2 text-primary">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>,
+                      h4: ({ children }) => <h4 className="text-base font-medium mt-3 mb-1">{children}</h4>,
+                      p: ({ children }) => <p className="text-sm leading-relaxed mb-3 text-foreground/90">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3 text-sm text-foreground/90 ml-2">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-3 text-sm text-foreground/90 ml-2">{children}</ol>,
+                      li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                      strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                      em: ({ children }) => <em className="italic text-foreground/80">{children}</em>,
+                      code: ({ children, className }) => {
+                        const isBlock = className?.includes('language-');
+                        if (isBlock) {
+                          return (
+                            <pre className="bg-muted rounded-lg p-4 my-3 overflow-x-auto border">
+                              <code className="text-xs font-mono text-foreground">{children}</code>
+                            </pre>
+                          );
+                        }
+                        return <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-primary">{children}</code>;
+                      },
+                      pre: ({ children }) => <>{children}</>,
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-primary/40 pl-4 py-1 my-3 bg-primary/5 rounded-r-lg italic text-sm text-foreground/80">
+                          {children}
+                        </blockquote>
+                      ),
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+                          {children}
+                        </a>
+                      ),
+                      hr: () => <hr className="my-4 border-border" />,
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-3 rounded-lg border">
+                          <table className="w-full text-sm">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
+                      th: ({ children }) => <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wider">{children}</th>,
+                      td: ({ children }) => <td className="px-3 py-2 border-t text-sm">{children}</td>,
+                      img: ({ src, alt }) => (
+                        <img src={src} alt={alt || ''} className="rounded-lg max-w-full my-3 border shadow-sm" />
+                      ),
+                    }}
+                  >
+                    {viewArticle.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </>
           )}
