@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
-  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target,
+  Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target, Key,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -142,6 +142,13 @@ const permissionGroups: PermissionGroup[] = [
       { key: 'tools:notes', label: 'Anotações', description: 'Bloco de notas pessoal' },
       { key: 'tools:reminders', label: 'Lembretes', description: 'Lembretes e alertas pessoais' },
       { key: 'tools:calendar', label: 'Calendário', description: 'Calendário de atividades' },
+    ],
+  },
+  {
+    label: 'API',
+    icon: Key,
+    permissions: [
+      { key: 'api:manage', label: 'Gerenciar', description: 'Criar e revogar API Keys, visualizar logs de requisições' },
     ],
   },
 ];

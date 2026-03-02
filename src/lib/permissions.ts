@@ -13,7 +13,8 @@ export type Permission =
   | 'manutencao:read' | 'manutencao:manage'
   | 'collaborators:read' | 'collaborators:manage'
   | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar'
-  | 'kpis:read' | 'kpis:manage';
+  | 'kpis:read' | 'kpis:manage'
+  | 'api:manage';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
@@ -27,6 +28,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'cadastros:read', 'cadastros:manage', 'tools:read',
     'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
     'kpis:read', 'kpis:manage',
+    'api:manage',
   ],
   admin: [
     'dashboard:read', 'my_os:read',

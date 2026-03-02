@@ -3,6 +3,7 @@ import { logAudit } from '@/lib/audit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasPermission } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,9 @@ const RolePermissionsMatrix = lazy(() => import('@/components/admin/RolePermissi
 
 export default function AdminSettings() {
   const { toast } = useToast();
+  const { currentRole, rolePermissions } = useAuth();
   const qc = useQueryClient();
+  const canManageApi = currentRole ? hasPermission(currentRole, 'api:manage', undefined, rolePermissions) : false;
 
   // Fetch all tenants for scope selector
   const { data: tenants = [] } = useQuery({
@@ -146,7 +149,7 @@ export default function AdminSettings() {
           <TabsTrigger value="auditoria"><ScrollText className="h-3 w-3 mr-1" />Auditoria</TabsTrigger>
           <TabsTrigger value="departamento"><Settings2 className="h-3 w-3 mr-1" />Departamento</TabsTrigger>
           <TabsTrigger value="branding"><Palette className="h-3 w-3 mr-1" />Identidade Visual</TabsTrigger>
-          <TabsTrigger value="api"><Key className="h-3 w-3 mr-1" />API</TabsTrigger>
+          {canManageApi && <TabsTrigger value="api"><Key className="h-3 w-3 mr-1" />API</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="categories">
@@ -259,9 +262,11 @@ export default function AdminSettings() {
           <BrandingSettingsTab tenants={tenants} />
         </TabsContent>
 
-        <TabsContent value="api">
-          <ApiKeyTab tenants={tenants} />
-        </TabsContent>
+        {canManageApi && (
+          <TabsContent value="api">
+            <ApiKeyTab tenants={tenants} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* New Category Dialog */}
