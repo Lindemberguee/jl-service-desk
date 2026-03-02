@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   Package, Plus, Search, ChevronLeft, ChevronRight,
   ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar,
-  Download, Loader2, Trash2, X, Check,
+  Download, Loader2, Check,
   ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -82,10 +82,6 @@ export default function MaterialControl() {
   const [saving, setSaving] = useState(false);
   const [itemComboOpen, setItemComboOpen] = useState(false);
 
-  // Selection & bulk
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
 
 
   const months = useMemo(() => getMonthRange(baseDate, MONTHS_TO_SHOW), [baseDate]);
@@ -174,45 +170,6 @@ export default function MaterialControl() {
     return map;
   }, [items, movements, months]);
 
-  // Selection
-  const allOnPageSelected = paginatedItems.length > 0 && paginatedItems.every(i => selectedIds.has(i.id));
-  const toggleSelectAll = useCallback(() => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (allOnPageSelected) paginatedItems.forEach(i => next.delete(i.id));
-      else paginatedItems.forEach(i => next.add(i.id));
-      return next;
-    });
-  }, [allOnPageSelected, paginatedItems]);
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }, []);
-
-  // Bulk delete
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    setBulkDeleting(true);
-    try {
-      const ids = Array.from(selectedIds);
-      await supabase.from('stock_movements').delete().in('stock_item_id', ids);
-      const { error } = await supabase.from('stock_items').delete().in('id', ids);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
-      queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
-      await logAudit({ entity: 'stock', action: 'stock.bulk_deleted', tenantId: currentTenantId, diff: { count: ids.length, source: 'material_control' } });
-      toast.success(`${ids.length} item(ns) excluído(s)!`);
-      setSelectedIds(new Set());
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao excluir');
-    } finally {
-      setBulkDeleting(false);
-      setBulkDeleteOpen(false);
-    }
-  };
 
   // Add movement
   const handleAddMovement = async () => {
@@ -485,32 +442,6 @@ export default function MaterialControl() {
           </Button>
         </div>
 
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 bg-destructive/10 rounded-lg px-3 py-1.5">
-            <span className="text-xs font-medium">{selectedIds.size} selecionado(s)</span>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
-              <X className="h-3 w-3 mr-1" /> Limpar
-            </Button>
-            <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-              <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setBulkDeleteOpen(true)}>
-                <Trash2 className="h-3 w-3 mr-1" /> Excluir
-              </Button>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir {selectedIds.size} item(ns)?</AlertDialogTitle>
-                  <AlertDialogDescription>Todos os itens selecionados e suas movimentações serão removidos permanentemente.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleBulkDelete} disabled={bulkDeleting}>
-                    {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-                    Confirmar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
       </div>
 
       {/* Pagination top */}
@@ -522,10 +453,7 @@ export default function MaterialControl() {
           <table className="text-sm w-full min-w-[900px]">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="p-2 w-10 sticky left-0 bg-muted/30 z-10">
-                  <Checkbox checked={allOnPageSelected} onCheckedChange={toggleSelectAll} />
-                </th>
-                <th className="text-left p-2 font-semibold sticky left-10 bg-muted/30 z-10 min-w-[160px]">Item</th>
+                <th className="text-left p-2 font-semibold sticky left-0 bg-muted/30 z-10 min-w-[160px]">Item</th>
                 {months.map(m => (
                   <th key={monthKey(m)} colSpan={3} className="text-center px-1 py-2 font-semibold border-l border-border/30 text-xs">
                     <span className="capitalize">{monthLabel(m)}</span>
@@ -536,7 +464,6 @@ export default function MaterialControl() {
               </tr>
               <tr className="border-b bg-muted/20 text-xs text-muted-foreground">
                 <th className="sticky left-0 bg-muted/20 z-10 p-1.5" />
-                <th className="sticky left-10 bg-muted/20 z-10 p-1.5" />
                 {months.map(m => <MonthSubHeader key={monthKey(m)} />)}
                 <th className="p-1.5 text-center border-l border-border/30">Atual</th>
               </tr>
@@ -544,24 +471,19 @@ export default function MaterialControl() {
             <tbody>
               {paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={months.length * 3 + 3} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={months.length * 3 + 2} className="text-center py-12 text-muted-foreground">
                     Nenhum item encontrado
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((item, idx) => {
                   const isLow = (item.current_level || 0) <= (item.min_level || 0) && (item.min_level || 0) > 0;
-                  const isSelected = selectedIds.has(item.id);
                   return (
                     <tr key={item.id} className={cn(
                       "border-b border-border/20 hover:bg-muted/20 transition-colors",
                       idx % 2 === 0 && "bg-muted/5",
-                      isSelected && "bg-primary/5"
                     )}>
-                      <td className="p-2 sticky left-0 bg-card z-10">
-                        <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(item.id)} />
-                      </td>
-                      <td className="p-3 sticky left-10 bg-card z-10">
+                      <td className="p-3 sticky left-0 bg-card z-10">
                         <div className="flex flex-col">
                           <span className="font-medium truncate max-w-[200px]">{item.name}</span>
                           {item.sku && <span className="text-xs text-muted-foreground">{item.sku}</span>}
