@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { statusLabels, statusColors, priorityLabels, priorityColors } from '@/lib/permissions';
+import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { calculateSlaStatus, formatRemainingTime } from '@/lib/sla';
 import { SlaIndicator } from '@/components/SlaIndicator';
 import { WorkOrderAttachments } from '@/components/WorkOrderAttachments';
@@ -39,7 +39,7 @@ const eventLabels: Record<string, string> = {
 export default function TechWorkOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentTenantId, user } = useAuth();
+  const { currentTenantId, user, currentRole, rolePermissions } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -381,12 +381,12 @@ export default function TechWorkOrderDetail() {
                       </div>
                     </div>
                   )}
-                  {wo.technical_note && (
+                  {wo.technical_note && currentRole && hasPermission(currentRole, 'os:view_technical_note', undefined, rolePermissions) && (
                     <div className="mt-4 bg-muted/40 rounded-lg p-3 space-y-2">
                       <p className="text-[11px] uppercase font-medium text-muted-foreground">Nota Técnica</p>
                       <p className="text-sm whitespace-pre-wrap">{wo.technical_note}</p>
                       <div className="flex gap-4">
-                        {(wo.resolution_quality ?? 0) > 0 && (
+                        {(wo.resolution_quality ?? 0) > 0 && tenantSettings?.show_ratings_to_techs && (
                           <div className="flex items-center gap-1">
                             <span className="text-[11px] text-muted-foreground mr-1">Qualidade:</span>
                             {[1, 2, 3, 4, 5].map(s => (
@@ -394,7 +394,7 @@ export default function TechWorkOrderDetail() {
                             ))}
                           </div>
                         )}
-                        {(wo.resolution_time_rating ?? 0) > 0 && (
+                        {(wo.resolution_time_rating ?? 0) > 0 && tenantSettings?.show_ratings_to_techs && (
                           <div className="flex items-center gap-1">
                             <span className="text-[11px] text-muted-foreground mr-1">Tempo:</span>
                             {[1, 2, 3, 4, 5].map(s => (

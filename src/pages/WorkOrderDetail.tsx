@@ -452,6 +452,42 @@ export default function WorkOrderDetail() {
                   ) : (
                     <p className="text-muted-foreground text-xs italic">Não informado</p>
                   )}
+                  {/* Change requester — admin/coordenador only */}
+                  {(canManage || canAssign) && (
+                    <div className="pt-2 border-t border-border mt-2">
+                      <Select
+                        value={wo.requester_id || ''}
+                        onValueChange={async (val) => {
+                          const customer = customers.find((c: any) => c.id === val);
+                          const updates: any = {
+                            requester_id: val,
+                            requester_user_id: customer?.user_id || null,
+                            requester_contact: {
+                              email: customer?.email || null,
+                              phone: customer?.phone || null,
+                            },
+                          };
+                          try {
+                            await updateWO(updates);
+                            await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.requester_changed', tenantId: currentTenantId, diff: { from: wo.requester_id, to: val } });
+                            invalidateAll();
+                            toast({ title: 'Solicitante atualizado!' });
+                          } catch (err: any) {
+                            toast({ title: 'Erro ao alterar solicitante', description: err.message, variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs rounded-lg">
+                          <SelectValue placeholder="Alterar solicitante..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customers.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}{c.sector ? ` — ${c.sector}` : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
