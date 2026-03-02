@@ -262,9 +262,20 @@ export default function DisposalPage() {
     setShowDetail(null);
   };
 
-  const openDetail = (d: Disposal) => {
+  const openDetail = (d: Disposal, startEditing = false) => {
     setShowDetail(d);
     setEditingDetail(false);
+    if (startEditing && d.status === 'pendente') {
+      setEditForm({
+        reason: d.reason,
+        reason_detail: d.reason_detail || '',
+        category: d.category || 'Geral',
+        residual_value: d.residual_value || 0,
+        item_description: d.item_description || '',
+        quantity: d.quantity,
+      });
+      setEditingDetail(true);
+    }
   };
 
   const startEdit = () => {
@@ -421,14 +432,24 @@ export default function DisposalPage() {
                               <TooltipContent>Detalhes</TooltipContent>
                             </Tooltip>
                             {canManage && d.status === 'pendente' && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); deleteDisposal.mutate(d.id); }}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Excluir</TooltipContent>
-                              </Tooltip>
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d, true); }}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Editar</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); deleteDisposal.mutate(d.id); }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Excluir</TooltipContent>
+                                </Tooltip>
+                              </>
                             )}
                           </div>
                         </TooltipProvider>
