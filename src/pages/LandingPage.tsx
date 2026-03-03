@@ -135,14 +135,15 @@ function Section({ children, className, id }: { children: React.ReactNode; class
 /* ------------------------------------------------------------------ */
 /*  Glass card                                                         */
 /* ------------------------------------------------------------------ */
-function GlassCard({ children, className, delay = 0, hover = true }: {
-  children: React.ReactNode; className?: string; delay?: number; hover?: boolean;
+function GlassCard({ children, className, delay = 0, hover = true, onClick }: {
+  children: React.ReactNode; className?: string; delay?: number; hover?: boolean; onClick?: () => void;
 }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-30px' });
   return (
     <motion.div
       ref={ref}
+      onClick={onClick}
       className={cn(
         'relative group rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm overflow-hidden',
         hover && 'hover:border-blue-500/20 hover:bg-white/[0.04] transition-all duration-500',
@@ -161,23 +162,21 @@ function GlassCard({ children, className, delay = 0, hover = true }: {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Module card with animated border                                   */
+/*  Module card — clean hover reveal                                    */
 /* ------------------------------------------------------------------ */
 function ModuleCard({ icon: Icon, title, desc, features, gradient, delay = 0 }: {
   icon: LucideIcon; title: string; desc: string; features: string[]; gradient: string; delay?: number;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-40px' });
 
   return (
     <motion.div
       ref={ref}
-      className="group relative rounded-2xl p-[1px] overflow-hidden cursor-pointer"
+      className="group relative rounded-2xl p-[1px] overflow-hidden"
       initial={{ opacity: 0, y: 30 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, delay }}
-      onClick={() => setExpanded(!expanded)}
     >
       {/* Animated border gradient */}
       <div className={cn(
@@ -187,40 +186,28 @@ function ModuleCard({ icon: Icon, title, desc, features, gradient, delay = 0 }: 
       <div className="absolute inset-[1px] rounded-2xl bg-slate-950" />
 
       {/* Content */}
-      <div className="relative z-10 p-6 border border-white/[0.06] rounded-2xl group-hover:border-transparent transition-colors duration-500">
-        <div className="flex items-start justify-between mb-4">
-          <div className={cn('w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center', gradient)}>
+      <div className="relative z-10 p-6 border border-white/[0.06] rounded-2xl group-hover:border-transparent transition-colors duration-500 h-full flex flex-col">
+        <div className="flex items-start gap-3 mb-4">
+          <div className={cn('w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0', gradient)}>
             <Icon className="h-5 w-5 text-white" />
           </div>
-          <motion.div
-            animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="mt-1"
-          >
-            <ChevronDown className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
-          </motion.div>
+          <div>
+            <h3 className="text-base font-semibold text-white">{title}</h3>
+            <p className="text-[13px] text-slate-500 leading-relaxed mt-1">{desc}</p>
+          </div>
         </div>
-        <h3 className="text-base font-semibold text-white mb-1.5">{title}</h3>
-        <p className="text-[13px] text-slate-500 leading-relaxed">{desc}</p>
 
-        <AnimatePresence>
-          {expanded && (
-            <motion.ul
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-4 pt-4 border-t border-white/[0.06] space-y-2 overflow-hidden"
-            >
-              {features.map(f => (
-                <li key={f} className="flex items-start gap-2 text-xs text-slate-500">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/70 shrink-0 mt-0.5" />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </motion.ul>
+        <ul className="mt-auto pt-4 border-t border-white/[0.04] space-y-1.5">
+          {features.slice(0, 4).map(f => (
+            <li key={f} className="flex items-start gap-2 text-[12px] text-slate-600 group-hover:text-slate-400 transition-colors">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500/50 shrink-0 mt-0.5" />
+              <span>{f}</span>
+            </li>
+          ))}
+          {features.length > 4 && (
+            <li className="text-[11px] text-slate-700 pl-5">+{features.length - 4} mais</li>
           )}
-        </AnimatePresence>
+        </ul>
       </div>
     </motion.div>
   );
@@ -378,9 +365,9 @@ const roleDetails = [
 ];
 
 const screenshots = [
-  { src: screenshotDashboard, title: 'Dashboard Operacional', desc: 'Visão 360° com KPIs, gráficos e ordens recentes' },
-  { src: screenshotWorkorders, title: 'Gestão de OS', desc: 'Lista completa com filtros, busca e status em tempo real' },
-  { src: screenshotStock, title: 'Controle de Estoque', desc: 'Inventário inteligente com alertas de reposição' },
+  { src: screenshotDashboard, title: 'Dashboard Operacional', desc: 'Visão 360° com KPIs, gráficos interativos e ordens recentes em tempo real' },
+  { src: screenshotWorkorders, title: 'Gestão de OS', desc: 'Lista completa com filtros avançados, busca, status e paginação' },
+  { src: screenshotStock, title: 'Controle de Estoque', desc: 'Inventário inteligente com cards informativos, alertas e movimentações' },
 ];
 
 const techStack = [
@@ -682,32 +669,36 @@ export default function LandingPage() {
               Veja o sistema{' '}
               <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">em ação</span>
             </h2>
+            <p className="text-slate-500 mt-4 max-w-xl mx-auto text-sm">
+              Interfaces modernas, responsivas e construídas para produtividade máxima
+            </p>
           </div>
 
-          <div className="flex justify-center gap-2 mb-8 flex-wrap">
-            {screenshots.map((s, i) => (
-              <button
-                key={s.title}
-                onClick={() => setActiveScreenshot(i)}
-                className={cn(
-                  'px-5 py-2.5 rounded-full text-xs font-medium transition-all duration-300',
-                  activeScreenshot === i
-                    ? 'bg-white text-slate-900 shadow-lg shadow-white/10'
-                    : 'bg-white/[0.04] text-slate-500 hover:bg-white/[0.08] border border-white/[0.06]'
-                )}
-              >
-                {s.title}
-              </button>
-            ))}
-          </div>
+          {/* Featured screenshot */}
+          <div className="relative max-w-5xl mx-auto mb-12">
+            <div className="flex justify-center gap-2 mb-8 flex-wrap">
+              {screenshots.map((s, i) => (
+                <button
+                  key={s.title}
+                  onClick={() => setActiveScreenshot(i)}
+                  className={cn(
+                    'px-5 py-2.5 rounded-full text-xs font-medium transition-all duration-300',
+                    activeScreenshot === i
+                      ? 'bg-white text-slate-900 shadow-lg shadow-white/10'
+                      : 'bg-white/[0.04] text-slate-500 hover:bg-white/[0.08] border border-white/[0.06]'
+                  )}
+                >
+                  {s.title}
+                </button>
+              ))}
+            </div>
 
-          <div className="relative max-w-5xl mx-auto">
             {/* Browser chrome */}
             <div className="bg-white/[0.03] rounded-t-2xl border border-white/[0.06] border-b-0 px-4 py-3 flex items-center gap-2">
               <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
               </div>
               <div className="flex-1 ml-4">
                 <div className="bg-white/[0.04] rounded-lg px-4 py-1.5 text-[11px] text-slate-600 max-w-sm mx-auto text-center font-mono">
@@ -732,6 +723,21 @@ export default function LandingPage() {
             </div>
 
             <div className="absolute -inset-20 bg-blue-500/[0.03] blur-[100px] rounded-full -z-10 pointer-events-none" />
+          </div>
+
+          {/* All screenshots grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+            {screenshots.map((s, i) => (
+              <GlassCard key={s.title} delay={i * 0.1} className="overflow-hidden cursor-pointer" onClick={() => setActiveScreenshot(i)}>
+                <div className="aspect-video overflow-hidden">
+                  <img src={s.src} alt={s.title} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700" />
+                </div>
+                <div className="p-4">
+                  <h4 className="text-sm font-semibold text-white">{s.title}</h4>
+                  <p className="text-[11px] text-slate-600 mt-1">{s.desc}</p>
+                </div>
+              </GlassCard>
+            ))}
           </div>
         </div>
       </Section>
