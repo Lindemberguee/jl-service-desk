@@ -85,7 +85,7 @@ function SectionSnap({ children, className, id }: { children: React.ReactNode; c
   return (
     <motion.section
       ref={ref} id={id}
-      className={cn('relative min-h-screen flex items-center py-24 md:py-32 overflow-hidden', className)}
+      className={cn('relative flex items-center py-16 md:py-20 overflow-hidden', className)}
       initial={{ opacity: 0, y: 60 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.7, ease: 'easeOut' }}
@@ -212,14 +212,14 @@ export default function ShowcasePage() {
       {/* ============================================================ */}
       {/*  HERO                                                         */}
       {/* ============================================================ */}
-      <SectionSnap className="min-h-[100vh] pt-14">
+      <SectionSnap className="min-h-[90vh] pt-14">
         <GlowOrb color="rgba(59,130,246,0.15)" size={900} top="-15%" left="20%" />
         <GlowOrb color="rgba(139,92,246,0.1)" size={700} top="55%" left="65%" delay={2} />
         <FloatingParticles />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center w-full">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <Badge className="mb-8 text-xs px-5 py-2.5 bg-white/[0.04] text-slate-400 border-white/[0.08] rounded-full backdrop-blur-sm font-medium">
+            <Badge className="mb-5 text-xs px-5 py-2.5 bg-white/[0.04] text-slate-400 border-white/[0.08] rounded-full backdrop-blur-sm font-medium">
               <Sparkles className="h-3.5 w-3.5 mr-2 text-blue-400" />
               Plataforma CMMS de Nova Geração
             </Badge>
@@ -241,7 +241,7 @@ export default function ShowcasePage() {
           </motion.h1>
 
           <motion.p
-            className="mt-8 text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed"
+            className="mt-5 text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25 }}
@@ -251,7 +251,7 @@ export default function ShowcasePage() {
           </motion.p>
 
           <motion.div
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
@@ -270,7 +270,7 @@ export default function ShowcasePage() {
 
           {/* Stats */}
           <motion.div
-            className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto"
+            className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
@@ -303,9 +303,9 @@ export default function ShowcasePage() {
       {/* ============================================================ */}
       {/*  MODULES GRID                                                 */}
       {/* ============================================================ */}
-      <SectionSnap id="modules" className="min-h-auto py-28">
+      <SectionSnap id="modules">
         <div className="max-w-7xl mx-auto px-6 w-full">
-          <div className="text-center mb-14">
+          <div className="text-center mb-10">
             <Badge className="mb-4 bg-blue-500/[0.08] text-blue-400 border-blue-500/20 rounded-full text-xs px-4 py-1.5">
               <Layers className="h-3 w-3 mr-1.5" /> 25+ Módulos
             </Badge>
@@ -342,7 +342,7 @@ export default function ShowcasePage() {
       <SectionSnap id="sistema">
         <GlowOrb color="rgba(6,182,212,0.08)" size={700} top="30%" left="50%" />
         <div className="max-w-6xl mx-auto px-6 w-full">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <Badge className="mb-4 bg-cyan-500/[0.08] text-cyan-400 border-cyan-500/20 rounded-full text-xs px-4 py-1.5">
               <Monitor className="h-3 w-3 mr-1.5" /> Interface
             </Badge>
@@ -438,9 +438,9 @@ export default function ShowcasePage() {
       {/* ============================================================ */}
       {/*  ROLES                                                        */}
       {/* ============================================================ */}
-      <SectionSnap id="roles" className="min-h-auto py-28">
+      <SectionSnap id="roles">
         <div className="max-w-6xl mx-auto px-6 w-full">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <Badge className="mb-4 bg-rose-500/[0.08] text-rose-400 border-rose-500/20 rounded-full text-xs px-4 py-1.5">
               <Shield className="h-3 w-3 mr-1.5" /> Controle de Acesso
             </Badge>
@@ -477,7 +477,7 @@ export default function ShowcasePage() {
       <SectionSnap id="pricing">
         <GlowOrb color="rgba(59,130,246,0.08)" size={600} top="40%" left="50%" />
         <div className="max-w-6xl mx-auto px-6 w-full">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <Badge className="mb-4 bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 rounded-full text-xs px-4 py-1.5">
               <TrendingUp className="h-3 w-3 mr-1.5" /> Planos SaaS
             </Badge>
@@ -553,7 +553,7 @@ export default function ShowcasePage() {
         <GlowOrb color="rgba(139,92,246,0.12)" size={800} top="20%" left="30%" />
         <GlowOrb color="rgba(59,130,246,0.08)" size={500} top="70%" left="70%" delay={3} />
         <div className="max-w-6xl mx-auto px-6 w-full">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <Badge className="mb-4 bg-violet-500/[0.08] text-violet-400 border-violet-500/20 rounded-full text-xs px-4 py-1.5">
               <Code2 className="h-3 w-3 mr-1.5" /> White-Label
             </Badge>
@@ -637,7 +637,7 @@ export default function ShowcasePage() {
 
           {/* Incluso na licença */}
           <motion.div
-            className="mt-12 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8"
+            className="mt-8 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -679,7 +679,7 @@ export default function ShowcasePage() {
       {/* ============================================================ */}
       {/*  CTA FINAL                                                    */}
       {/* ============================================================ */}
-      <SectionSnap className="min-h-[70vh]">
+      <SectionSnap className="min-h-[50vh]">
         <div className="max-w-4xl mx-auto px-6 text-center w-full relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.05] via-violet-500/[0.05] to-cyan-500/[0.05] blur-[120px] pointer-events-none rounded-full" />
           <motion.div
