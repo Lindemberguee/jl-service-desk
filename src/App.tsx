@@ -53,6 +53,8 @@ import TechDashboard from "@/pages/tech/TechDashboard";
 import TechWorkOrders from "@/pages/tech/TechWorkOrders";
 import TechWorkOrderDetail from "@/pages/tech/TechWorkOrderDetail";
 import TechProfile from "@/pages/tech/TechProfile";
+import { MasterLayout } from "@/components/layout/MasterLayout";
+import MasterDashboard from "@/pages/master/MasterDashboard";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -82,6 +84,23 @@ function ProtectedRoutes() {
 
   // All other roles (admin, coordenador, analista, super_admin) use AppLayout
   return <AppLayout />;
+}
+
+function ProtectedMasterRoutes() {
+  const { user, loading, currentRole } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (currentRole !== 'super_admin') return <Navigate to="/403" replace />;
+
+  return <MasterLayout />;
 }
 
 function ProtectedPortalRoutes() {
@@ -191,6 +210,11 @@ const App = () => (
               <Route path="os" element={<TechWorkOrders />} />
               <Route path="os/:id" element={<TechWorkOrderDetail />} />
               <Route path="perfil" element={<TechProfile />} />
+            </Route>
+
+            {/* Master Admin Panel — super_admin only */}
+            <Route path="/master" element={<ProtectedMasterRoutes />}>
+              <Route index element={<MasterDashboard />} />
             </Route>
 
             {/* Admin/Operational Layout */}

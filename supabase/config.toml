@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.vault-crypto]
 verify_jwt = false
+
+[functions.master-admin]
+verify_jwt = false

@@ -127,6 +127,41 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Check user limit from tenant_subscriptions
+        if (tenant_id) {
+          const { data: subscription } = await adminClient
+            .from("tenant_subscriptions")
+            .select("max_users, status")
+            .eq("tenant_id", tenant_id)
+            .single();
+
+          if (subscription) {
+            // Check subscription status
+            if (subscription.status === 'expired' || subscription.status === 'suspended' || subscription.status === 'cancelled') {
+              return new Response(JSON.stringify({ error: "O plano desta empresa está inativo. Entre em contato com o suporte." }), {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+
+            // Check user count
+            const { count } = await adminClient
+              .from("user_memberships")
+              .select("*", { count: "exact", head: true })
+              .eq("tenant_id", tenant_id)
+              .eq("is_active", true);
+
+            if ((count || 0) >= subscription.max_users) {
+              return new Response(JSON.stringify({ 
+                error: `Limite de usuários atingido (${count}/${subscription.max_users}). Faça upgrade do plano para adicionar mais usuários.` 
+              }), {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          }
+        }
+
         // Create auth user
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email,
