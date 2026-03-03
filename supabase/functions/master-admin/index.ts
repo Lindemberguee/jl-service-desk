@@ -9,11 +9,9 @@ const corsHeaders = {
 async function getCallerIdFromAuth(req: Request, supabaseUrl: string, anonKey: string): Promise<string | null> {
   const authHeader = req.headers.get("authorization");
   if (!authHeader) return null;
-
   const callerClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-
   const { data: { user } } = await callerClient.auth.getUser();
   return user?.id || null;
 }
@@ -70,12 +68,10 @@ Deno.serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false });
 
-        // Get subscriptions
         const { data: subscriptions } = await adminClient
           .from("tenant_subscriptions")
           .select("*");
 
-        // Get user counts per tenant
         const { data: userCounts } = await adminClient
           .from("user_memberships")
           .select("tenant_id")
@@ -108,7 +104,6 @@ Deno.serve(async (req) => {
           return json({ error: "Campos obrigatórios: tenant_name, tenant_slug, admin_email, admin_password, admin_name" }, 400);
         }
 
-        // Check slug uniqueness
         const { data: existing } = await adminClient
           .from("tenants")
           .select("id")
@@ -129,10 +124,9 @@ Deno.serve(async (req) => {
         // 2. Create subscription
         const trialEnd = trial_days
           ? new Date(Date.now() + trial_days * 86400000).toISOString()
-          : null; // null = indefinite / no expiry
+          : null;
 
         const allModules = ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications', 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'canvas', 'notes', 'reminders', 'vault', 'audit', 'disposal', 'api', 'theme'];
-
         const starterModules = ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications'];
         const professionalModules = [...starterModules, 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'api'];
         const enterpriseModules = allModules;
@@ -147,12 +141,9 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Determine status: custom/enterprise without trial_days = active (indefinite)
         const resolvedPlan = plan || 'trial';
         const isIndefinite = !trial_days && (resolvedPlan === 'custom' || resolvedPlan === 'enterprise');
         const resolvedStatus = isIndefinite ? 'active' : (resolvedPlan === 'trial' || !plan ? 'trial' : 'active');
-
-        // For indefinite plans, set period end far in the future
         const periodEnd = isIndefinite
           ? '2099-12-31'
           : new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
@@ -178,7 +169,6 @@ Deno.serve(async (req) => {
         });
 
         if (userErr) {
-          // Rollback tenant
           await adminClient.from("tenant_subscriptions").delete().eq("tenant_id", tenant.id);
           await adminClient.from("tenants").delete().eq("id", tenant.id);
           return json({ error: `Erro ao criar usuário: ${userErr.message}` }, 400);
@@ -192,7 +182,7 @@ Deno.serve(async (req) => {
         });
 
         await logAudit("tenant", tenant.id, "tenant.onboarded", {
-          tenant_name, tenant_slug, plan: plan || 'trial',
+          tenant_name, tenant_slug, plan: resolvedPlan,
           admin_email, admin_name, max_users: max_users || 5,
         });
 
@@ -228,6 +218,127 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
+      // ============ DELETE TENANT ============
+      case "delete_tenant": {
+        const { tenant_id } = body;
+        if (!tenant_id) return json({ error: "tenant_id obrigatório" }, 400);
+
+        // Get tenant info for audit
+        const { data: tenantInfo } = await adminClient
+          .from("tenants")
+          .select("name, slug")
+          .eq("id", tenant_id)
+          .single();
+
+        if (!tenantInfo) return json({ error: "Empresa não encontrada" }, 404);
+
+        // Get all user memberships for this tenant
+        const { data: tenantMembers } = await adminClient
+          .from("user_memberships")
+          .select("user_id")
+          .eq("tenant_id", tenant_id);
+
+        // Delete subscription
+        await adminClient.from("tenant_subscriptions").delete().eq("tenant_id", tenant_id);
+
+        // Delete memberships
+        await adminClient.from("user_memberships").delete().eq("tenant_id", tenant_id);
+
+        // Delete tenant-specific data (cascade should handle most, but be explicit)
+        const tablesToClean = [
+          'work_orders', 'assets', 'stock_items', 'stock_movements',
+          'categories', 'locations', 'units', 'customers', 'collaborators',
+          'documents', 'document_versions', 'knowledge_articles',
+          'kpis', 'kpi_entries', 'okr_cycles', 'okr_objectives', 'okr_key_results', 'okr_checkins',
+          'sla_policies', 'notifications', 'notes', 'note_shares',
+          'canvas_boards', 'canvas_board_shares', 'reminders', 'disposals',
+          'checklist_templates', 'module_categories',
+          'asset_components', 'asset_maintenance_records',
+        ];
+
+        for (const table of tablesToClean) {
+          try {
+            await adminClient.from(table).delete().eq("tenant_id", tenant_id);
+          } catch {
+            // Some tables might not exist or have different constraints
+          }
+        }
+
+        // Delete tenant
+        const { error: delErr } = await adminClient.from("tenants").delete().eq("id", tenant_id);
+        if (delErr) return json({ error: `Erro ao excluir: ${delErr.message}` }, 400);
+
+        // Delete orphaned auth users (users with no remaining memberships)
+        if (tenantMembers?.length) {
+          for (const member of tenantMembers) {
+            const { count } = await adminClient
+              .from("user_memberships")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", member.user_id);
+
+            if ((count || 0) === 0) {
+              // User has no other memberships, delete auth user
+              try {
+                await adminClient.from("profiles").delete().eq("id", member.user_id);
+                await adminClient.auth.admin.deleteUser(member.user_id);
+              } catch {
+                // Non-blocking
+              }
+            }
+          }
+        }
+
+        await logAudit("tenant", tenant_id, "tenant.deleted", {
+          tenant_name: tenantInfo.name,
+          tenant_slug: tenantInfo.slug,
+        });
+
+        return json({ success: true });
+      }
+
+      // ============ LIST ALL USERS ============
+      case "list_all_users": {
+        const { data: allMembers } = await adminClient
+          .from("user_memberships")
+          .select("user_id, tenant_id, role, is_active, tenants(name)")
+          .order("user_id");
+
+        const { data: allProfiles } = await adminClient
+          .from("profiles")
+          .select("id, name, email, is_active, created_at")
+          .order("created_at", { ascending: false });
+
+        const memberMap: Record<string, any[]> = {};
+        for (const m of allMembers || []) {
+          if (!memberMap[m.user_id]) memberMap[m.user_id] = [];
+          memberMap[m.user_id].push({
+            tenant_id: m.tenant_id,
+            tenant_name: (m as any).tenants?.name || '?',
+            role: m.role,
+            is_active: m.is_active,
+          });
+        }
+
+        const users = (allProfiles || []).map((p: any) => ({
+          ...p,
+          memberships: memberMap[p.id] || [],
+        }));
+
+        return json({ users });
+      }
+
+      // ============ LIST AUDIT LOGS (GLOBAL) ============
+      case "list_audit_logs": {
+        const limit = body.limit || 100;
+        const { data: logs } = await adminClient
+          .from("audit_logs")
+          .select("*, tenants:tenant_id(name)")
+          .order("created_at", { ascending: false })
+          .limit(limit);
+
+        return json({ logs: logs || [] });
+      }
+
       // ============ GET PLATFORM STATS ============
       case "platform_stats": {
         const { count: totalTenants } = await adminClient
@@ -239,12 +350,16 @@ Deno.serve(async (req) => {
         const { count: totalWOs } = await adminClient
           .from("work_orders").select("*", { count: "exact", head: true });
 
-        const { data: subs } = await adminClient.from("tenant_subscriptions").select("plan, status");
+        const { data: subs } = await adminClient.from("tenant_subscriptions").select("plan, status, monthly_price");
         const planCounts: Record<string, number> = {};
         const statusCounts: Record<string, number> = {};
+        let mrr = 0;
         for (const s of subs || []) {
           planCounts[s.plan] = (planCounts[s.plan] || 0) + 1;
           statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
+          if ((s.status === 'active' || s.status === 'trial') && s.monthly_price) {
+            mrr += Number(s.monthly_price);
+          }
         }
 
         return json({
@@ -254,6 +369,7 @@ Deno.serve(async (req) => {
           total_work_orders: totalWOs || 0,
           plans: planCounts,
           statuses: statusCounts,
+          mrr,
         });
       }
 

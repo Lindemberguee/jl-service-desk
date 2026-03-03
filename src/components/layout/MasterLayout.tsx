@@ -1,11 +1,13 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Crown, Building2, BarChart3, LogOut, ArrowLeft } from 'lucide-react';
+import { Crown, Building2, Users, ScrollText, LogOut, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/master', label: 'Dashboard', icon: BarChart3 },
+  { href: '/master', label: 'Dashboard', icon: BarChart3, exact: true },
+  { href: '/master/usuarios', label: 'Usuários', icon: Users },
+  { href: '/master/auditoria', label: 'Auditoria', icon: ScrollText },
 ];
 
 export function MasterLayout() {
@@ -14,7 +16,6 @@ export function MasterLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -23,21 +24,24 @@ export function MasterLayout() {
               <span className="font-bold text-sm">OrdFy Master</span>
             </Link>
             <nav className="flex items-center gap-1 ml-4">
-              {navItems.map(item => (
-                <Link key={item.href} to={item.href}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'h-8 text-xs gap-1.5',
-                      pathname === item.href && 'bg-muted'
-                    )}
-                  >
-                    <item.icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
+              {navItems.map(item => {
+                const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                return (
+                  <Link key={item.href} to={item.href}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        'h-8 text-xs gap-1.5',
+                        active && 'bg-muted font-medium'
+                      )}
+                    >
+                      <item.icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
@@ -55,7 +59,6 @@ export function MasterLayout() {
         </div>
       </header>
 
-      {/* Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Outlet />
       </main>

@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { useMasterTenants, usePlatformStats } from '@/hooks/useMasterAdmin';
+import { useMasterTenants, usePlatformStats, useDeleteTenant } from '@/hooks/useMasterAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Building2, Users, ClipboardList, TrendingUp, Plus, Search, Crown, Settings, AlertTriangle, Clock, CalendarX } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Building2, Users, ClipboardList, TrendingUp, Plus, Search, Crown, Settings,
+  AlertTriangle, Clock, CalendarX, DollarSign, Trash2, BarChart3, PieChart,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OnboardTenantDialog } from './OnboardTenantDialog';
 import { EditSubscriptionDialog } from './EditSubscriptionDialog';
@@ -35,7 +42,6 @@ const statusColors: Record<string, string> = {
 
 function getExpiryInfo(sub: any): { label: string; urgent: boolean; icon: React.ElementType } | null {
   if (!sub) return null;
-
   if (sub.status === 'trial' && sub.trial_ends_at) {
     const endDate = parseISO(sub.trial_ends_at);
     if (isPast(endDate)) return { label: 'Trial expirado', urgent: true, icon: CalendarX };
@@ -43,27 +49,27 @@ function getExpiryInfo(sub: any): { label: string; urgent: boolean; icon: React.
     if (days <= 7) return { label: `Trial expira em ${days}d`, urgent: true, icon: AlertTriangle };
     return { label: `Trial até ${format(endDate, 'dd/MM', { locale: ptBR })}`, urgent: false, icon: Clock };
   }
-
   if (sub.current_period_end) {
     const endDate = parseISO(sub.current_period_end);
-    // Indefinite plans (2099+)
     if (endDate.getFullYear() >= 2090) return { label: 'Indeterminado ∞', urgent: false, icon: Clock };
     if (isPast(endDate)) return { label: 'Período expirado', urgent: true, icon: CalendarX };
     const days = differenceInDays(endDate, new Date());
     if (days <= 7) return { label: `Renova em ${days}d`, urgent: true, icon: AlertTriangle };
     return { label: `Até ${format(endDate, 'dd/MM', { locale: ptBR })}`, urgent: false, icon: Clock };
   }
-
   return null;
 }
 
 export default function MasterDashboard() {
   const { data: tenants = [], isLoading: tenantsLoading } = useMasterTenants();
   const { data: stats, isLoading: statsLoading } = usePlatformStats();
+  const deleteTenant = useDeleteTenant();
   const [search, setSearch] = useState('');
   const [showOnboard, setShowOnboard] = useState(false);
   const [editTenant, setEditTenant] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const filtered = tenants.filter((t: any) => {
     const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,21 +78,20 @@ export default function MasterDashboard() {
     return matchSearch && matchStatus;
   });
 
-  // Count alerts
-  const alertCount = tenants.filter((t: any) => {
-    const info = getExpiryInfo(t.subscription);
-    return info?.urgent;
-  }).length;
+  const alertCount = tenants.filter((t: any) => getExpiryInfo(t.subscription)?.urgent).length;
+  const expiredCount = tenants.filter((t: any) => ['expired', 'suspended', 'cancelled'].includes(t.subscription?.status)).length;
+  const activeCount = tenants.filter((t: any) => t.subscription?.status === 'active').length;
+  const trialCount = tenants.filter((t: any) => t.subscription?.status === 'trial').length;
 
-  const statCards = [
-    { label: 'Empresas', value: stats?.total_tenants || 0, icon: Building2, color: 'text-blue-500' },
-    { label: 'Usuários Totais', value: stats?.total_users || 0, icon: Users, color: 'text-violet-500' },
-    { label: 'Usuários Ativos', value: stats?.active_users || 0, icon: TrendingUp, color: 'text-emerald-500' },
-    { label: 'Ordens de Serviço', value: stats?.total_work_orders || 0, icon: ClipboardList, color: 'text-amber-500' },
-  ];
+  const handleDelete = async () => {
+    if (!deleteTarget || deleteConfirmText !== deleteTarget.slug) return;
+    await deleteTenant.mutateAsync(deleteTarget.id);
+    setDeleteTarget(null);
+    setDeleteConfirmText('');
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -94,61 +99,68 @@ export default function MasterDashboard() {
             <Crown className="h-6 w-6 text-amber-500" />
             Painel Master
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestão da plataforma OrdFy</p>
+          <p className="text-sm text-muted-foreground mt-1">CRM & Gestão da plataforma OrdFy</p>
         </div>
         <Button onClick={() => setShowOnboard(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Nova Empresa
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map(s => (
-          <Card key={s.label}>
-            <CardContent className="p-5">
+      {/* CRM Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: 'MRR', value: stats?.mrr ? `R$ ${Number(stats.mrr).toLocaleString('pt-BR')}` : 'R$ 0', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+          { label: 'Empresas', value: stats?.total_tenants || 0, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+          { label: 'Ativos', value: activeCount, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+          { label: 'Trial', value: trialCount, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/5' },
+          { label: 'Usuários', value: stats?.total_users || 0, icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/5' },
+          { label: 'OS Total', value: stats?.total_work_orders || 0, icon: ClipboardList, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+        ].map(s => (
+          <Card key={s.label} className={cn("border-0 shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)]", s.bg)}>
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold mt-1">
-                    {statsLoading ? '...' : s.value}
-                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{s.label}</p>
+                  <p className="text-xl font-bold mt-0.5">{statsLoading ? '...' : s.value}</p>
                 </div>
-                <s.icon className={cn('h-8 w-8', s.color)} />
+                <s.icon className={cn('h-6 w-6 opacity-60', s.color)} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Alerts banner */}
+      {/* Alerts */}
       {alertCount > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            <strong>{alertCount}</strong> empresa{alertCount > 1 ? 's' : ''} com vencimento próximo ou expirado
+          <p className="text-sm">
+            <span className="font-semibold text-amber-600 dark:text-amber-400">{alertCount}</span> empresa{alertCount > 1 ? 's' : ''} com vencimento próximo ou expirado
+            {expiredCount > 0 && <span className="text-red-500 ml-2">({expiredCount} expirado{expiredCount > 1 ? 's' : ''})</span>}
           </p>
           <Button size="sm" variant="outline" className="ml-auto text-xs h-7" onClick={() => setStatusFilter('expired')}>
-            Ver expirados
+            Ver
           </Button>
         </div>
       )}
 
-      {/* Plan distribution + filters */}
+      {/* Plan distribution chips */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-2 flex-wrap">
           {stats?.plans && Object.entries(stats.plans as Record<string, number>).map(([plan, count]) => (
-            <Badge key={plan} variant="outline" className={cn('text-xs px-3 py-1.5 cursor-pointer', planColors[plan])}>
+            <Badge key={plan} variant="outline" className={cn('text-xs px-3 py-1.5 cursor-pointer', planColors[plan])}
+              onClick={() => setStatusFilter('all')}>
               {planLabels[plan] || plan}: {count}
             </Badge>
           ))}
         </div>
-        <div className="flex gap-2">
-          {['all', 'active', 'trial', 'expired', 'suspended'].map(st => (
+        <div className="flex gap-1.5">
+          {['all', 'active', 'trial', 'expired', 'suspended', 'cancelled'].map(st => (
             <Button
               key={st}
               size="sm"
-              variant={statusFilter === st ? 'default' : 'outline'}
-              className="text-xs h-7"
+              variant={statusFilter === st ? 'default' : 'ghost'}
+              className={cn("text-xs h-7", statusFilter !== st && "text-muted-foreground")}
               onClick={() => setStatusFilter(st)}
             >
               {st === 'all' ? 'Todos' : statusLabels[st] || st}
@@ -164,12 +176,7 @@ export default function MasterDashboard() {
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar empresa..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9"
-            />
+            <Input placeholder="Buscar empresa..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <p className="text-xs text-muted-foreground">{filtered.length} empresa{filtered.length !== 1 ? 's' : ''}</p>
         </div>
@@ -190,8 +197,8 @@ export default function MasterDashboard() {
 
               return (
                 <Card key={t.id} className={cn(
-                  "hover:border-primary/20 transition-colors",
-                  expiryInfo?.urgent && "border-amber-500/30 bg-amber-500/[0.02]"
+                  "border-0 shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_16px_0_hsl(var(--foreground)/0.08)] transition-shadow",
+                  expiryInfo?.urgent && "ring-1 ring-amber-500/20"
                 )}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -210,7 +217,6 @@ export default function MasterDashboard() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0 space-y-3">
-                    {/* User usage bar */}
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="text-muted-foreground">Usuários</span>
@@ -218,8 +224,7 @@ export default function MasterDashboard() {
                       </div>
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={cn(
-                            'h-full rounded-full transition-all',
+                          className={cn('h-full rounded-full transition-all',
                             usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
@@ -227,7 +232,6 @@ export default function MasterDashboard() {
                       </div>
                     </div>
 
-                    {/* Expiry & price info */}
                     <div className="flex items-center justify-between text-xs">
                       {expiryInfo ? (
                         <span className={cn("flex items-center gap-1", expiryInfo.urgent ? "text-amber-600" : "text-muted-foreground")}>
@@ -238,28 +242,27 @@ export default function MasterDashboard() {
                         <span className="text-muted-foreground">—</span>
                       )}
                       {sub?.monthly_price > 0 && (
-                        <span className="text-muted-foreground">
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
                           R$ {Number(sub.monthly_price).toLocaleString('pt-BR')}/mês
                         </span>
                       )}
                     </div>
 
-                    {/* Modules count */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{sub?.enabled_modules?.length || 0} módulos ativos</span>
+                      <span>{sub?.enabled_modules?.length || 0} módulos</span>
                       <span className="font-mono text-[10px]">
                         {t.created_at ? format(parseISO(t.created_at), "dd/MM/yy", { locale: ptBR }) : ''}
                       </span>
                     </div>
 
                     <div className="flex gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-8 text-xs gap-1"
-                        onClick={() => setEditTenant(t)}
-                      >
-                        <Settings className="h-3 w-3" /> Gerenciar Plano
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs gap-1"
+                        onClick={() => setEditTenant(t)}>
+                        <Settings className="h-3 w-3" /> Gerenciar
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteTarget(t)}>
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
@@ -272,12 +275,45 @@ export default function MasterDashboard() {
 
       <OnboardTenantDialog open={showOnboard} onClose={() => setShowOnboard(false)} />
       {editTenant && (
-        <EditSubscriptionDialog
-          tenant={editTenant}
-          open={!!editTenant}
-          onClose={() => setEditTenant(null)}
-        />
+        <EditSubscriptionDialog tenant={editTenant} open={!!editTenant} onClose={() => setEditTenant(null)} />
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={v => { if (!v) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Excluir empresa "{deleteTarget?.name}"
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Esta ação é <strong>irreversível</strong>. Todos os dados da empresa serão permanentemente excluídos:
+                ordens de serviço, ativos, estoque, documentos, usuários órfãos e toda configuração.
+              </p>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">Para confirmar, digite o slug da empresa: <code className="text-destructive font-bold">{deleteTarget?.slug}</code></p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder={deleteTarget?.slug}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteConfirmText !== deleteTarget?.slug || deleteTenant.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTenant.isPending ? 'Excluindo...' : 'Excluir Permanentemente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
