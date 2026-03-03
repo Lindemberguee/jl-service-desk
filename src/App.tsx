@@ -238,7 +238,7 @@ const App = () => (
               <Route path="materiais" element={<PermissionGuard permission="materiais:read"><MaterialControl /></PermissionGuard>} />
               <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
               <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />
-              <Route path="ferramentas" element={<PermissionGuard permission="tools:read"><Ferramentas /></PermissionGuard>} />
+              <Route path="ferramentas" element={<Navigate to="/ferramentas/canvas" replace />} />
               <Route path="kpis" element={<PermissionGuard permission="kpis:read"><KpisOkrsPage /></PermissionGuard>} />
               <Route path="documentos" element={<PermissionGuard permission="docs:read"><DocumentsPage /></PermissionGuard>} />
               <Route path="descarte" element={<PermissionGuard permission="disposal:read"><DisposalPage /></PermissionGuard>} />
