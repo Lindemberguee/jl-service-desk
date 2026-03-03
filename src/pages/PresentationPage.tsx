@@ -12,9 +12,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import screenshotDashboard from '@/assets/showcase/screenshot-dashboard.jpg';
-import screenshotWorkorders from '@/assets/showcase/screenshot-workorders.jpg';
-import screenshotStock from '@/assets/showcase/screenshot-stock.jpg';
+import screenshotDashboard from '@/assets/showcase/screenshot-dashboard.png';
+import screenshotOS from '@/assets/showcase/screenshot-os.png';
+import screenshotEstoque from '@/assets/showcase/screenshot-estoque.png';
+import screenshotOkrs from '@/assets/showcase/screenshot-okrs.png';
+import screenshotManutencao from '@/assets/showcase/screenshot-manutencao.png';
+import screenshotDescarte from '@/assets/showcase/screenshot-descarte.png';
+import screenshotMateriais from '@/assets/showcase/screenshot-materiais.png';
 
 /* ------------------------------------------------------------------ */
 /*  Slide Data                                                         */
@@ -61,8 +65,12 @@ const roles = [
 
 const screenshots = [
   { src: screenshotDashboard, title: 'Dashboard Operacional' },
-  { src: screenshotWorkorders, title: 'Ordens de Serviço' },
-  { src: screenshotStock, title: 'Controle de Estoque' },
+  { src: screenshotOS, title: 'Ordens de Serviço' },
+  { src: screenshotEstoque, title: 'Estoque' },
+  { src: screenshotOkrs, title: 'KPIs & OKRs' },
+  { src: screenshotManutencao, title: 'Manutenção' },
+  { src: screenshotDescarte, title: 'Descarte' },
+  { src: screenshotMateriais, title: 'Controle de Materiais' },
 ];
 
 /* ------------------------------------------------------------------ */
