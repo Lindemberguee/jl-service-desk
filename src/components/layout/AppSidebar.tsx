@@ -266,7 +266,7 @@ export function AppSidebar() {
           {renderMenuGroup(knowledgeItems)}
         </SidebarGroup>
 
-        {isSuperAdmin && (
+        {currentRole && hasPermission(currentRole, 'settings:manage', undefined, rolePermissions) && (
           <>
             <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
             <SidebarGroup className="py-1">
@@ -283,22 +283,24 @@ export function AppSidebar() {
                     />
                   );
                 })}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => navigate('/master')}
-                    tooltip="Painel Master"
-                    className={cn(
-                      "relative transition-all duration-200 group/btn hover:translate-x-0.5",
-                      isPathActive(location.pathname, '/master') && "bg-amber-500/10 text-amber-600 font-medium"
-                    )}
-                  >
-                    <Crown className="h-4 w-4 text-amber-500" />
-                    <span className="text-[13px] flex-1">Painel Master</span>
-                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal bg-amber-500/10 text-amber-500 border-0">
-                      SaaS
-                    </Badge>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {isSuperAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => navigate('/master')}
+                      tooltip="Painel Master"
+                      className={cn(
+                        "relative transition-all duration-200 group/btn hover:translate-x-0.5",
+                        isPathActive(location.pathname, '/master') && "bg-amber-500/10 text-amber-600 font-medium"
+                      )}
+                    >
+                      <Crown className="h-4 w-4 text-amber-500" />
+                      <span className="text-[13px] flex-1">Painel Master</span>
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal bg-amber-500/10 text-amber-500 border-0">
+                        SaaS
+                      </Badge>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroup>
           </>
