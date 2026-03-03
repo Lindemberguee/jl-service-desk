@@ -8,20 +8,36 @@ interface PermissionGuardProps {
   fallbackPath?: string;
 }
 
-/**
- * Wraps a route element. If the user's current role lacks the given
- * permission (checked against DB-loaded map first, then fallback),
- * the user is redirected to the first allowed page.
- */
+// Map permissions to module keys for subscription gating
+const permissionModuleMap: Record<string, string> = {
+  'assets:read': 'assets', 'assets:manage': 'assets',
+  'stock:read': 'stock', 'stock:manage': 'stock',
+  'materiais:read': 'stock', 'materiais:manage': 'stock',
+  'manutencao:read': 'manutencao', 'manutencao:manage': 'manutencao',
+  'disposal:read': 'disposal', 'disposal:manage': 'disposal',
+  'kpis:read': 'kpis', 'kpis:manage': 'kpis',
+  'reports:read': 'reports',
+  'docs:read': 'docs', 'docs:manage': 'docs',
+  'vault:read': 'docs', 'vault:manage': 'docs',
+  'kb:read': 'knowledge', 'kb:manage': 'knowledge',
+  'tools:canvas': 'canvas', 'tools:notes': 'notes', 'tools:reminders': 'reminders',
+  'api:manage': 'api',
+};
+
 export function PermissionGuard({ permission, children, fallbackPath }: PermissionGuardProps) {
-  const { currentRole, rolePermissions } = useAuth();
+  const { currentRole, rolePermissions, isModuleEnabled } = useAuth();
 
   if (!currentRole) return <Navigate to="/login" replace />;
 
   const allowed = hasPermission(currentRole, permission, undefined, rolePermissions);
-
   if (!allowed) {
-    // Find a sensible fallback
+    const redirect = fallbackPath || getFallbackPath(currentRole, rolePermissions);
+    return <Navigate to={redirect} replace />;
+  }
+
+  // Check module gating from subscription
+  const moduleKey = permissionModuleMap[permission];
+  if (moduleKey && !isModuleEnabled(moduleKey)) {
     const redirect = fallbackPath || getFallbackPath(currentRole, rolePermissions);
     return <Navigate to={redirect} replace />;
   }
@@ -29,7 +45,6 @@ export function PermissionGuard({ permission, children, fallbackPath }: Permissi
   return <>{children}</>;
 }
 
-/** Determine the first accessible page for a role so we can redirect there. */
 function getFallbackPath(role: string, rolePermMap: Record<string, boolean>): string {
   const candidates: { perm: Permission; path: string }[] = [
     { perm: 'dashboard:read', path: '/dashboard' },
@@ -47,5 +62,5 @@ function getFallbackPath(role: string, rolePermMap: Record<string, boolean>): st
       return c.path;
     }
   }
-  return '/os'; // ultimate fallback
+  return '/os';
 }

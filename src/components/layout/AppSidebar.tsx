@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
-  UserCircle, Contact, Target, FileText, Trash2, Crown,
+  UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,23 @@ import { roleLabels } from '@/lib/permissions';
 import type { Permission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Map sidebar items to module keys for gating
+const permissionToModule: Record<string, string> = {
+  'assets:read': 'assets',
+  'stock:read': 'stock',
+  'materiais:read': 'stock',
+  'manutencao:read': 'manutencao',
+  'disposal:read': 'disposal',
+  'kpis:read': 'kpis',
+  'reports:read': 'reports',
+  'docs:read': 'docs',
+  'tools:canvas': 'canvas',
+  'tools:notes': 'notes',
+  'tools:reminders': 'reminders',
+  'api:manage': 'api',
+};
 
 interface MenuItem {
   label: string;
@@ -26,33 +43,34 @@ interface MenuItem {
   path: string;
   permission: Permission;
   badge?: string;
+  moduleKey?: string;
 }
 
 const operationalItems: MenuItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
-  { label: 'Minhas OS', icon: UserCircle, path: '/minhas-os', permission: 'my_os:read' },
-  { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read' },
-  { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read', moduleKey: 'dashboard' },
+  { label: 'Minhas OS', icon: UserCircle, path: '/minhas-os', permission: 'my_os:read', moduleKey: 'os' },
+  { label: 'Ordens de Serviço', icon: ClipboardList, path: '/os', permission: 'os:read', moduleKey: 'os' },
+  { label: 'Nova OS', icon: Plus, path: '/os/nova', permission: 'os:create', moduleKey: 'os' },
 ];
 
 const infraItems: MenuItem[] = [
-  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read' },
-  { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read' },
-  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read' },
-  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read' },
-  { label: 'Descarte', icon: Trash2, path: '/descarte', permission: 'disposal:read' },
+  { label: 'Ativos', icon: Wrench, path: '/ativos', permission: 'assets:read', moduleKey: 'assets' },
+  { label: 'Manutenção', icon: Settings2, path: '/manutencao', permission: 'manutencao:read', moduleKey: 'manutencao' },
+  { label: 'Estoque', icon: Package, path: '/estoque', permission: 'stock:read', moduleKey: 'stock' },
+  { label: 'Controle de Materiais', icon: ClipboardList, path: '/materiais', permission: 'materiais:read', moduleKey: 'stock' },
+  { label: 'Descarte', icon: Trash2, path: '/descarte', permission: 'disposal:read', moduleKey: 'disposal' },
 ];
 
 const managementItems: MenuItem[] = [
-  { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read' },
-  { label: 'Colaboradores', icon: Contact, path: '/colaboradores', permission: 'collaborators:read' },
-  { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read' },
-  { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read' },
-  { label: 'KPIs & OKRs', icon: Target, path: '/kpis', permission: 'kpis:read' },
+  { label: 'Cadastros', icon: Building2, path: '/cadastros', permission: 'cadastros:read', moduleKey: 'os' },
+  { label: 'Colaboradores', icon: Contact, path: '/colaboradores', permission: 'collaborators:read', moduleKey: 'os' },
+  { label: 'Equipe', icon: Users, path: '/usuarios', permission: 'users:read', moduleKey: 'os' },
+  { label: 'Relatórios', icon: BarChart3, path: '/relatorios', permission: 'reports:read', moduleKey: 'reports' },
+  { label: 'KPIs & OKRs', icon: Target, path: '/kpis', permission: 'kpis:read', moduleKey: 'kpis' },
 ];
 
 const knowledgeItems: MenuItem[] = [
-  { label: 'Documentos & Cofre', icon: FileText, path: '/documentos', permission: 'docs:read' },
+  { label: 'Documentos & Cofre', icon: FileText, path: '/documentos', permission: 'docs:read', moduleKey: 'docs' },
 ];
 
 const adminItems = [
@@ -73,8 +91,32 @@ function isPathActive(current: string, itemPath: string): boolean {
   return current === itemPath || (current.startsWith(itemPath) && !current.startsWith('/admin'));
 }
 
-function MenuItemButton({ item, isActive, onClick }: { item: { label: string; icon: React.ElementType; path: string; badge?: string }; isActive: boolean; onClick: () => void }) {
+function MenuItemButton({ item, isActive, onClick, locked }: { item: { label: string; icon: React.ElementType; path: string; badge?: string }; isActive: boolean; onClick: () => void; locked?: boolean }) {
   const Icon = item.icon;
+
+  if (locked) {
+    return (
+      <SidebarMenuItem>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarMenuButton
+              className="opacity-40 cursor-not-allowed"
+              onClick={(e) => e.preventDefault()}
+            >
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[13px] flex-1 line-through">{item.label}</span>
+              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-normal bg-muted text-muted-foreground border-0">
+                PRO
+              </Badge>
+            </SidebarMenuButton>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p className="text-xs">Módulo não incluído no plano atual</p>
+          </TooltipContent>
+        </Tooltip>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <SidebarMenuItem>
@@ -119,24 +161,28 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function AppSidebar() {
-  const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions } = useAuth();
+  const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions, isModuleEnabled, isSubscriptionActive, subscription } = useAuth();
   const { tenantName, tenantLogo } = useTenantBranding();
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
   const isSuperAdmin = currentRole === 'super_admin';
+  const subActive = isSubscriptionActive();
 
   const renderMenuGroup = (items: MenuItem[]) => (
     <SidebarMenu>
       {items.map(item => {
         if (currentRole && !hasPermission(currentRole, item.permission, undefined, rolePermissions)) return null;
         const isActive = isPathActive(location.pathname, item.path);
+        const moduleKey = item.moduleKey;
+        const locked = moduleKey ? !isModuleEnabled(moduleKey) : false;
         return (
           <MenuItemButton
             key={item.path}
             item={item}
             isActive={isActive}
             onClick={() => navigate(item.path)}
+            locked={locked}
           />
         );
       })}
@@ -145,7 +191,6 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      {/* Header with subtle gradient accent */}
       <SidebarHeader className="p-4 border-b border-sidebar-border/50 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent pointer-events-none" />
         <div className="flex items-center gap-3 relative">
@@ -159,58 +204,70 @@ export function AppSidebar() {
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold tracking-tight text-sidebar-foreground">{tenantName}</span>
             <div className="flex items-center gap-1.5">
-              <CircleDot className="h-2 w-2 text-emerald-400" />
+              <CircleDot className={cn("h-2 w-2", subActive ? "text-emerald-400" : "text-red-400")} />
               <span className="text-[11px] text-sidebar-foreground/40 truncate max-w-[120px]">
                 {currentTenant?.tenant_name || 'Sem departamento'}
               </span>
             </div>
           </div>
         </div>
+
+        {/* Subscription warning banner */}
+        {!subActive && !isSuperAdmin && (
+          <div className="mt-2 px-2 py-1.5 rounded-lg bg-destructive/10 border border-destructive/20">
+            <p className="text-[10px] text-destructive font-medium">
+              ⚠️ Plano expirado ou suspenso. Contate o administrador.
+            </p>
+          </div>
+        )}
+
+        {subscription?.status === 'trial' && subscription.trial_ends_at && !isSuperAdmin && (
+          (() => {
+            const daysLeft = Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / 86400000);
+            if (daysLeft <= 7 && daysLeft > 0) {
+              return (
+                <div className="mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-[10px] text-amber-600 font-medium">
+                    ⏳ Trial expira em {daysLeft} dia{daysLeft > 1 ? 's' : ''}
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          })()
+        )}
       </SidebarHeader>
 
       <SidebarContent className="py-3 px-1">
-        {/* Operacional */}
         <SidebarGroup className="py-1">
           <SectionLabel>Operacional</SectionLabel>
           {renderMenuGroup(operationalItems)}
         </SidebarGroup>
 
-        <div className="mx-4 my-1">
-          <Separator className="bg-sidebar-border/30" />
-        </div>
+        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
 
-        {/* Infraestrutura */}
         <SidebarGroup className="py-1">
           <SectionLabel>Infraestrutura</SectionLabel>
           {renderMenuGroup(infraItems)}
         </SidebarGroup>
 
-        <div className="mx-4 my-1">
-          <Separator className="bg-sidebar-border/30" />
-        </div>
+        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
 
-        {/* Gestão */}
         <SidebarGroup className="py-1">
           <SectionLabel>Gestão</SectionLabel>
           {renderMenuGroup(managementItems)}
         </SidebarGroup>
 
-        <div className="mx-4 my-1">
-          <Separator className="bg-sidebar-border/30" />
-        </div>
+        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
 
-        {/* Conhecimento */}
         <SidebarGroup className="py-1">
           <SectionLabel>Conhecimento</SectionLabel>
           {renderMenuGroup(knowledgeItems)}
         </SidebarGroup>
 
-        {/* Administração */}
         {isSuperAdmin && (
           <>
-            <div className="mx-4 my-1">
-              <Separator className="bg-sidebar-border/30" />
-            </div>
+            <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
             <SidebarGroup className="py-1">
               <SectionLabel>Administração</SectionLabel>
               <SidebarMenu>
@@ -229,7 +286,10 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     onClick={() => navigate('/master')}
                     tooltip="Painel Master"
-                    className="relative transition-all duration-200 group/btn hover:translate-x-0.5"
+                    className={cn(
+                      "relative transition-all duration-200 group/btn hover:translate-x-0.5",
+                      isPathActive(location.pathname, '/master') && "bg-amber-500/10 text-amber-600 font-medium"
+                    )}
                   >
                     <Crown className="h-4 w-4 text-amber-500" />
                     <span className="text-[13px] flex-1">Painel Master</span>
