@@ -466,7 +466,7 @@ export default function LandingPage() {
     { href: '#modules', label: 'Módulos' },
     { href: '#screenshots', label: 'Sistema' },
     { href: '#roles', label: 'Perfis' },
-    { href: '#tech', label: 'Tecnologia' },
+    { href: '#pricing', label: 'Planos' },
     { href: '#faq', label: 'FAQ' },
   ];
 
@@ -795,6 +795,125 @@ export default function LandingPage() {
         </div>
       </Section>
 
+      {/* ============================================================ */}
+      {/*  PRICING                                                      */}
+      {/* ============================================================ */}
+      <Section id="pricing">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 rounded-full text-xs px-4 py-1.5">Planos</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+              Escolha o plano{' '}
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">ideal</span>
+            </h2>
+            <p className="text-slate-500 mt-4 max-w-xl mx-auto text-sm">
+              Planos flexíveis para cada tamanho de operação. Todos incluem suporte e atualizações.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+            {/* Starter */}
+            <GlassCard delay={0} className="p-8 flex flex-col">
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-white">Starter</h3>
+                <p className="text-xs text-slate-500 mt-1">Para equipes pequenas que estão começando</p>
+              </div>
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white">R$ 299</span>
+                  <span className="text-sm text-slate-500">/mês</span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">até 5 usuários</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Ordens de Serviço completas', 'Dashboard Operacional', 'Gestão de Ativos', 'Controle de Estoque', 'Portal do Solicitante', 'Notificações em tempo real', 'Suporte por e-mail'].map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-[13px] text-slate-400">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500/70 shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <a href="https://wa.me/5512996543522?text=Olá!%20Tenho%20interesse%20no%20plano%20Starter%20do%20OrdFy." target="_blank" rel="noopener noreferrer">
+                <Button className="w-full rounded-full h-11 bg-white/[0.06] text-white border border-white/[0.08] hover:bg-white/[0.12] text-sm font-medium">
+                  Começar agora
+                </Button>
+              </a>
+            </GlassCard>
+
+            {/* Professional — featured */}
+            <div className="relative">
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-b from-blue-500 via-violet-500 to-cyan-500 opacity-60" />
+              <div className="absolute inset-0 rounded-2xl bg-[#06080f]" />
+              <div className="relative z-10 p-8 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Professional</h3>
+                    <p className="text-xs text-slate-400 mt-1">Para operações em crescimento</p>
+                  </div>
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px] px-3 py-1">Popular</Badge>
+                </div>
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-white">R$ 799</span>
+                    <span className="text-sm text-slate-400">/mês</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">até 20 usuários</p>
+                </div>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {['Tudo do Starter +', 'KPIs & OKRs', 'Gestão de Manutenção', 'Relatórios Avançados', 'Documentos & Biblioteca', 'Base de Conhecimento', 'Templates de Checklist', 'API & Integrações', 'Painel do Técnico', 'Suporte prioritário'].map(f => (
+                    <li key={f} className="flex items-start gap-2.5 text-[13px] text-slate-300">
+                      <CheckCircle2 className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a href="https://wa.me/5512996543522?text=Olá!%20Tenho%20interesse%20no%20plano%20Professional%20do%20OrdFy." target="_blank" rel="noopener noreferrer">
+                  <Button className="w-full rounded-full h-11 bg-white text-slate-900 hover:bg-slate-100 text-sm font-medium shadow-lg shadow-white/10">
+                    Começar agora <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </a>
+              </div>
+            </div>
+
+            {/* Enterprise */}
+            <GlassCard delay={0.1} className="p-8 flex flex-col">
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-white">Enterprise</h3>
+                <p className="text-xs text-slate-500 mt-1">Para grandes operações e multi-departamento</p>
+              </div>
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white">R$ 1.999</span>
+                  <span className="text-sm text-slate-500">/mês</span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">usuários ilimitados</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Tudo do Professional +', 'Canvas Colaborativo', 'Anotações Enterprise', 'Cofre Digital', 'Auditoria Global', 'Lembretes Inteligentes', 'Gestão de Descartes', 'Branding por departamento', 'Multi-departamento ilimitado', 'Suporte dedicado'].map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-[13px] text-slate-400">
+                    <CheckCircle2 className="h-4 w-4 text-violet-400/70 shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <a href="https://wa.me/5512996543522?text=Olá!%20Tenho%20interesse%20no%20plano%20Enterprise%20do%20OrdFy." target="_blank" rel="noopener noreferrer">
+                <Button className="w-full rounded-full h-11 bg-white/[0.06] text-white border border-white/[0.08] hover:bg-white/[0.12] text-sm font-medium">
+                  Falar com vendas
+                </Button>
+              </a>
+            </GlassCard>
+          </div>
+
+          <div className="text-center mt-10">
+            <p className="text-xs text-slate-600">
+              Todos os planos incluem SSL, backups diários e 99.9% de uptime. Precisa de algo customizado?{' '}
+              <a href="https://wa.me/5512996543522?text=Olá!%20Preciso%20de%20um%20plano%20customizado%20do%20OrdFy." target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">
+                Fale conosco
+              </a>
+            </p>
+          </div>
+        </div>
+      </Section>
       {/* ============================================================ */}
       {/*  CTA                                                          */}
       {/* ============================================================ */}
