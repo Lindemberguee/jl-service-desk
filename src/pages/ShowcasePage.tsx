@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   ClipboardList, BarChart3, Bell, Package, Shield, Users, Zap, Clock,
   Star, CheckCircle2, ArrowRight, ChevronDown, Wrench, Gauge, Eye,
@@ -166,6 +168,37 @@ export default function ShowcasePage() {
   const { scrollYProgress } = useScroll();
   const [activeScreenshot, setActiveScreenshot] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  // Register GSAP ScrollTrigger
+  useLayoutEffect(() => {
+    gsap.registerPlugin(ScrollTrigger);
+
+    const ctx = gsap.context(() => {
+      // Animate all section headings with a reveal effect
+      gsap.utils.toArray<HTMLElement>('.gsap-heading').forEach((el) => {
+        gsap.fromTo(el,
+          { opacity: 0, y: 40, filter: 'blur(8px)' },
+          {
+            opacity: 1, y: 0, filter: 'blur(0px)',
+            duration: 0.8,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+          }
+        );
+      });
+
+      // Parallax glow orbs
+      gsap.utils.toArray<HTMLElement>('.gsap-parallax').forEach((el) => {
+        gsap.to(el, {
+          y: -80,
+          scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: 1.5 },
+        });
+      });
+    }, pageRef);
+
+    return () => ctx.revert();
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -176,7 +209,7 @@ export default function ShowcasePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050a18] text-white overflow-x-hidden selection:bg-blue-500/30">
+    <div ref={pageRef} className="min-h-screen bg-[#050a18] text-white overflow-x-hidden selection:bg-blue-500/30">
       {/* Progress bar */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-400 z-50 origin-left"
@@ -309,29 +342,47 @@ export default function ShowcasePage() {
             <Badge className="mb-4 bg-blue-500/[0.08] text-blue-400 border-blue-500/20 rounded-full text-xs px-4 py-1.5">
               <Layers className="h-3 w-3 mr-1.5" /> 25+ Módulos
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+            <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Tudo que sua operação{' '}
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">precisa</span>
             </h2>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {modules.map((m, i) => (
+            {modules.map((m, i) => {
+              // Extract neon color from gradient class
+              const neonColor = m.gradient.includes('blue') ? 'rgba(59,130,246,0.15)'
+                : m.gradient.includes('violet') ? 'rgba(139,92,246,0.15)'
+                : m.gradient.includes('emerald') ? 'rgba(16,185,129,0.15)'
+                : m.gradient.includes('amber') ? 'rgba(245,158,11,0.15)'
+                : m.gradient.includes('rose') ? 'rgba(244,63,94,0.15)'
+                : m.gradient.includes('cyan') ? 'rgba(6,182,212,0.15)'
+                : m.gradient.includes('purple') ? 'rgba(168,85,247,0.15)'
+                : m.gradient.includes('teal') ? 'rgba(20,184,166,0.15)'
+                : 'rgba(59,130,246,0.1)';
+              return (
               <motion.div
                 key={m.title}
-                className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 hover:border-blue-500/20 hover:bg-white/[0.04] transition-all duration-500"
+                className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all duration-500"
+                style={{ '--neon': neonColor } as React.CSSProperties}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-30px' }}
                 transition={{ delay: i * 0.03, duration: 0.4 }}
+                whileHover={{ scale: 1.03 }}
               >
+                {/* Neon glow on hover */}
+                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                  style={{ boxShadow: `0 0 20px 2px var(--neon), inset 0 0 20px 1px var(--neon)` }}
+                />
                 <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center mb-3 bg-gradient-to-br', m.gradient)}>
                   <m.icon className="h-4 w-4 text-white" />
                 </div>
                 <h3 className="text-xs font-semibold text-white mb-1">{m.title}</h3>
-                <p className="text-[10px] text-slate-600 leading-relaxed">{m.desc}</p>
+                <p className="text-[10px] text-slate-600 leading-relaxed group-hover:text-slate-400 transition-colors">{m.desc}</p>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </SectionSnap>
@@ -346,7 +397,7 @@ export default function ShowcasePage() {
             <Badge className="mb-4 bg-cyan-500/[0.08] text-cyan-400 border-cyan-500/20 rounded-full text-xs px-4 py-1.5">
               <Monitor className="h-3 w-3 mr-1.5" /> Interface
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+            <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Veja na{' '}
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">prática</span>
             </h2>
@@ -444,29 +495,43 @@ export default function ShowcasePage() {
             <Badge className="mb-4 bg-rose-500/[0.08] text-rose-400 border-rose-500/20 rounded-full text-xs px-4 py-1.5">
               <Shield className="h-3 w-3 mr-1.5" /> Controle de Acesso
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+            <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               7 perfis,{' '}
               <span className="bg-gradient-to-r from-rose-400 to-violet-400 bg-clip-text text-transparent">permissões granulares</span>
             </h2>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-            {roles.map((r, i) => (
+            {roles.map((r, i) => {
+              const neonColor = r.color.includes('red') ? 'rgba(239,68,68,0.12)'
+                : r.color.includes('orange') ? 'rgba(249,115,22,0.12)'
+                : r.color.includes('yellow') ? 'rgba(234,179,8,0.12)'
+                : r.color.includes('green') ? 'rgba(34,197,94,0.12)'
+                : r.color.includes('cyan') ? 'rgba(6,182,212,0.12)'
+                : r.color.includes('blue') ? 'rgba(59,130,246,0.12)'
+                : 'rgba(148,163,184,0.1)';
+              return (
               <motion.div
                 key={r.role}
-                className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-center hover:border-white/[0.12] transition-all"
+                className="group relative bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-center hover:border-white/[0.12] transition-all duration-500"
+                style={{ '--neon': neonColor } as React.CSSProperties}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
+                whileHover={{ scale: 1.05 }}
               >
+                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                  style={{ boxShadow: `0 0 18px 1px var(--neon), inset 0 0 15px 1px var(--neon)` }}
+                />
                 <div className={cn('h-10 w-10 rounded-xl mx-auto mb-3 flex items-center justify-center bg-gradient-to-br', r.color)}>
                   <r.icon className="h-4.5 w-4.5 text-white" />
                 </div>
                 <h4 className="text-xs font-semibold text-white mb-1">{r.role}</h4>
-                <p className="text-[10px] text-slate-600 leading-relaxed">{r.desc}</p>
+                <p className="text-[10px] text-slate-600 leading-relaxed group-hover:text-slate-400 transition-colors">{r.desc}</p>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </SectionSnap>
@@ -481,7 +546,7 @@ export default function ShowcasePage() {
             <Badge className="mb-4 bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 rounded-full text-xs px-4 py-1.5">
               <TrendingUp className="h-3 w-3 mr-1.5" /> Planos SaaS
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+            <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Escolha o plano{' '}
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">ideal</span>
             </h2>
@@ -557,7 +622,7 @@ export default function ShowcasePage() {
             <Badge className="mb-4 bg-violet-500/[0.08] text-violet-400 border-violet-500/20 rounded-full text-xs px-4 py-1.5">
               <Code2 className="h-3 w-3 mr-1.5" /> White-Label
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
+            <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Adquira o{' '}
               <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">código-fonte</span>
             </h2>
