@@ -577,6 +577,190 @@ function SlideFeatures() {
     </div>
   );
 }
+/* ------------------------------------------------------------------ */
+/*  SLIDE 9 — Por que OrdFy? (Diferenciais)                           */
+/* ------------------------------------------------------------------ */
+function SlideDiferenciais() {
+  const diffs = [
+    { title: 'Real-time nativo', desc: 'WebSocket em todos os módulos — dashboard, notificações, cronômetro de OS e canvas atualizam instantaneamente. Concorrentes usam polling ou refresh manual.', icon: Wifi, color: 'text-cyan-400' },
+    { title: 'Multi-tenant por design', desc: 'Isolamento via Row Level Security no PostgreSQL, não por filtro de aplicação. Impossível acessar dados de outro departamento, mesmo com SQL injection.', icon: FolderLock, color: 'text-indigo-400' },
+    { title: 'SLA inteligente', desc: 'Cronômetro com pausa automática por status, cálculo de atraso em tempo real e indicadores visuais integrados à listagem e ao dashboard.', icon: Timer, color: 'text-amber-400' },
+    { title: 'Plataforma completa', desc: '25+ módulos integrados numa única plataforma — OS, estoque, ativos, manutenção, KPIs, OKRs, documentos, canvas, cofre e muito mais.', icon: Layers, color: 'text-violet-400' },
+    { title: 'Auditoria total', desc: 'Cada ação é registrada com diff, IP, user-agent e timestamp. Retenção configurável e dashboard analítico para compliance.', icon: History, color: 'text-emerald-400' },
+    { title: 'White-Label ready', desc: 'Branding por tenant, temas personalizáveis, logo e cores próprios. Pronto para licenciamento e revenda como produto próprio.', icon: Palette, color: 'text-pink-400' },
+  ];
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-8">
+      <GlowOrb color="rgba(6,182,212,0.06)" x="15%" y="20%" size={450} />
+      <GlowOrb color="rgba(139,92,246,0.05)" x="75%" y="60%" size={400} delay={2} />
+      <SlideTitle icon={Sparkles} iconColor="from-cyan-500 to-violet-500" title="Por que" highlight="OrdFy?" subtitle="Diferenciais técnicos que nos separam de soluções genéricas" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl w-full">
+        {diffs.map((d, i) => (
+          <StaggerItem key={d.title} i={i}>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 h-full hover:border-white/[0.12] transition-all duration-300 group">
+              <d.icon className={cn('h-6 w-6 mb-3', d.color)} />
+              <h3 className="text-sm font-bold text-white mb-1.5">{d.title}</h3>
+              <p className="text-[10px] text-slate-500 leading-relaxed">{d.desc}</p>
+            </div>
+          </StaggerItem>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  SLIDE 10 — Fluxo de uma OS                                         */
+/* ------------------------------------------------------------------ */
+function SlideWorkflow() {
+  const steps = [
+    { label: 'Abertura', actor: 'Solicitante', desc: 'Via portal ou admin', color: 'from-blue-500 to-cyan-500', icon: ClipboardList },
+    { label: 'Triagem', actor: 'Coordenador', desc: 'Prioridade e categoria', color: 'from-purple-500 to-violet-500', icon: Eye },
+    { label: 'Atribuição', actor: 'Coordenador', desc: 'Técnico responsável', color: 'from-amber-500 to-orange-500', icon: UserCheck },
+    { label: 'Execução', actor: 'Técnico', desc: 'Cronômetro + checklist', color: 'from-green-500 to-emerald-500', icon: Wrench },
+    { label: 'Conclusão', actor: 'Técnico', desc: 'Custos e observações', color: 'from-teal-500 to-cyan-500', icon: CheckCircle2 },
+    { label: 'Encerramento', actor: 'Coordenador', desc: 'Validação e SLA final', color: 'from-rose-500 to-pink-500', icon: Shield },
+  ];
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-8">
+      <GlowOrb color="rgba(59,130,246,0.06)" x="50%" y="20%" size={500} />
+      <SlideTitle icon={Workflow} iconColor="from-blue-500 to-violet-500" title="Ciclo de uma" highlight="Ordem de Serviço" subtitle="Do chamado à conclusão — cada etapa com o ator responsável" />
+      <div className="flex flex-col md:flex-row items-center gap-2 max-w-5xl w-full justify-center">
+        {steps.map((step, i) => (
+          <motion.div
+            key={step.label}
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + i * 0.1, type: 'spring', stiffness: 120 }}
+          >
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-center min-w-[130px] hover:border-white/[0.15] transition-all group">
+              <div className={cn('h-10 w-10 rounded-xl mx-auto mb-2 flex items-center justify-center bg-gradient-to-br shadow-md', step.color)}>
+                <step.icon className="h-4 w-4 text-white" />
+              </div>
+              <h4 className="text-[11px] font-bold text-white mb-0.5">{step.label}</h4>
+              <p className="text-[9px] text-slate-600">{step.actor}</p>
+              <p className="text-[8px] text-slate-700 mt-1">{step.desc}</p>
+            </div>
+            {i < steps.length - 1 && (
+              <motion.div
+                className="hidden md:block"
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+              >
+                <ChevronRight className="h-4 w-4 text-slate-700" />
+              </motion.div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+      <motion.div
+        className="mt-8 grid grid-cols-3 gap-6 max-w-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+      >
+        {[
+          { icon: Timer, label: 'SLA ativo em todas as etapas' },
+          { icon: Bell, label: 'Notificações automáticas' },
+          { icon: History, label: 'Auditoria a cada transição' },
+        ].map(item => (
+          <div key={item.label} className="flex items-center gap-2 text-[9px] text-slate-600">
+            <item.icon className="h-3 w-3 text-blue-400/60 shrink-0" />
+            {item.label}
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  SLIDE 11 — Roadmap                                                 */
+/* ------------------------------------------------------------------ */
+function SlideRoadmap() {
+  const quarters = [
+    {
+      period: 'Q1 2026',
+      status: 'done',
+      items: ['25+ módulos core', 'Multi-tenant com RLS', 'KPIs & OKRs', 'Canvas colaborativo', 'Cofre digital'],
+    },
+    {
+      period: 'Q2 2026',
+      status: 'current',
+      items: ['App mobile (PWA)', 'Integração com e-mail', 'Relatórios agendados', 'Dashboard customizável', 'Webhooks'],
+    },
+    {
+      period: 'Q3 2026',
+      status: 'planned',
+      items: ['IA para triagem de OS', 'Manutenção preditiva', 'Chatbot integrado', 'Marketplace de integrações'],
+    },
+    {
+      period: 'Q4 2026',
+      status: 'planned',
+      items: ['App nativo iOS/Android', 'SSO (SAML/OIDC)', 'Multi-idioma', 'Assinatura digital'],
+    },
+  ];
+
+  const statusConfig = {
+    done: { label: 'Concluído', color: 'bg-emerald-400', dotColor: 'bg-emerald-400', textColor: 'text-emerald-400' },
+    current: { label: 'Em andamento', color: 'bg-blue-400', dotColor: 'bg-blue-400 animate-pulse', textColor: 'text-blue-400' },
+    planned: { label: 'Planejado', color: 'bg-slate-600', dotColor: 'bg-slate-600', textColor: 'text-slate-500' },
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-8">
+      <GlowOrb color="rgba(16,185,129,0.06)" x="30%" y="25%" size={450} />
+      <GlowOrb color="rgba(59,130,246,0.05)" x="70%" y="55%" size={400} delay={1.5} />
+      <SlideTitle icon={TrendingUp} iconColor="from-emerald-500 to-cyan-500" title="" highlight="Roadmap" subtitle="Evolução contínua com entregas trimestrais" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl w-full">
+        {quarters.map((q, i) => {
+          const cfg = statusConfig[q.status as keyof typeof statusConfig];
+          return (
+            <motion.div
+              key={q.period}
+              className={cn(
+                'bg-white/[0.02] border rounded-xl p-5 relative overflow-hidden',
+                q.status === 'current' ? 'border-blue-500/20' : 'border-white/[0.06]'
+              )}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + i * 0.1, type: 'spring', stiffness: 100 }}
+            >
+              {q.status === 'current' && (
+                <div className="absolute inset-0 bg-blue-500/[0.03]" />
+              )}
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={cn('h-2 w-2 rounded-full', cfg.dotColor)} />
+                  <span className="text-xs font-bold text-white">{q.period}</span>
+                </div>
+                <span className={cn('text-[9px] font-medium uppercase tracking-wider', cfg.textColor)}>{cfg.label}</span>
+                <ul className="mt-3 space-y-2">
+                  {q.items.map((item, j) => (
+                    <motion.li
+                      key={item}
+                      className="flex items-start gap-2 text-[10px] text-slate-400"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + i * 0.1 + j * 0.04 }}
+                    >
+                      <CheckCircle2 className={cn('h-3 w-3 shrink-0 mt-0.5', q.status === 'done' ? 'text-emerald-400/70' : 'text-slate-700')} />
+                      {item}
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Slides array & labels                                              */
@@ -585,17 +769,20 @@ function SlideFeatures() {
 const slides = [
   SlideOverview,
   SlideModules,
+  SlideWorkflow,
   SlideArchitecture,
   SlideRoles,
   SlideMultiTenant,
   SlidePortals,
   SlideScreenshots,
   SlideFeatures,
+  SlideDiferenciais,
+  SlideRoadmap,
 ];
 
 const slideLabels = [
-  'Visão Geral', 'Módulos', 'Arquitetura', 'Acesso',
-  'Multi-Tenant', 'Portais', 'Interface', 'Funcionalidades',
+  'Visão Geral', 'Módulos', 'Fluxo de OS', 'Arquitetura', 'Acesso',
+  'Multi-Tenant', 'Portais', 'Interface', 'Funcionalidades', 'Diferenciais', 'Roadmap',
 ];
 
 /* ------------------------------------------------------------------ */
