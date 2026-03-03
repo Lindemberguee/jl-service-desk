@@ -20,7 +20,17 @@ interface Profile {
 }
 
 interface RolePermMap {
-  [rolePermKey: string]: boolean; // "admin:os:read" -> true
+  [rolePermKey: string]: boolean;
+}
+
+export interface TenantSubscription {
+  plan: string;
+  status: string;
+  max_users: number;
+  enabled_modules: string[];
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  monthly_price: number | null;
 }
 
 interface AuthState {
@@ -31,6 +41,7 @@ interface AuthState {
   currentTenantId: string | null;
   currentRole: AppRole | null;
   rolePermissions: RolePermMap;
+  subscription: TenantSubscription | null;
   loading: boolean;
 }
 
@@ -39,6 +50,8 @@ interface AuthContextValue extends AuthState {
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   switchTenant: (tenantId: string) => void;
+  isModuleEnabled: (moduleKey: string) => boolean;
+  isSubscriptionActive: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,8 +59,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null, session: null, profile: null,
-    memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {}, loading: true,
+    memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {},
+    subscription: null, loading: true,
   });
+
+  const loadSubscription = useCallback(async (tenantId: string) => {
+    const { data } = await supabase
+      .from('tenant_subscriptions')
+      .select('plan, status, max_users, enabled_modules, trial_ends_at, current_period_end, monthly_price')
+      .eq('tenant_id', tenantId)
+      .single();
+    return data as TenantSubscription | null;
+  }, []);
 
   const loadUserData = useCallback(async (user: User) => {
     const [profileRes, membershipsRes] = await Promise.all([
@@ -96,22 +119,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       || memberships[0]?.tenant_id || null;
     const currentRole = memberships.find(m => m.tenant_id === defaultTenant)?.role || null;
 
+    // Load subscription for current tenant
+    let subscription: TenantSubscription | null = null;
+    if (defaultTenant) {
+      subscription = await loadSubscription(defaultTenant);
+    }
+
     setState(prev => ({
       ...prev, user, profile, memberships, rolePermissions,
-      currentTenantId: defaultTenant, currentRole, loading: false,
+      currentTenantId: defaultTenant, currentRole, subscription, loading: false,
     }));
-  }, []);
+  }, [loadSubscription]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setState(prev => ({ ...prev, session }));
-        // defer to avoid deadlock
         setTimeout(() => loadUserData(session.user), 0);
       } else {
         setState({
           user: null, session: null, profile: null,
-          memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {}, loading: false,
+          memberships: [], currentTenantId: null, currentRole: null, rolePermissions: {},
+          subscription: null, loading: false,
         });
       }
     });
@@ -161,14 +190,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (userId) logAuthEvent('logout', userId, email || undefined);
   };
 
-  const switchTenant = (tenantId: string) => {
+  const switchTenant = async (tenantId: string) => {
     localStorage.setItem('currentTenantId', tenantId);
     const role = state.memberships.find(m => m.tenant_id === tenantId)?.role || null;
-    setState(prev => ({ ...prev, currentTenantId: tenantId, currentRole: role }));
+    const sub = await loadSubscription(tenantId);
+    setState(prev => ({ ...prev, currentTenantId: tenantId, currentRole: role, subscription: sub }));
+  };
+
+  const isModuleEnabled = (moduleKey: string): boolean => {
+    // Super admins bypass module checks
+    if (state.currentRole === 'super_admin') return true;
+    // No subscription = legacy tenant, allow all
+    if (!state.subscription) return true;
+    // Expired/suspended/cancelled = block all except core
+    const coreModules = ['os', 'dashboard', 'portal', 'notifications'];
+    if (['expired', 'suspended', 'cancelled'].includes(state.subscription.status)) {
+      return coreModules.includes(moduleKey);
+    }
+    // Check trial expiry
+    if (state.subscription.status === 'trial' && state.subscription.trial_ends_at) {
+      if (new Date(state.subscription.trial_ends_at) < new Date()) {
+        return coreModules.includes(moduleKey);
+      }
+    }
+    return state.subscription.enabled_modules.includes(moduleKey);
+  };
+
+  const isSubscriptionActive = (): boolean => {
+    if (state.currentRole === 'super_admin') return true;
+    if (!state.subscription) return true;
+    if (['expired', 'suspended', 'cancelled'].includes(state.subscription.status)) return false;
+    if (state.subscription.status === 'trial' && state.subscription.trial_ends_at) {
+      return new Date(state.subscription.trial_ends_at) >= new Date();
+    }
+    return true;
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, switchTenant }}>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, switchTenant, isModuleEnabled, isSubscriptionActive }}>
       {children}
     </AuthContext.Provider>
   );
