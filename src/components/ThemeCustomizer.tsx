@@ -1,20 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePersonalTheme, THEME_PRESETS, type ThemePreset } from '@/hooks/usePersonalTheme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Palette, Check, RotateCcw, Sparkles } from 'lucide-react';
+import { Palette, Check, RotateCcw, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+
+function ColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium">{label}</Label>
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <input
+            type="color"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-9 h-9 rounded-lg border border-border cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0.5 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0"
+          />
+        </div>
+        <Input
+          value={value}
+          onChange={e => {
+            const v = e.target.value;
+            if (/^#[0-9a-fA-F]{0,6}$/.test(v) || v === '#') onChange(v);
+          }}
+          className="h-9 w-24 font-mono text-xs uppercase"
+          maxLength={7}
+        />
+        <div className="flex-1 h-7 rounded-md border border-border/50 shadow-inner" style={{ backgroundColor: value }} />
+      </div>
+    </div>
+  );
+}
 
 export function ThemeCustomizer() {
   const { currentPresetId, setTheme, setCustomColors, currentTheme } = usePersonalTheme();
   const [open, setOpen] = useState(false);
-  const [customMode, setCustomMode] = useState(false);
+  const [customMode, setCustomMode] = useState(currentPresetId === 'custom');
   const [customPrimary, setCustomPrimary] = useState(currentTheme?.primary || '#3B82F6');
+  const [customAccent, setCustomAccent] = useState(currentTheme?.accent || '#8B5CF6');
   const [customSidebar, setCustomSidebar] = useState(currentTheme?.sidebar || '#1E293B');
+
+  // Sync custom fields when theme changes externally (preset click)
+  useEffect(() => {
+    if (currentTheme) {
+      setCustomPrimary(currentTheme.primary);
+      setCustomAccent(currentTheme.accent);
+      setCustomSidebar(currentTheme.sidebar);
+    }
+  }, [currentTheme]);
 
   const handlePreset = (preset: ThemePreset) => {
     setTheme(preset);
@@ -27,7 +73,14 @@ export function ThemeCustomizer() {
   };
 
   const handleCustomApply = () => {
-    setCustomColors(customPrimary, customPrimary, customSidebar);
+    setCustomColors(customPrimary, customAccent, customSidebar);
+  };
+
+  // Live preview on custom color changes
+  const handleLiveUpdate = (primary: string, accent: string, sidebar: string) => {
+    if (/^#[0-9a-fA-F]{6}$/.test(primary) && /^#[0-9a-fA-F]{6}$/.test(accent) && /^#[0-9a-fA-F]{6}$/.test(sidebar)) {
+      setCustomColors(primary, accent, sidebar);
+    }
   };
 
   return (
@@ -50,7 +103,7 @@ export function ThemeCustomizer() {
       </Tooltip>
 
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -81,17 +134,18 @@ export function ThemeCustomizer() {
                     )}
                   >
                     <div className="relative">
-                      <div
-                        className="h-8 w-8 rounded-lg shadow-inner"
-                        style={{
-                          background: `linear-gradient(135deg, ${preset.sidebar} 50%, ${preset.primary} 50%)`,
-                        }}
-                      />
+                      <div className="h-8 w-8 rounded-lg shadow-inner overflow-hidden flex">
+                        <div className="w-1/2 h-full" style={{ backgroundColor: preset.sidebar }} />
+                        <div className="w-1/2 h-full flex flex-col">
+                          <div className="h-1/2" style={{ backgroundColor: preset.primary }} />
+                          <div className="h-1/2" style={{ backgroundColor: preset.accent }} />
+                        </div>
+                      </div>
                       {isActive && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute inset-0 flex items-center justify-center"
+                          className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg"
                         >
                           <Check className="h-3.5 w-3.5 text-white drop-shadow-md" />
                         </motion.div>
@@ -108,84 +162,109 @@ export function ThemeCustomizer() {
           <div className="space-y-2">
             <button
               onClick={() => setCustomMode(!customMode)}
-              className="text-xs text-primary hover:underline flex items-center gap-1"
+              className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
             >
               <Palette className="h-3 w-3" />
-              {customMode ? 'Ocultar personalização avançada' : 'Cores personalizadas'}
+              Cores personalizadas
+              {customMode ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
 
-            {customMode && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                className="space-y-3 overflow-hidden"
-              >
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Cor Primária</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={customPrimary}
-                      onChange={e => setCustomPrimary(e.target.value)}
-                      className="w-8 h-8 rounded-md border border-border cursor-pointer"
-                    />
-                    <Input
-                      value={customPrimary}
-                      onChange={e => setCustomPrimary(e.target.value)}
-                      className="h-8 w-24 font-mono text-xs"
-                      maxLength={7}
-                    />
-                    <div className="flex-1 h-6 rounded" style={{ backgroundColor: customPrimary }} />
-                  </div>
-                </div>
+            <AnimatePresence>
+              {customMode && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3 overflow-hidden"
+                >
+                  <ColorPicker
+                    label="Cor Primária"
+                    value={customPrimary}
+                    onChange={v => {
+                      setCustomPrimary(v);
+                      handleLiveUpdate(v, customAccent, customSidebar);
+                    }}
+                  />
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fundo do Menu</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={customSidebar}
-                      onChange={e => setCustomSidebar(e.target.value)}
-                      className="w-8 h-8 rounded-md border border-border cursor-pointer"
-                    />
-                    <Input
-                      value={customSidebar}
-                      onChange={e => setCustomSidebar(e.target.value)}
-                      className="h-8 w-24 font-mono text-xs"
-                      maxLength={7}
-                    />
-                    <div className="flex-1 h-6 rounded" style={{ backgroundColor: customSidebar }} />
-                  </div>
-                </div>
+                  <ColorPicker
+                    label="Cor de Destaque"
+                    value={customAccent}
+                    onChange={v => {
+                      setCustomAccent(v);
+                      handleLiveUpdate(customPrimary, v, customSidebar);
+                    }}
+                  />
 
-                <Button size="sm" className="w-full h-8 text-xs" onClick={handleCustomApply}>
-                  <Check className="h-3 w-3 mr-1.5" />
-                  Aplicar Cores
-                </Button>
-              </motion.div>
-            )}
+                  <ColorPicker
+                    label="Fundo do Menu Lateral"
+                    value={customSidebar}
+                    onChange={v => {
+                      setCustomSidebar(v);
+                      handleLiveUpdate(customPrimary, customAccent, v);
+                    }}
+                  />
+
+                  <Button size="sm" className="w-full h-8 text-xs" onClick={handleCustomApply}>
+                    <Check className="h-3 w-3 mr-1.5" />
+                    Aplicar Cores
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Preview */}
+          {/* Enhanced Preview */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Preview</Label>
-            <div className="rounded-lg overflow-hidden border border-border flex h-12">
-              <div
-                className="w-12 flex items-center justify-center"
-                style={{ backgroundColor: currentTheme?.sidebar || '#1E293B' }}
-              >
+            <div className="rounded-lg overflow-hidden border border-border bg-background shadow-sm">
+              <div className="flex h-20">
+                {/* Sidebar preview */}
                 <div
-                  className="h-5 w-5 rounded-md"
-                  style={{ backgroundColor: currentTheme?.primary || '#3B82F6' }}
-                />
-              </div>
-              <div className="flex-1 bg-background flex items-center px-3">
-                <div className="flex items-center gap-2">
+                  className="w-14 flex flex-col items-center pt-2 gap-1.5 border-r"
+                  style={{
+                    backgroundColor: currentTheme?.sidebar || '#1E293B',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                  }}
+                >
                   <div
-                    className="h-4 w-12 rounded-sm"
+                    className="h-5 w-5 rounded-md"
                     style={{ backgroundColor: currentTheme?.primary || '#3B82F6' }}
                   />
-                  <div className="h-3 w-20 rounded-sm bg-muted" />
+                  <div className="h-1.5 w-7 rounded-full bg-white/15" />
+                  <div className="h-1.5 w-7 rounded-full bg-white/10" />
+                  <div className="h-1.5 w-7 rounded-full bg-white/10" />
+                </div>
+                {/* Main area */}
+                <div className="flex-1 flex flex-col p-2 gap-1.5">
+                  {/* Top bar */}
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="h-3 w-14 rounded-sm"
+                      style={{ backgroundColor: currentTheme?.primary || '#3B82F6' }}
+                    />
+                    <div className="h-3 w-8 rounded-sm bg-muted" />
+                    <div className="flex-1" />
+                    <div
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: currentTheme?.accent || '#8B5CF6' }}
+                    />
+                  </div>
+                  {/* Cards */}
+                  <div className="flex gap-1.5 flex-1">
+                    <div className="flex-1 rounded-sm bg-card border border-border flex items-center justify-center">
+                      <div
+                        className="h-4 w-4 rounded-sm opacity-60"
+                        style={{ backgroundColor: currentTheme?.primary || '#3B82F6' }}
+                      />
+                    </div>
+                    <div className="flex-1 rounded-sm bg-card border border-border flex items-center justify-center">
+                      <div
+                        className="h-4 w-4 rounded-sm opacity-60"
+                        style={{ backgroundColor: currentTheme?.accent || '#8B5CF6' }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
