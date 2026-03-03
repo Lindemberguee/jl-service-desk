@@ -30,7 +30,17 @@ export interface PersonalTheme {
   sidebar: string;
 }
 
+export interface SavedTheme {
+  id: string;
+  name: string;
+  primary: string;
+  accent: string;
+  sidebar: string;
+  createdAt: number;
+}
+
 const STORAGE_KEY = 'serviceos-personal-theme';
+const SAVED_THEMES_KEY = 'serviceos-saved-themes';
 
 function getStoredTheme(): PersonalTheme | null {
   try {
@@ -39,6 +49,35 @@ function getStoredTheme(): PersonalTheme | null {
   } catch {
     return null;
   }
+}
+
+export function getSavedThemes(): SavedTheme[] {
+  try {
+    const raw = localStorage.getItem(SAVED_THEMES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomTheme(name: string, primary: string, accent: string, sidebar: string): SavedTheme {
+  const themes = getSavedThemes();
+  const newTheme: SavedTheme = {
+    id: `custom-${Date.now()}`,
+    name,
+    primary,
+    accent,
+    sidebar,
+    createdAt: Date.now(),
+  };
+  themes.push(newTheme);
+  localStorage.setItem(SAVED_THEMES_KEY, JSON.stringify(themes));
+  return newTheme;
+}
+
+export function deleteSavedTheme(id: string) {
+  const themes = getSavedThemes().filter(t => t.id !== id);
+  localStorage.setItem(SAVED_THEMES_KEY, JSON.stringify(themes));
 }
 
 function hexToHslParts(hex: string): { h: number; s: number; l: number } | null {
@@ -65,16 +104,10 @@ function hexToHslParts(hex: string): { h: number; s: number; l: number } | null 
   };
 }
 
-/** Clamp helper */
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
 
-/**
- * Generate a full, coherent theme from primary/accent/sidebar hex values.
- * Handles achromatic colors (black, white, grays) gracefully by ensuring
- * derived tokens still have usable contrast.
- */
 function applyThemeToDOM(theme: PersonalTheme) {
   const root = document.documentElement;
   const isDark = root.classList.contains('dark');
@@ -85,26 +118,23 @@ function applyThemeToDOM(theme: PersonalTheme) {
 
   if (!pp) return;
 
-  const { h: ph, s: ps, l: pl } = pp;
-
-  // Determine if primary is achromatic (gray/black/white)
+  const { h: ph, s: ps } = pp;
   const isAchromatic = ps < 10;
 
-  // ── Primary token ─────────────────────────────────────────────
-  // Use a lightness that ensures visibility on both themes
+  // ── Primary ───────────────────────────────────────────────────
   const primaryL = isAchromatic
-    ? (isDark ? clamp(pl, 55, 80) : clamp(pl, 15, 45))
-    : (isDark ? clamp(pl, 45, 65) : clamp(pl, 30, 50));
+    ? (isDark ? clamp(pp.l, 55, 80) : clamp(pp.l, 15, 45))
+    : (isDark ? clamp(pp.l, 45, 65) : clamp(pp.l, 30, 50));
   const primaryS = isAchromatic ? ps : clamp(ps, 40, 100);
 
   root.style.setProperty('--primary', `${ph} ${primaryS}% ${primaryL}%`);
   root.style.setProperty('--primary-foreground', primaryL > 55 ? `${ph} 10% 5%` : `${ph} 10% 98%`);
   root.style.setProperty('--ring', `${ph} ${primaryS}% ${primaryL}%`);
 
-  // ── Tint saturation: how much the primary hue bleeds into surfaces ──
+  // ── Tint ──────────────────────────────────────────────────────
   const tintS = isAchromatic ? clamp(ps, 0, 5) : clamp(ps, 8, 25);
 
-  // ── Surface tokens ────────────────────────────────────────────
+  // ── Surfaces ──────────────────────────────────────────────────
   if (isDark) {
     root.style.setProperty('--background', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 4%`);
     root.style.setProperty('--foreground', `${ph} ${clamp(tintS, 0, 15)}% 91%`);
@@ -117,7 +147,7 @@ function applyThemeToDOM(theme: PersonalTheme) {
     root.style.setProperty('--muted', `${ph} ${clamp(tintS * 0.8, 0, 15)}% 11%`);
     root.style.setProperty('--muted-foreground', `${ph} ${clamp(tintS * 0.5, 0, 10)}% 55%`);
     root.style.setProperty('--border', `${ph} ${clamp(tintS, 0, 20)}% 14%`);
-    root.style.setProperty('--input', `${ph} ${clamp(tintS, 0, 20)}% 14%`);
+    root.style.setProperty('--input', `${ph} ${clamp(tintS, 0, 20)}% 16%`);
   } else {
     root.style.setProperty('--background', `${ph} ${clamp(tintS, 0, 20)}% ${isAchromatic ? 97 : 98}%`);
     root.style.setProperty('--foreground', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 11%`);
@@ -133,27 +163,36 @@ function applyThemeToDOM(theme: PersonalTheme) {
     root.style.setProperty('--input', `${ph} ${clamp(tintS, 0, 18)}% 90%`);
   }
 
-  // ── Accent token ──────────────────────────────────────────────
+  // ── Accent ────────────────────────────────────────────────────
+  // The accent color now properly tints interactive backgrounds
   if (ap) {
-    const ah = ap.h;
-    const as = ap.s < 10 ? ap.s : clamp(ap.s, 20, 100);
-    const accentBgS = ap.s < 10 ? clamp(ap.s, 0, 5) : clamp(ap.s - 40, 10, 60);
-    root.style.setProperty('--accent', `${ah} ${accentBgS}% ${isDark ? 14 : 93}%`);
+    const { h: ah, s: rawAs } = ap;
+    const accentIsAchromatic = rawAs < 10;
+    const as = accentIsAchromatic ? rawAs : clamp(rawAs, 20, 100);
+    const accentL = isDark ? clamp(ap.l, 45, 65) : clamp(ap.l, 30, 50);
+
+    // Accent background: subtle tint of the accent color (used for hover states, etc.)
+    const accentBgS = accentIsAchromatic ? clamp(rawAs, 0, 5) : clamp(rawAs, 10, 40);
+    const accentBgL = isDark ? 14 : 93;
+    root.style.setProperty('--accent', `${ah} ${accentBgS}% ${accentBgL}%`);
     root.style.setProperty('--accent-foreground', `${ah} ${as}% ${isDark ? 91 : 11}%`);
-    root.style.setProperty('--chart-3', `${ah} ${as}% ${isDark ? 55 : 45}%`);
+
+    // Charts using accent
+    root.style.setProperty('--chart-3', `${ah} ${as}% ${accentL}%`);
     root.style.setProperty('--chart-4', `${ah} ${clamp(as - 15, 15, 100)}% ${isDark ? 40 : 55}%`);
   }
 
-  // ── Chart tokens ──────────────────────────────────────────────
+  // ── Charts ────────────────────────────────────────────────────
   root.style.setProperty('--chart-1', `${ph} ${primaryS}% ${primaryL}%`);
   root.style.setProperty('--chart-2', `${ph} ${clamp(primaryS - 20, 10, 100)}% ${isDark ? 45 : 48}%`);
   root.style.setProperty('--chart-5', `${(ph + 180) % 360} ${clamp(primaryS - 10, 15, 80)}% ${isDark ? 50 : 42}%`);
 
-  // ── Sidebar tokens ────────────────────────────────────────────
+  // ── Sidebar ───────────────────────────────────────────────────
   if (sp) {
-    const sh = sp.h;
-    const ss = sp.s < 10 ? clamp(sp.s, 0, 8) : clamp(sp.s, 20, 60);
-    const sl = clamp(sp.l, 3, 18);
+    const { h: sh, s: rawSs, l: rawSl } = sp;
+    const sidebarIsAchromatic = rawSs < 10;
+    const ss = sidebarIsAchromatic ? clamp(rawSs, 0, 8) : clamp(rawSs, 20, 60);
+    const sl = clamp(rawSl, 3, 18);
     root.style.setProperty('--sidebar-background', `${sh} ${ss}% ${sl}%`);
     root.style.setProperty('--sidebar-foreground', `${sh} ${clamp(ss * 0.6, 0, 31)}% 91%`);
     root.style.setProperty('--sidebar-primary', `${ph} ${primaryS}% ${clamp(primaryL + 10, 45, 70)}%`);
@@ -187,6 +226,7 @@ function clearThemeFromDOM() {
 
 export function usePersonalTheme() {
   const [theme, setThemeState] = useState<PersonalTheme | null>(getStoredTheme);
+  const [savedThemes, setSavedThemes] = useState<SavedTheme[]>(getSavedThemes);
 
   useEffect(() => {
     if (theme) {
@@ -198,7 +238,6 @@ export function usePersonalTheme() {
     }
   }, [theme]);
 
-  // Re-apply when dark mode toggles
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const current = getStoredTheme();
@@ -230,11 +269,36 @@ export function usePersonalTheme() {
     });
   }, []);
 
+  const saveTheme = useCallback((name: string) => {
+    if (!theme) return null;
+    const saved = saveCustomTheme(name, theme.primary, theme.accent, theme.sidebar);
+    setSavedThemes(getSavedThemes());
+    return saved;
+  }, [theme]);
+
+  const removeSavedTheme = useCallback((id: string) => {
+    deleteSavedTheme(id);
+    setSavedThemes(getSavedThemes());
+  }, []);
+
+  const applySavedTheme = useCallback((saved: SavedTheme) => {
+    setThemeState({
+      presetId: saved.id,
+      primary: saved.primary,
+      accent: saved.accent,
+      sidebar: saved.sidebar,
+    });
+  }, []);
+
   return {
     currentTheme: theme,
     currentPresetId: theme?.presetId || 'default',
     setTheme,
     setCustomColors,
     presets: THEME_PRESETS,
+    savedThemes,
+    saveTheme,
+    removeSavedTheme,
+    applySavedTheme,
   };
 }
