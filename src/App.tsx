@@ -42,6 +42,7 @@ import ShowcasePage from "@/pages/ShowcasePage";
 
 import PublicCanvasPage from "@/pages/PublicCanvasPage";
 import ApiDocsPage from "@/pages/ApiDocsPage";
+import PresentationPage from "@/pages/PresentationPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import DisposalPage from "@/pages/DisposalPage";
 import PortalHome from "@/pages/portal/PortalHome";
@@ -197,6 +198,7 @@ const App = () => (
             <Route path="/landing" element={<Navigate to="/" replace />} />
             <Route path="/canvas/public" element={<PublicCanvasPage />} />
             <Route path="/api/docs" element={<ApiDocsPage />} />
+            <Route path="/apresentacao" element={<PresentationPage />} />
 
             {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>

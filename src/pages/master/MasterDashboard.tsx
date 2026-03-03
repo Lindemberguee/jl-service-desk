@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useMasterTenants, usePlatformStats, useDeleteTenant } from '@/hooks/useMasterAdmin';
+import { usePlatformSetting, useUpdatePlatformSetting } from '@/hooks/usePlatformSettings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OnboardTenantDialog } from './OnboardTenantDialog';
 import { EditSubscriptionDialog } from './EditSubscriptionDialog';
@@ -53,6 +56,8 @@ export default function MasterDashboard() {
   const { data: tenants = [], isLoading: tenantsLoading } = useMasterTenants();
   const { data: stats, isLoading: statsLoading } = usePlatformStats();
   const deleteTenant = useDeleteTenant();
+  const { data: whatsappEnabled } = usePlatformSetting('whatsapp_button_enabled');
+  const updateSetting = useUpdatePlatformSetting();
   const [search, setSearch] = useState('');
   const [showOnboard, setShowOnboard] = useState(false);
   const [editTenant, setEditTenant] = useState<any>(null);
@@ -123,7 +128,22 @@ export default function MasterDashboard() {
         ))}
       </div>
 
-      {/* Filters + Search */}
+      {/* Quick Settings */}
+      <div className="flex items-center gap-6 bg-card border rounded-lg px-5 py-3">
+        <div className="flex items-center gap-3">
+          <MessageCircle className="h-4 w-4 text-emerald-500" />
+          <Label htmlFor="whatsapp-toggle" className="text-sm font-medium cursor-pointer">Botão "Fale Conosco"</Label>
+        </div>
+        <Switch
+          id="whatsapp-toggle"
+          checked={whatsappEnabled === true}
+          onCheckedChange={(checked) => updateSetting.mutate({ key: 'whatsapp_button_enabled', value: checked })}
+        />
+        <span className="text-xs text-muted-foreground">
+          {whatsappEnabled ? 'Visível no menu lateral' : 'Oculto para todos'}
+        </span>
+      </div>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
           {filterTabs.map(tab => (
