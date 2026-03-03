@@ -39,7 +39,7 @@ import NotFound from "@/pages/NotFound";
 import ForbiddenPage from "@/pages/ForbiddenPage";
 import ServerErrorPage from "@/pages/ServerErrorPage";
 import ShowcasePage from "@/pages/ShowcasePage";
-import LandingPage from "@/pages/LandingPage";
+
 import PublicCanvasPage from "@/pages/PublicCanvasPage";
 import ApiDocsPage from "@/pages/ApiDocsPage";
 import DocumentsPage from "@/pages/DocumentsPage";
@@ -72,7 +72,7 @@ function ProtectedRoutes() {
     );
   }
 
-  if (!user) return <LandingPage />;
+  if (!user) return <ShowcasePage />;
 
   // Solicitante and leitura roles get the simplified portal
   if (currentRole === 'solicitante' || currentRole === 'leitura') {
@@ -180,7 +180,7 @@ function HomeGate() {
     }
     return <Navigate to="/dashboard" replace />;
   }
-  return <LandingPage />;
+  return <ShowcasePage />;
 }
 
 const App = () => (
@@ -194,7 +194,7 @@ const App = () => (
             
             <Route path="/login" element={<AuthGate />} />
             <Route path="/showcase" element={<ShowcasePage />} />
-            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/landing" element={<Navigate to="/" replace />} />
             <Route path="/canvas/public" element={<PublicCanvasPage />} />
             <Route path="/api/docs" element={<ApiDocsPage />} />
 
