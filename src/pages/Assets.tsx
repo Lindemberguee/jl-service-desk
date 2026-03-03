@@ -292,6 +292,7 @@ export default function Assets() {
 
   const activeCount = useMemo(() => assets.filter((a: any) => a.status === 'ativo').length, [assets]);
   const maintenanceCount = useMemo(() => assets.filter((a: any) => a.status === 'em_manutencao').length, [assets]);
+  const discardedCount = useMemo(() => assets.filter((a: any) => a.status === 'descartado').length, [assets]);
   const totalValue = useMemo(() => assets.reduce((acc: number, a: any) => acc + (a.purchase_value || 0), 0), [assets]);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -380,7 +381,7 @@ export default function Assets() {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="rounded-lg bg-primary/10 p-2.5">
@@ -398,7 +399,7 @@ export default function Assets() {
               <Wrench className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Ativos Operacionais</p>
+              <p className="text-xs text-muted-foreground">Operacionais</p>
               <p className="text-xl font-bold">{activeCount}</p>
             </div>
           </CardContent>
@@ -411,6 +412,17 @@ export default function Assets() {
             <div>
               <p className="text-xs text-muted-foreground">Em Manutenção</p>
               <p className={`text-xl font-bold ${maintenanceCount > 0 ? 'text-amber-600' : ''}`}>{maintenanceCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`rounded-lg p-2.5 ${discardedCount > 0 ? 'bg-destructive/10' : 'bg-muted'}`}>
+              <Trash2 className={`h-5 w-5 ${discardedCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Descartados</p>
+              <p className={`text-xl font-bold ${discardedCount > 0 ? 'text-destructive' : ''}`}>{discardedCount}</p>
             </div>
           </CardContent>
         </Card>
