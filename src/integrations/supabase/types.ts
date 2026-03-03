@@ -236,6 +236,7 @@ export type Database = {
           metadata: Json | null
           name: string
           patrimony_code: string | null
+          purchase_value: number | null
           serial_number: string | null
           status: Database["public"]["Enums"]["asset_status"]
           tenant_id: string
@@ -251,6 +252,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           patrimony_code?: string | null
+          purchase_value?: number | null
           serial_number?: string | null
           status?: Database["public"]["Enums"]["asset_status"]
           tenant_id: string
@@ -266,6 +268,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           patrimony_code?: string | null
+          purchase_value?: number | null
           serial_number?: string | null
           status?: Database["public"]["Enums"]["asset_status"]
           tenant_id?: string

@@ -3,6 +3,8 @@ import { logAudit } from '@/lib/audit';
 import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +25,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Wrench, Loader2, Search, Pencil, X, Download, Upload,
-  Building2, MapPin, FolderOpen, Filter, Contact,
+  Building2, MapPin, FolderOpen, Filter, Contact, DollarSign, AlertTriangle,
 } from 'lucide-react';
 
 const statusLabelsMap: Record<string, string> = {
@@ -49,11 +51,13 @@ type AssetForm = {
   location_id: string;
   category_id: string;
   collaborator_id: string;
+  purchase_value: string;
 };
 
 const emptyForm: AssetForm = {
   name: '', patrimony_code: '', serial_number: '', status: 'ativo',
   unit_id: '', location_id: '', category_id: '', collaborator_id: '',
+  purchase_value: '',
 };
 
 export default function Assets() {
@@ -134,6 +138,7 @@ export default function Assets() {
         location_id: form.location_id || null,
         category_id: form.category_id || null,
         collaborator_id: form.collaborator_id || null,
+        purchase_value: form.purchase_value ? parseFloat(form.purchase_value) : null,
       });
       await logAudit({ entity: 'asset', entityId: (result as any)?.id, action: 'asset.created', tenantId: currentTenantId, diff: { name: form.name, patrimony_code: form.patrimony_code, status: form.status } });
       toast({ title: 'Ativo criado com sucesso!' });
@@ -154,6 +159,7 @@ export default function Assets() {
       location_id: item.location_id || '',
       category_id: item.category_id || '',
       collaborator_id: item.collaborator_id || '',
+      purchase_value: item.purchase_value != null ? String(item.purchase_value) : '',
     });
     setEditId(item.id);
     setEditOpen(true);
@@ -173,6 +179,7 @@ export default function Assets() {
         location_id: form.location_id || null,
         category_id: form.category_id || null,
         collaborator_id: form.collaborator_id || null,
+        purchase_value: form.purchase_value ? parseFloat(form.purchase_value) : null,
       });
       await logAudit({ entity: 'asset', entityId: editId, action: 'asset.updated', tenantId: currentTenantId, diff: { name: form.name, status: form.status } });
       toast({ title: 'Ativo atualizado!' });
@@ -283,6 +290,11 @@ export default function Assets() {
 
   const activeFilters = (filterStatus !== 'all' ? 1 : 0) + (filterUnit !== 'all' ? 1 : 0);
 
+  const activeCount = useMemo(() => assets.filter((a: any) => a.status === 'ativo').length, [assets]);
+  const maintenanceCount = useMemo(() => assets.filter((a: any) => a.status === 'em_manutencao').length, [assets]);
+  const totalValue = useMemo(() => assets.reduce((acc: number, a: any) => acc + (a.purchase_value || 0), 0), [assets]);
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
   const renderFormFields = () => (
     <>
       <div className="space-y-1.5">
@@ -358,11 +370,63 @@ export default function Assets() {
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Valor (R$)</Label>
+        <CurrencyInput value={form.purchase_value} onValueChange={(v) => setForm(prev => ({ ...prev, purchase_value: v }))} placeholder="Ex: 1.500,00" />
+      </div>
     </>
   );
 
   return (
     <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2.5">
+              <Wrench className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total de Ativos</p>
+              <p className="text-xl font-bold">{assets.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-500/10 p-2.5">
+              <Wrench className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Ativos Operacionais</p>
+              <p className="text-xl font-bold">{activeCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`rounded-lg p-2.5 ${maintenanceCount > 0 ? 'bg-amber-500/10' : 'bg-muted'}`}>
+              <AlertTriangle className={`h-5 w-5 ${maintenanceCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Em Manutenção</p>
+              <p className={`text-xl font-bold ${maintenanceCount > 0 ? 'text-amber-600' : ''}`}>{maintenanceCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-500/10 p-2.5">
+              <DollarSign className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Valor Total</p>
+              <p className="text-xl font-bold">{formatCurrency(totalValue)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
@@ -597,6 +661,9 @@ export default function Assets() {
                     <div><span className="text-muted-foreground">Nº Série:</span> <strong>{a.serial_number || '-'}</strong></div>
                     <div><span className="text-muted-foreground">Unidade:</span> <strong>{unitMap[a.unit_id] || '-'}</strong></div>
                     <div><span className="text-muted-foreground">Local:</span> <strong>{locationMap[a.location_id]?.name || '-'}</strong></div>
+                    {a.purchase_value != null && (
+                      <div className="col-span-2"><span className="text-muted-foreground">Valor:</span> <strong>{formatCurrency(a.purchase_value)}</strong></div>
+                    )}
                     {collaboratorMap[a.collaborator_id] && (
                       <div className="col-span-2">
                         <span className="text-muted-foreground">Responsável:</span>{' '}

@@ -1,0 +1,1 @@
+ALTER TABLE public.assets ADD COLUMN purchase_value numeric NULL;
