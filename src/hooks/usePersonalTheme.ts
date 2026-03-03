@@ -17,9 +17,13 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'teal', label: 'Teal', primary: '#14B8A6', accent: '#0EA5E9', sidebar: '#0E1A1A' },
   { id: 'orange', label: 'Laranja', primary: '#F97316', accent: '#FB923C', sidebar: '#1A130E' },
   { id: 'slate', label: 'Grafite', primary: '#64748B', accent: '#94A3B8', sidebar: '#111318' },
+  { id: 'midnight', label: 'Meia-noite', primary: '#1E293B', accent: '#475569', sidebar: '#0B0F19' },
+  { id: 'crimson', label: 'Carmesim', primary: '#DC2626', accent: '#F97316', sidebar: '#1A0A0A' },
+  { id: 'ocean', label: 'Oceano', primary: '#0284C7', accent: '#22D3EE', sidebar: '#0A1628' },
+  { id: 'forest', label: 'Floresta', primary: '#15803D', accent: '#84CC16', sidebar: '#0A1A0F' },
 ];
 
-interface PersonalTheme {
+export interface PersonalTheme {
   presetId: string | null;
   primary: string;
   accent: string;
@@ -37,7 +41,7 @@ function getStoredTheme(): PersonalTheme | null {
   }
 }
 
-function hexToHsl(hex: string): string | null {
+function hexToHslParts(hex: string): { h: number; s: number; l: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;
   let r = parseInt(result[1], 16) / 255;
@@ -54,93 +58,111 @@ function hexToHsl(hex: string): string | null {
       case b: h = ((r - g) / d + 4) / 6; break;
     }
   }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
-
-function hexToHslParts(hex: string): { h: number; s: number; l: number } | null {
-  const hsl = hexToHsl(hex);
-  if (!hsl) return null;
-  const parts = hsl.split(' ');
   return {
-    h: parseInt(parts[0]),
-    s: parseInt(parts[1]),
-    l: parseInt(parts[2]),
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
   };
 }
 
+/** Clamp helper */
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
+
+/**
+ * Generate a full, coherent theme from primary/accent/sidebar hex values.
+ * Handles achromatic colors (black, white, grays) gracefully by ensuring
+ * derived tokens still have usable contrast.
+ */
 function applyThemeToDOM(theme: PersonalTheme) {
   const root = document.documentElement;
   const isDark = root.classList.contains('dark');
 
-  const primaryParts = hexToHslParts(theme.primary);
-  const accentParts = hexToHslParts(theme.accent);
+  const pp = hexToHslParts(theme.primary);
+  const ap = hexToHslParts(theme.accent);
+  const sp = hexToHslParts(theme.sidebar);
 
-  if (primaryParts) {
-    const { h, s } = primaryParts;
-    const pl = isDark ? 55 : 38;
+  if (!pp) return;
 
-    // Core primary
-    root.style.setProperty('--primary', `${h} ${s}% ${pl}%`);
-    root.style.setProperty('--primary-foreground', `${h} ${Math.min(s, 30)}% 98%`);
-    root.style.setProperty('--ring', `${h} ${s}% ${pl}%`);
+  const { h: ph, s: ps, l: pl } = pp;
 
-    // Tint backgrounds/cards/borders with primary hue for cohesion
-    if (isDark) {
-      root.style.setProperty('--background', `${h} 40% 4%`);
-      root.style.setProperty('--foreground', `${h} 20% 91%`);
-      root.style.setProperty('--card', `${h} 30% 7%`);
-      root.style.setProperty('--card-foreground', `${h} 20% 91%`);
-      root.style.setProperty('--popover', `${h} 30% 7%`);
-      root.style.setProperty('--popover-foreground', `${h} 20% 91%`);
-      root.style.setProperty('--secondary', `${h} 25% 14%`);
-      root.style.setProperty('--secondary-foreground', `${h} 20% 91%`);
-      root.style.setProperty('--muted', `${h} 20% 11%`);
-      root.style.setProperty('--muted-foreground', `${h} 10% 55%`);
-      root.style.setProperty('--border', `${h} 25% 14%`);
-      root.style.setProperty('--input', `${h} 25% 14%`);
-    } else {
-      root.style.setProperty('--background', `${h} 20% 98%`);
-      root.style.setProperty('--foreground', `${h} 30% 11%`);
-      root.style.setProperty('--card', `${h} 10% 100%`);
-      root.style.setProperty('--card-foreground', `${h} 30% 11%`);
-      root.style.setProperty('--popover', `${h} 10% 100%`);
-      root.style.setProperty('--popover-foreground', `${h} 30% 11%`);
-      root.style.setProperty('--secondary', `${h} 16% 93%`);
-      root.style.setProperty('--secondary-foreground', `${h} 30% 20%`);
-      root.style.setProperty('--muted', `${h} 15% 96%`);
-      root.style.setProperty('--muted-foreground', `${h} 10% 46%`);
-      root.style.setProperty('--border', `${h} 18% 90%`);
-      root.style.setProperty('--input', `${h} 18% 90%`);
-    }
+  // Determine if primary is achromatic (gray/black/white)
+  const isAchromatic = ps < 10;
 
-    // Charts
-    root.style.setProperty('--chart-1', `${h} ${s}% ${pl}%`);
-    root.style.setProperty('--chart-2', `${h} ${Math.max(s - 20, 20)}% ${isDark ? 45 : 48}%`);
+  // ── Primary token ─────────────────────────────────────────────
+  // Use a lightness that ensures visibility on both themes
+  const primaryL = isAchromatic
+    ? (isDark ? clamp(pl, 55, 80) : clamp(pl, 15, 45))
+    : (isDark ? clamp(pl, 45, 65) : clamp(pl, 30, 50));
+  const primaryS = isAchromatic ? ps : clamp(ps, 40, 100);
+
+  root.style.setProperty('--primary', `${ph} ${primaryS}% ${primaryL}%`);
+  root.style.setProperty('--primary-foreground', primaryL > 55 ? `${ph} 10% 5%` : `${ph} 10% 98%`);
+  root.style.setProperty('--ring', `${ph} ${primaryS}% ${primaryL}%`);
+
+  // ── Tint saturation: how much the primary hue bleeds into surfaces ──
+  const tintS = isAchromatic ? clamp(ps, 0, 5) : clamp(ps, 8, 25);
+
+  // ── Surface tokens ────────────────────────────────────────────
+  if (isDark) {
+    root.style.setProperty('--background', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 4%`);
+    root.style.setProperty('--foreground', `${ph} ${clamp(tintS, 0, 15)}% 91%`);
+    root.style.setProperty('--card', `${ph} ${clamp(tintS * 1.2, 0, 25)}% 7%`);
+    root.style.setProperty('--card-foreground', `${ph} ${clamp(tintS, 0, 15)}% 91%`);
+    root.style.setProperty('--popover', `${ph} ${clamp(tintS * 1.2, 0, 25)}% 7%`);
+    root.style.setProperty('--popover-foreground', `${ph} ${clamp(tintS, 0, 15)}% 91%`);
+    root.style.setProperty('--secondary', `${ph} ${clamp(tintS, 0, 20)}% 14%`);
+    root.style.setProperty('--secondary-foreground', `${ph} ${clamp(tintS, 0, 15)}% 91%`);
+    root.style.setProperty('--muted', `${ph} ${clamp(tintS * 0.8, 0, 15)}% 11%`);
+    root.style.setProperty('--muted-foreground', `${ph} ${clamp(tintS * 0.5, 0, 10)}% 55%`);
+    root.style.setProperty('--border', `${ph} ${clamp(tintS, 0, 20)}% 14%`);
+    root.style.setProperty('--input', `${ph} ${clamp(tintS, 0, 20)}% 14%`);
+  } else {
+    root.style.setProperty('--background', `${ph} ${clamp(tintS, 0, 20)}% ${isAchromatic ? 97 : 98}%`);
+    root.style.setProperty('--foreground', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 11%`);
+    root.style.setProperty('--card', `${ph} ${clamp(tintS * 0.5, 0, 10)}% 100%`);
+    root.style.setProperty('--card-foreground', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 11%`);
+    root.style.setProperty('--popover', `${ph} ${clamp(tintS * 0.5, 0, 10)}% 100%`);
+    root.style.setProperty('--popover-foreground', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 11%`);
+    root.style.setProperty('--secondary', `${ph} ${clamp(tintS, 0, 16)}% 93%`);
+    root.style.setProperty('--secondary-foreground', `${ph} ${clamp(tintS * 1.5, 0, 30)}% 20%`);
+    root.style.setProperty('--muted', `${ph} ${clamp(tintS * 0.8, 0, 15)}% 96%`);
+    root.style.setProperty('--muted-foreground', `${ph} ${clamp(tintS * 0.5, 0, 10)}% 46%`);
+    root.style.setProperty('--border', `${ph} ${clamp(tintS, 0, 18)}% 90%`);
+    root.style.setProperty('--input', `${ph} ${clamp(tintS, 0, 18)}% 90%`);
   }
 
-  // Accent
-  if (accentParts) {
-    const { h, s } = accentParts;
-    root.style.setProperty('--accent', `${h} ${Math.max(s - 50, 10)}% ${isDark ? 14 : 93}%`);
-    root.style.setProperty('--accent-foreground', `${h} ${s}% ${isDark ? 91 : 11}%`);
-    root.style.setProperty('--chart-3', `${h} ${s}% ${isDark ? 55 : 45}%`);
-    root.style.setProperty('--chart-4', `${h} ${Math.max(s - 15, 20)}% ${isDark ? 40 : 55}%`);
+  // ── Accent token ──────────────────────────────────────────────
+  if (ap) {
+    const ah = ap.h;
+    const as = ap.s < 10 ? ap.s : clamp(ap.s, 20, 100);
+    const accentBgS = ap.s < 10 ? clamp(ap.s, 0, 5) : clamp(ap.s - 40, 10, 60);
+    root.style.setProperty('--accent', `${ah} ${accentBgS}% ${isDark ? 14 : 93}%`);
+    root.style.setProperty('--accent-foreground', `${ah} ${as}% ${isDark ? 91 : 11}%`);
+    root.style.setProperty('--chart-3', `${ah} ${as}% ${isDark ? 55 : 45}%`);
+    root.style.setProperty('--chart-4', `${ah} ${clamp(as - 15, 15, 100)}% ${isDark ? 40 : 55}%`);
   }
 
-  // Sidebar
-  const sidebarParts = hexToHslParts(theme.sidebar);
-  if (sidebarParts && primaryParts) {
-    const sh = sidebarParts.h;
-    const ph = primaryParts.h;
-    root.style.setProperty('--sidebar-background', `${sh} 47% ${sidebarParts.l}%`);
-    root.style.setProperty('--sidebar-foreground', `${sh} 31% 91%`);
-    root.style.setProperty('--sidebar-primary', `${ph} 94% 55%`);
+  // ── Chart tokens ──────────────────────────────────────────────
+  root.style.setProperty('--chart-1', `${ph} ${primaryS}% ${primaryL}%`);
+  root.style.setProperty('--chart-2', `${ph} ${clamp(primaryS - 20, 10, 100)}% ${isDark ? 45 : 48}%`);
+  root.style.setProperty('--chart-5', `${(ph + 180) % 360} ${clamp(primaryS - 10, 15, 80)}% ${isDark ? 50 : 42}%`);
+
+  // ── Sidebar tokens ────────────────────────────────────────────
+  if (sp) {
+    const sh = sp.h;
+    const ss = sp.s < 10 ? clamp(sp.s, 0, 8) : clamp(sp.s, 20, 60);
+    const sl = clamp(sp.l, 3, 18);
+    root.style.setProperty('--sidebar-background', `${sh} ${ss}% ${sl}%`);
+    root.style.setProperty('--sidebar-foreground', `${sh} ${clamp(ss * 0.6, 0, 31)}% 91%`);
+    root.style.setProperty('--sidebar-primary', `${ph} ${primaryS}% ${clamp(primaryL + 10, 45, 70)}%`);
     root.style.setProperty('--sidebar-primary-foreground', `0 0% 100%`);
-    root.style.setProperty('--sidebar-accent', `${sh} 47% ${Math.min(sidebarParts.l + 5, 20)}%`);
-    root.style.setProperty('--sidebar-accent-foreground', `${sh} 31% 91%`);
-    root.style.setProperty('--sidebar-border', `${sh} 47% ${Math.min(sidebarParts.l + 7, 22)}%`);
-    root.style.setProperty('--sidebar-ring', `${ph} 94% 55%`);
-    root.style.setProperty('--sidebar-muted-foreground', `${sh} 11% 55%`);
+    root.style.setProperty('--sidebar-accent', `${sh} ${ss}% ${clamp(sl + 5, 8, 22)}%`);
+    root.style.setProperty('--sidebar-accent-foreground', `${sh} ${clamp(ss * 0.6, 0, 31)}% 91%`);
+    root.style.setProperty('--sidebar-border', `${sh} ${ss}% ${clamp(sl + 7, 10, 25)}%`);
+    root.style.setProperty('--sidebar-ring', `${ph} ${primaryS}% ${clamp(primaryL + 10, 45, 70)}%`);
+    root.style.setProperty('--sidebar-muted-foreground', `${sh} ${clamp(ss * 0.3, 0, 15)}% 55%`);
   }
 }
 
@@ -155,7 +177,7 @@ function clearThemeFromDOM() {
     '--muted', '--muted-foreground',
     '--accent', '--accent-foreground',
     '--border', '--input',
-    '--chart-1', '--chart-2', '--chart-3', '--chart-4',
+    '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5',
     '--sidebar-background', '--sidebar-foreground', '--sidebar-primary',
     '--sidebar-primary-foreground', '--sidebar-accent', '--sidebar-accent-foreground',
     '--sidebar-border', '--sidebar-ring', '--sidebar-muted-foreground',
@@ -166,7 +188,6 @@ function clearThemeFromDOM() {
 export function usePersonalTheme() {
   const [theme, setThemeState] = useState<PersonalTheme | null>(getStoredTheme);
 
-  // Apply on mount and when theme changes
   useEffect(() => {
     if (theme) {
       applyThemeToDOM(theme);
