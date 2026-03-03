@@ -12,6 +12,7 @@ import {
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
+  MessageCircle,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -327,6 +328,15 @@ export function AppSidebar() {
           <LogOut className="h-4 w-4" />
           <span>Sair</span>
         </button>
+        <a
+          href="https://wa.me/5512996543522?text=Olá! Gostaria de saber mais sobre os planos e funcionalidades."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 bg-[hsl(142,70%,45%)]/10 hover:bg-[hsl(142,70%,45%)]/20 text-[hsl(142,70%,35%)]"
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span>Fale Conosco</span>
+        </a>
         <div className="mt-1 pt-2 border-t border-sidebar-border/30 text-center">
           <p className="text-[9px] text-sidebar-foreground/25 leading-relaxed">
             Desenvolvido por{' '}

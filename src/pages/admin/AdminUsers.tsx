@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -29,6 +30,7 @@ import {
   UserPlus, Building2, Search, Users, Shield,
   ChevronDown, ChevronUp, KeyRound, UserX, ScrollText, Eye, EyeOff,
   MoreHorizontal, Trash2, Power, Plus, UserCheck,
+  AlertTriangle, Crown, Lock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -70,8 +72,10 @@ interface AuditLogEntry {
 
 export default function AdminUsers() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, currentRole, subscription, currentTenantId, isSubscriptionActive } = useAuth();
   const qc = useQueryClient();
+  const isSuperAdmin = currentRole === 'super_admin';
+  const subActive = isSubscriptionActive();
 
   const [search, setSearch] = useState('');
   const [filterTenant, setFilterTenant] = useState<string>('all');
@@ -154,6 +158,24 @@ export default function AdminUsers() {
     enabled: activeTab === 'audit',
   });
 
+  // Subscription usage calculations
+  const currentTenantActiveUsers = useMemo(() => {
+    if (!currentTenantId) return 0;
+    return memberships.filter(m => m.tenant_id === currentTenantId && m.is_active).length;
+  }, [memberships, currentTenantId]);
+
+  const maxUsers = subscription?.max_users || 999;
+  const usagePercent = Math.min((currentTenantActiveUsers / maxUsers) * 100, 100);
+  const canCreateUser = isSuperAdmin || (subActive && currentTenantActiveUsers < maxUsers);
+  const isAtLimit = !isSuperAdmin && currentTenantActiveUsers >= maxUsers;
+
+  // Roles that non-super_admin can assign
+  const availableRoles = useMemo(() => {
+    if (isSuperAdmin) return Object.entries(roleLabels);
+    // Admin cannot assign super_admin
+    return Object.entries(roleLabels).filter(([k]) => k !== 'super_admin');
+  }, [isSuperAdmin]);
+
   const userGroups = useMemo(() => {
     const groups = profiles.map(p => ({
       ...p,
@@ -179,6 +201,7 @@ export default function AdminUsers() {
   // Mutations
   const createUser = useMutation({
     mutationFn: async () => {
+      if (!canCreateUser) throw new Error('Limite de usuários do plano atingido.');
       const { data, error } = await supabase.functions.invoke('admin-users', {
         body: { action: 'create_user', email: newEmail, password: newPassword, name: newName, tenant_id: newTenantId || undefined, role: newRole },
       });
@@ -378,7 +401,10 @@ export default function AdminUsers() {
   const totalUsers = profiles.length;
   const activeUsers = profiles.filter(p => p.is_active).length;
   const inactiveUsers = totalUsers - activeUsers;
-  const totalMemberships = memberships.filter(m => m.is_active).length;
+
+  const planLabel = subscription?.plan
+    ? { starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise', trial: 'Trial', custom: 'Custom' }[subscription.plan] || subscription.plan
+    : 'Sem plano';
 
   return (
     <TooltipProvider>
@@ -396,12 +422,77 @@ export default function AdminUsers() {
               <Shield className="h-4 w-4 mr-1.5" />
               Vincular Acesso
             </Button>
-            <Button size="sm" onClick={() => setCreateUserOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-1.5" />
-              Nova Conta
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button size="sm" onClick={() => setCreateUserOpen(true)} disabled={!canCreateUser}>
+                    {isAtLimit ? <Lock className="h-4 w-4 mr-1.5" /> : <UserPlus className="h-4 w-4 mr-1.5" />}
+                    Nova Conta
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isAtLimit && (
+                <TooltipContent>
+                  <p className="text-xs">Limite de {maxUsers} usuários atingido. Solicite upgrade do plano.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
           </div>
         </div>
+
+        {/* Subscription / Plan Banner */}
+        {!isSuperAdmin && (
+          <Card className={`border ${!subActive ? 'border-destructive/30 bg-destructive/5' : isAtLimit ? 'border-amber-500/30 bg-amber-500/5' : 'border-primary/20 bg-primary/5'}`}>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${!subActive ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                    <Crown className={`h-5 w-5 ${!subActive ? 'text-destructive' : 'text-primary'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">Plano {planLabel}</span>
+                      <Badge variant={subActive ? 'secondary' : 'destructive'} className="text-[10px]">
+                        {subActive ? (subscription?.status === 'trial' ? 'Trial' : 'Ativo') : 'Inativo'}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {currentTenantActiveUsers} de {maxUsers >= 999 ? '∞' : maxUsers} usuários utilizados
+                    </p>
+                  </div>
+                </div>
+                <div className="flex-1 max-w-xs">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                    <span>Uso de licenças</span>
+                    <span className="font-medium">{Math.round(usagePercent)}%</span>
+                  </div>
+                  <Progress
+                    value={usagePercent}
+                    className={`h-2 ${usagePercent >= 90 ? '[&>div]:bg-destructive' : usagePercent >= 70 ? '[&>div]:bg-amber-500' : ''}`}
+                  />
+                </div>
+                {isAtLimit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                    onClick={() => window.open('https://wa.me/5512996543522?text=Olá! Gostaria de fazer upgrade do meu plano.', '_blank')}
+                  >
+                    Solicitar Upgrade
+                  </Button>
+                )}
+              </div>
+              {!subActive && (
+                <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-destructive/10">
+                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                  <p className="text-xs text-destructive">
+                    Seu plano está inativo. A criação de novos usuários está bloqueada. Entre em contato para regularizar.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -486,7 +577,6 @@ export default function AdminUsers() {
                     <Card key={user.id} className={`transition-all ${!user.is_active ? 'opacity-50' : ''} ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
                       <CardContent className="p-0">
                         <div className="flex items-center gap-3 p-3">
-                          {/* Avatar */}
                           <button
                             className="flex items-center gap-3 flex-1 min-w-0 text-left"
                             onClick={() => setExpandedUser(isExpanded ? null : user.id)}
@@ -503,7 +593,6 @@ export default function AdminUsers() {
                             </div>
                           </button>
 
-                          {/* Roles badges */}
                           <div className="hidden sm:flex gap-1 flex-wrap justify-end max-w-[250px]">
                             {user.memberships.slice(0, 2).map(m => (
                               <Badge key={m.id} variant={getRoleBadgeVariant(m.role)} className="text-[10px] px-1.5 py-0">
@@ -515,7 +604,6 @@ export default function AdminUsers() {
                             )}
                           </div>
 
-                          {/* Actions dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
@@ -577,7 +665,7 @@ export default function AdminUsers() {
                                     <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
                                       <SelectTrigger className="w-[130px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
                                       <SelectContent>
-                                        {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                        {availableRoles.map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                                       </SelectContent>
                                     </Select>
                                     <Tooltip>
@@ -659,7 +747,7 @@ export default function AdminUsers() {
                                     <Select value={m.role} onValueChange={v => updateRole.mutate({ id: m.id, role: v })}>
                                       <SelectTrigger className="h-6 text-[11px] w-[120px]"><SelectValue /></SelectTrigger>
                                       <SelectContent>
-                                        {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                        {availableRoles.map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                                       </SelectContent>
                                     </Select>
                                   </TableCell>
@@ -728,6 +816,27 @@ export default function AdminUsers() {
               <DialogTitle>Criar Nova Conta</DialogTitle>
               <DialogDescription>Crie uma conta e vincule ao departamento.</DialogDescription>
             </DialogHeader>
+
+            {/* Limit warning in dialog */}
+            {isAtLimit && !isSuperAdmin && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-destructive">Limite atingido ({currentTenantActiveUsers}/{maxUsers})</p>
+                  <p className="text-[11px] text-destructive/80">Solicite upgrade para adicionar mais usuários.</p>
+                </div>
+              </div>
+            )}
+
+            {!isAtLimit && !isSuperAdmin && subscription && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-[11px] text-muted-foreground">
+                  {currentTenantActiveUsers} de {maxUsers} licenças utilizadas — restam {maxUsers - currentTenantActiveUsers}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Nome completo</Label>
@@ -761,12 +870,13 @@ export default function AdminUsers() {
                   <Select value={newRole} onValueChange={setNewRole}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                      {availableRoles.map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <Button className="w-full" size="sm" disabled={!newName || !newEmail || !newPassword || newPassword.length < 6 || createUser.isPending}
+              <Button className="w-full" size="sm"
+                disabled={!newName || !newEmail || !newPassword || newPassword.length < 6 || createUser.isPending || (!isSuperAdmin && isAtLimit)}
                 onClick={() => createUser.mutate()}>
                 {createUser.isPending ? 'Criando...' : 'Criar Conta'}
               </Button>
@@ -805,7 +915,7 @@ export default function AdminUsers() {
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(roleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    {availableRoles.map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

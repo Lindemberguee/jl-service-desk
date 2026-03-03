@@ -1,14 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ClipboardList, AlertTriangle, Clock, Zap, Building2, Users, TrendingUp, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import {
+  ClipboardList, AlertTriangle, Clock, Zap, Building2, Users,
+  TrendingUp, CheckCircle2, ArrowUpRight, Crown, MessageCircle,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { currentRole, subscription, currentTenantId, isSubscriptionActive } = useAuth();
+  const isSuperAdmin = currentRole === 'super_admin';
+  const subActive = isSubscriptionActive();
 
   const { data: tenants = [], isLoading: tenantsLoading } = useQuery({
     queryKey: ['admin_tenants'],
@@ -46,6 +55,35 @@ export default function AdminDashboard() {
   const totalResolved = allOrders.filter((wo: any) => ['concluida', 'aprovada', 'encerrada'].includes(wo.status)).length;
   const totalMembers = allMemberships.filter((m: any) => m.is_active).length;
 
+  // Current tenant usage
+  const currentTenantUsers = currentTenantId
+    ? allMemberships.filter((m: any) => m.tenant_id === currentTenantId && m.is_active).length
+    : 0;
+  const maxUsers = subscription?.max_users || 999;
+  const usagePercent = Math.min((currentTenantUsers / maxUsers) * 100, 100);
+
+  const planLabel = subscription?.plan
+    ? { starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise', trial: 'Trial', custom: 'Custom' }[subscription.plan] || subscription.plan
+    : null;
+
+  // Subscription expiration info
+  const getExpirationInfo = () => {
+    if (!subscription) return null;
+    if (subscription.status === 'trial' && subscription.trial_ends_at) {
+      const days = Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / 86400000);
+      return { days, label: 'Trial', expired: days <= 0 };
+    }
+    if (subscription.current_period_end) {
+      const end = new Date(subscription.current_period_end);
+      if (end.getFullYear() >= 2090) return { days: null, label: 'Indeterminado', expired: false };
+      const days = Math.ceil((end.getTime() - Date.now()) / 86400000);
+      return { days, label: 'Plano', expired: days <= 0 };
+    }
+    return null;
+  };
+
+  const expInfo = getExpirationInfo();
+
   const globalStats = [
     { label: 'Total OS', value: allOrders.length, icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10' },
     { label: 'Abertas', value: totalOpen, icon: Clock, color: 'text-primary', bg: 'bg-primary/5' },
@@ -61,6 +99,78 @@ export default function AdminDashboard() {
         <h1 className="text-xl font-semibold tracking-tight">Painel Consolidado</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Visão geral de todos os departamentos • {tenants.length} departamentos • {totalMembers} membros ativos</p>
       </div>
+
+      {/* Subscription Status Card */}
+      {!isSuperAdmin && subscription && (
+        <Card className={`border ${!subActive ? 'border-destructive/30 bg-destructive/5' : 'border-primary/15 bg-primary/5'}`}>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${!subActive ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                  <Crown className={`h-5 w-5 ${!subActive ? 'text-destructive' : 'text-primary'}`} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Plano {planLabel}</span>
+                    <Badge variant={subActive ? 'secondary' : 'destructive'} className="text-[10px]">
+                      {subActive ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {expInfo?.days === null
+                      ? 'Validade indeterminada ∞'
+                      : expInfo?.expired
+                        ? `${expInfo.label} expirado`
+                        : expInfo
+                          ? `${expInfo.days} dia${(expInfo.days || 0) > 1 ? 's' : ''} restantes`
+                          : ''
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-1 max-w-xs">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                  <span>Usuários</span>
+                  <span className="font-medium">{currentTenantUsers}/{maxUsers >= 999 ? '∞' : maxUsers}</span>
+                </div>
+                <Progress
+                  value={usagePercent}
+                  className={`h-2 ${usagePercent >= 90 ? '[&>div]:bg-destructive' : usagePercent >= 70 ? '[&>div]:bg-amber-500' : ''}`}
+                />
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => window.open('https://wa.me/5512996543522?text=Olá! Gostaria de saber mais sobre os planos disponíveis.', '_blank')}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Falar com Vendas
+              </Button>
+            </div>
+
+            {!subActive && (
+              <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">
+                  Seu plano está inativo. Funcionalidades avançadas estão bloqueadas. Entre em contato para regularizar.
+                </p>
+              </div>
+            )}
+
+            {subActive && expInfo && expInfo.days !== null && !expInfo.expired && expInfo.days <= 7 && (
+              <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-amber-500/10">
+                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-700">
+                  ⚠️ Seu {expInfo.label.toLowerCase()} expira em {expInfo.days} dia{expInfo.days > 1 ? 's' : ''}. Renove para evitar interrupções.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
