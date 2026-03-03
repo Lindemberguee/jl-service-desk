@@ -12,6 +12,7 @@ import { useDarkMode } from '@/hooks/useDarkMode';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ThemeCustomizer } from '@/components/ThemeCustomizer';
+import { SubscriptionBadge } from '@/components/layout/SubscriptionBadge';
 
 export function TopBar() {
   const { memberships, currentTenantId, switchTenant, currentRole } = useAuth();
@@ -47,6 +48,8 @@ export function TopBar() {
           {roleLabels[currentRole] || currentRole}
         </Badge>
       )}
+
+      <SubscriptionBadge />
 
       <NotificationBell />
       <ThemeCustomizer />

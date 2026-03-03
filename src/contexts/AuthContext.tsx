@@ -65,12 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const loadSubscription = useCallback(async (tenantId: string) => {
-    const { data } = await supabase
-      .from('tenant_subscriptions')
-      .select('plan, status, max_users, enabled_modules, trial_ends_at, current_period_end, monthly_price')
-      .eq('tenant_id', tenantId)
-      .single();
-    return data as TenantSubscription | null;
+    // Use the expiry-check function that auto-expires stale subscriptions
+    const { data } = await supabase.rpc('get_tenant_subscription_with_expiry_check', {
+      p_tenant_id: tenantId,
+    });
+    if (data && data.length > 0) {
+      const row = data[0] as any;
+      return {
+        plan: row.plan,
+        status: row.status,
+        max_users: row.max_users,
+        enabled_modules: row.enabled_modules,
+        trial_ends_at: row.trial_ends_at,
+        current_period_end: row.current_period_end,
+        monthly_price: row.monthly_price,
+      } as TenantSubscription;
+    }
+    return null;
   }, []);
 
   const loadUserData = useCallback(async (user: User) => {

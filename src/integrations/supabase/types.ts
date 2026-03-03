@@ -2747,6 +2747,31 @@ export type Database = {
     }
     Functions: {
       can_tenant_add_user: { Args: { _tenant_id: string }; Returns: boolean }
+      check_and_expire_subscriptions: { Args: never; Returns: undefined }
+      get_tenant_subscription_with_expiry_check: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          enabled_modules: string[]
+          id: string
+          max_users: number
+          monthly_price: number | null
+          notes: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          status: Database["public"]["Enums"]["subscription_status"]
+          tenant_id: string
+          trial_ends_at: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tenant_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_tenant_user_count: { Args: { _tenant_id: string }; Returns: number }
       get_user_tenant_role: {
         Args: { _tenant_id: string; _user_id: string }
