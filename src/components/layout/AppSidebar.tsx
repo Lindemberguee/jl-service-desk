@@ -12,7 +12,7 @@ import {
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
-  MessageCircle,
+  MessageCircle, PenTool, StickyNote, Bell,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -72,6 +72,12 @@ const managementItems: MenuItem[] = [
 
 const knowledgeItems: MenuItem[] = [
   { label: 'Documentos & Cofre', icon: FileText, path: '/documentos', permission: 'docs:read', moduleKey: 'docs' },
+];
+
+const toolsItems: MenuItem[] = [
+  { label: 'Canvas', icon: PenTool, path: '/ferramentas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
+  { label: 'Anotações', icon: StickyNote, path: '/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
+  { label: 'Lembretes', icon: Bell, path: '/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
 ];
 
 const adminItems = [
@@ -264,6 +270,13 @@ export function AppSidebar() {
         <SidebarGroup className="py-1">
           <SectionLabel>Conhecimento</SectionLabel>
           {renderMenuGroup(knowledgeItems)}
+        </SidebarGroup>
+
+        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
+
+        <SidebarGroup className="py-1">
+          <SectionLabel>Ferramentas</SectionLabel>
+          {renderMenuGroup(toolsItems)}
         </SidebarGroup>
 
         {currentRole && hasPermission(currentRole, 'settings:manage', undefined, rolePermissions) && (
