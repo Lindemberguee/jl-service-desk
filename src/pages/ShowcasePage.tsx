@@ -17,9 +17,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-import screenshotDashboard from '@/assets/showcase/screenshot-dashboard.jpg';
-import screenshotWorkorders from '@/assets/showcase/screenshot-workorders.jpg';
-import screenshotStock from '@/assets/showcase/screenshot-stock.jpg';
+import screenshotDashboard from '@/assets/showcase/screenshot-dashboard.png';
+import screenshotOS from '@/assets/showcase/screenshot-os.png';
+import screenshotEstoque from '@/assets/showcase/screenshot-estoque.png';
+import screenshotOkrs from '@/assets/showcase/screenshot-okrs.png';
+import screenshotManutencao from '@/assets/showcase/screenshot-manutencao.png';
+import screenshotDescarte from '@/assets/showcase/screenshot-descarte.png';
+import screenshotMateriais from '@/assets/showcase/screenshot-materiais.png';
 
 /* ------------------------------------------------------------------ */
 /*  Utilities                                                          */
@@ -128,9 +132,13 @@ const modules: { icon: LucideIcon; title: string; gradient: string; desc: string
 ];
 
 const screenshots = [
-  { src: screenshotDashboard, title: 'Dashboard Operacional', desc: 'KPIs, gráficos e status em tempo real' },
-  { src: screenshotWorkorders, title: 'Ordens de Serviço', desc: 'Filtros avançados, busca e workflow' },
-  { src: screenshotStock, title: 'Controle de Estoque', desc: 'Inventário, alertas e movimentações' },
+  { src: screenshotDashboard, title: 'Dashboard', desc: 'KPIs, gráficos e status em tempo real' },
+  { src: screenshotOS, title: 'Ordens de Serviço', desc: 'Filtros avançados, busca e workflow' },
+  { src: screenshotEstoque, title: 'Estoque', desc: 'Inventário, alertas e movimentações' },
+  { src: screenshotOkrs, title: 'KPIs & OKRs', desc: 'Objetivos estratégicos e check-ins' },
+  { src: screenshotManutencao, title: 'Manutenção', desc: 'Preventiva, corretiva e componentes' },
+  { src: screenshotDescarte, title: 'Descarte', desc: 'Gestão de itens depreciados' },
+  { src: screenshotMateriais, title: 'Materiais', desc: 'Entradas, saídas e saldo mensal' },
 ];
 
 const plans = [
