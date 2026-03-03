@@ -1827,6 +1827,7 @@ export type Database = {
           status: Database["public"]["Enums"]["stock_item_status"]
           tenant_id: string
           unit: string | null
+          unit_price: number | null
           updated_at: string
         }
         Insert: {
@@ -1845,6 +1846,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["stock_item_status"]
           tenant_id: string
           unit?: string | null
+          unit_price?: number | null
           updated_at?: string
         }
         Update: {
@@ -1863,6 +1865,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["stock_item_status"]
           tenant_id?: string
           unit?: string | null
+          unit_price?: number | null
           updated_at?: string
         }
         Relationships: [
