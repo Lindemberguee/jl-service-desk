@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { logAudit } from '@/lib/audit';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,6 +64,7 @@ export default function Stock() {
   const [editDescription, setEditDescription] = useState('');
   const [editSerialNumber, setEditSerialNumber] = useState('');
   const [editStatus, setEditStatus] = useState<string>('ativo');
+  const [editUnitPrice, setEditUnitPrice] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('un');
@@ -74,6 +76,7 @@ export default function Stock() {
   const [patrimonyCode, setPatrimonyCode] = useState('');
   const [description, setDescription] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
+  const [unitPrice, setUnitPrice] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
@@ -190,13 +193,13 @@ export default function Stock() {
         name, sku, unit, min_level: parseInt(minLevel) || 0, current_level: qty,
         brand: brand || null, model: model || null, component_type: componentType || null,
         patrimony_code: patrimonyCode || null, description: description || null,
-        serial_number: serialNumber || null,
+        serial_number: serialNumber || null, unit_price: unitPrice,
       });
       await logAudit({ entity: 'stock', entityId: (result as any)?.id, action: 'stock.created', tenantId: currentTenantId, diff: { name, sku, unit, initial_qty: qty } });
       toast({ title: 'Item criado!' });
       setOpen(false);
       setName(''); setSku(''); setUnit('un'); setMinLevel('0'); setInitialQty('0');
-      setBrand(''); setModel(''); setComponentType(''); setPatrimonyCode(''); setDescription(''); setSerialNumber('');
+      setBrand(''); setModel(''); setComponentType(''); setPatrimonyCode(''); setDescription(''); setSerialNumber(''); setUnitPrice(null);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -566,6 +569,7 @@ export default function Stock() {
                   <div className="space-y-1.5"><Label className="text-xs">Nível Mín.</Label><Input type="number" min="0" value={minLevel} onChange={e => setMinLevel(e.target.value)} className="h-9" /></div>
                 </div>
                 <div className="space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={description} onChange={e => setDescription(e.target.value)} className="h-9" placeholder="Detalhes adicionais do item..." /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Valor Unitário (R$)</Label><CurrencyInput value={unitPrice != null ? String(unitPrice) : ''} onValueChange={v => setUnitPrice(v ? parseFloat(v) : null)} className="h-9" placeholder="Opcional" /></div>
                 <Button type="submit" className="w-full h-8 text-sm" disabled={insertItem.isPending}>
                   {insertItem.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   Salvar
@@ -921,6 +925,8 @@ export default function Stock() {
                 {detailItem.model && <div><span className="text-muted-foreground">Modelo:</span> {detailItem.model}</div>}
                 {detailItem.serial_number && <div><span className="text-muted-foreground">Nº Série:</span> <span className="font-mono">{detailItem.serial_number}</span></div>}
                 {detailItem.component_type && <div><span className="text-muted-foreground">Tipo:</span> {detailItem.component_type}</div>}
+                {detailItem.unit_price != null && <div><span className="text-muted-foreground">Valor Unit.:</span> <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(detailItem.unit_price)}</span></div>}
+                {detailItem.unit_price != null && detailItem.current_level > 0 && <div><span className="text-muted-foreground">Valor Total:</span> <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(detailItem.unit_price * detailItem.current_level)}</span></div>}
               </div>
               {detailItem.description && <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">{detailItem.description}</p>}
               <p className="text-[10px] text-muted-foreground/60 font-mono">ID: {detailItem.id}</p>
@@ -939,6 +945,7 @@ export default function Stock() {
                   setEditDescription(detailItem.description || '');
                   setEditSerialNumber(detailItem.serial_number || '');
                   setEditStatus(detailItem.status || 'ativo');
+                  setEditUnitPrice(detailItem.unit_price ?? null);
                   setEditMode(true);
                 }}>
                   <Pencil className="h-3 w-3" /> Editar
@@ -1015,11 +1022,11 @@ export default function Stock() {
                   brand: editBrand || null, model: editModel || null,
                   component_type: editComponentType || null, patrimony_code: editPatrimonyCode || null,
                   description: editDescription || null, serial_number: editSerialNumber || null,
-                  status: editStatus,
+                  status: editStatus, unit_price: editUnitPrice,
                 });
                 await logAudit({ entity: 'stock', entityId: detailItem.id, action: 'stock.updated', tenantId: currentTenantId, diff: { name: editName, sku: editSku, min_level: editMinLevel, status: editStatus } });
                 toast({ title: 'Item atualizado!' });
-                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0, brand: editBrand, model: editModel, component_type: editComponentType, patrimony_code: editPatrimonyCode, description: editDescription, serial_number: editSerialNumber, status: editStatus });
+                setDetailItem({ ...detailItem, name: editName, sku: editSku, unit: editUnit, min_level: parseInt(editMinLevel) || 0, current_level: parseInt(editCurrentLevel) || 0, brand: editBrand, model: editModel, component_type: editComponentType, patrimony_code: editPatrimonyCode, description: editDescription, serial_number: editSerialNumber, status: editStatus, unit_price: editUnitPrice });
                 setEditMode(false);
               } catch (err: any) {
                 toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -1054,6 +1061,7 @@ export default function Stock() {
                 </Select>
               </div>
               <div className="space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={editDescription} onChange={e => setEditDescription(e.target.value)} className="h-9" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Valor Unitário (R$)</Label><CurrencyInput value={editUnitPrice != null ? String(editUnitPrice) : ''} onValueChange={v => setEditUnitPrice(v ? parseFloat(v) : null)} className="h-9" placeholder="Opcional" /></div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" className="flex-1 h-8 text-sm" onClick={() => setEditMode(false)}>Cancelar</Button>
                 <Button type="submit" className="flex-1 h-8 text-sm gap-1.5" disabled={updateItem.isPending}>
