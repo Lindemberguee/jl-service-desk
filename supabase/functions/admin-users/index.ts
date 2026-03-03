@@ -24,20 +24,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create client with caller's token to verify identity
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Use getClaims for signing-keys compatibility, fallback to getUser
     const token = authHeader.replace("Bearer ", "");
     let callerId: string | null = null;
-    
+
     if (typeof callerClient.auth.getClaims === "function") {
       const { data: claimsData, error: claimsError } = await callerClient.auth.getClaims(token);
       if (claimsError || !claimsData?.claims?.sub) {
-        // Fallback to getUser
         const { data: { user: fallbackUser } } = await callerClient.auth.getUser();
         callerId = fallbackUser?.id || null;
       } else {
@@ -54,13 +51,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
-    // Create a minimal caller object for compatibility
-    const caller = { id: callerId };
 
-    // Verify caller is super_admin, admin, or coordenador
+    const caller = { id: callerId };
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    
+
     const { data: callerMemberships } = await adminClient
       .from("user_memberships")
       .select("role, tenant_id")
@@ -72,6 +66,15 @@ Deno.serve(async (req) => {
     const isAdmin = callerRoles.includes("admin");
     const isCoordenador = callerRoles.includes("coordenador");
 
+    // Tenant IDs the caller manages (admin/super_admin memberships)
+    const callerAdminTenantIds = (callerMemberships || [])
+      .filter((m: any) => ["super_admin", "admin"].includes(m.role))
+      .map((m: any) => m.tenant_id);
+
+    const callerCoordTenantIds = (callerMemberships || [])
+      .filter((m: any) => m.role === "coordenador")
+      .map((m: any) => m.tenant_id);
+
     if (!isSuperAdmin && !isAdmin && !isCoordenador) {
       return new Response(JSON.stringify({ error: "Sem permissão" }), {
         status: 403,
@@ -82,7 +85,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // Audit log helper
+    // Helper to check if caller can manage a given tenant
+    function canManageTenant(tenantId: string): boolean {
+      if (isSuperAdmin) return true;
+      return callerAdminTenantIds.includes(tenantId) || callerCoordTenantIds.includes(tenantId);
+    }
+
     async function logAudit(entity: string, entityId: string | null, actionName: string, diff: Record<string, unknown> | null, tenantId?: string) {
       await adminClient.from("audit_logs").insert({
         entity,
@@ -106,6 +114,14 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Validate tenant access
+        if (tenant_id && !canManageTenant(tenant_id)) {
+          return new Response(JSON.stringify({ error: "Sem permissão neste departamento" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         // Coordenador can only create solicitante role
         if (isCoordenador && !isSuperAdmin && !isAdmin && role !== "solicitante") {
           return new Response(JSON.stringify({ error: "Coordenadores só podem cadastrar solicitantes" }), {
@@ -114,17 +130,12 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Coordenador can only create in their own tenant
-        if (isCoordenador && !isSuperAdmin && !isAdmin) {
-          const coordTenantIds = (callerMemberships || [])
-            .filter((m: any) => m.role === "coordenador")
-            .map((m: any) => m.tenant_id);
-          if (tenant_id && !coordTenantIds.includes(tenant_id)) {
-            return new Response(JSON.stringify({ error: "Sem permissão neste departamento" }), {
-              status: 403,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+        // Admin cannot assign super_admin
+        if (!isSuperAdmin && role === "super_admin") {
+          return new Response(JSON.stringify({ error: "Apenas super admins podem atribuir este papel" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
         // Check user limit from tenant_subscriptions
@@ -136,24 +147,23 @@ Deno.serve(async (req) => {
             .single();
 
           if (subscription) {
-            // Check subscription status
-            if (subscription.status === 'expired' || subscription.status === 'suspended' || subscription.status === 'cancelled') {
+            if (["expired", "suspended", "cancelled"].includes(subscription.status)) {
               return new Response(JSON.stringify({ error: "O plano desta empresa está inativo. Entre em contato com o suporte." }), {
                 status: 403,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
               });
             }
 
-            // Check user count
             const { count } = await adminClient
               .from("user_memberships")
               .select("*", { count: "exact", head: true })
               .eq("tenant_id", tenant_id)
               .eq("is_active", true);
 
-            if ((count || 0) >= subscription.max_users) {
-              return new Response(JSON.stringify({ 
-                error: `Limite de usuários atingido (${count}/${subscription.max_users}). Faça upgrade do plano para adicionar mais usuários.` 
+            // Super admin bypasses user limits
+            if (!isSuperAdmin && (count || 0) >= subscription.max_users) {
+              return new Response(JSON.stringify({
+                error: `Limite de usuários atingido (${count}/${subscription.max_users}). Faça upgrade do plano.`
               }), {
                 status: 403,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -162,7 +172,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Create auth user
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email,
           password,
@@ -177,7 +186,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Create membership if tenant specified
         if (tenant_id && newUser.user) {
           await adminClient.from("user_memberships").insert({
             user_id: newUser.user.id,
@@ -185,7 +193,6 @@ Deno.serve(async (req) => {
             role: role || "tecnico",
           });
 
-          // Auto-create customer record for solicitante users
           if ((role || "tecnico") === "solicitante") {
             await adminClient.from("customers").insert({
               name,
@@ -203,10 +210,7 @@ Deno.serve(async (req) => {
         }
 
         await logAudit("user", newUser.user?.id || null, "user.created", {
-          email,
-          name,
-          tenant_id: tenant_id || null,
-          role: role || "tecnico",
+          email, name, tenant_id: tenant_id || null, role: role || "tecnico",
         }, tenant_id);
 
         return new Response(JSON.stringify({ success: true, user: newUser.user }), {
@@ -223,6 +227,24 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Non-super_admin: verify target user is in their managed tenants
+        if (!isSuperAdmin) {
+          const { data: targetMemberships } = await adminClient
+            .from("user_memberships")
+            .select("tenant_id")
+            .eq("user_id", user_id)
+            .eq("is_active", true);
+
+          const targetTenantIds = (targetMemberships || []).map((m: any) => m.tenant_id);
+          const hasAccess = targetTenantIds.some((tid: string) => callerAdminTenantIds.includes(tid));
+          if (!hasAccess) {
+            return new Response(JSON.stringify({ error: "Sem permissão para gerenciar este usuário" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
         const { error: pwError } = await adminClient.auth.admin.updateUserById(user_id, {
           password: new_password,
         });
@@ -234,9 +256,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        await logAudit("user", user_id, "user.password_changed", {
-          changed_by: caller.id,
-        });
+        await logAudit("user", user_id, "user.password_changed", { changed_by: caller.id });
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -252,31 +272,51 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Ban/unban in auth
-        if (is_active) {
-          await adminClient.auth.admin.updateUserById(toggleUserId, {
-            ban_duration: "none",
-          });
-        } else {
-          await adminClient.auth.admin.updateUserById(toggleUserId, {
-            ban_duration: "876000h", // ~100 years
-          });
+        // Non-super_admin: verify target user is in their managed tenants
+        if (!isSuperAdmin) {
+          const { data: targetMemberships } = await adminClient
+            .from("user_memberships")
+            .select("tenant_id")
+            .eq("user_id", toggleUserId)
+            .eq("is_active", true);
+
+          const targetTenantIds = (targetMemberships || []).map((m: any) => m.tenant_id);
+          const hasAccess = targetTenantIds.some((tid: string) => callerAdminTenantIds.includes(tid));
+          if (!hasAccess) {
+            return new Response(JSON.stringify({ error: "Sem permissão para gerenciar este usuário" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
 
-        // Update profile
+        if (is_active) {
+          await adminClient.auth.admin.updateUserById(toggleUserId, { ban_duration: "none" });
+        } else {
+          await adminClient.auth.admin.updateUserById(toggleUserId, { ban_duration: "876000h" });
+        }
+
         await adminClient.from("profiles").update({ is_active }).eq("id", toggleUserId);
 
-        // Deactivate all memberships if deactivating
         if (!is_active) {
-          await adminClient
-            .from("user_memberships")
-            .update({ is_active: false })
-            .eq("user_id", toggleUserId);
+          // For admin: only deactivate memberships in their tenants
+          if (!isSuperAdmin) {
+            for (const tid of callerAdminTenantIds) {
+              await adminClient
+                .from("user_memberships")
+                .update({ is_active: false })
+                .eq("user_id", toggleUserId)
+                .eq("tenant_id", tid);
+            }
+          } else {
+            await adminClient
+              .from("user_memberships")
+              .update({ is_active: false })
+              .eq("user_id", toggleUserId);
+          }
         }
 
-        await logAudit("user", toggleUserId, is_active ? "user.reactivated" : "user.deactivated", {
-          is_active,
-        });
+        await logAudit("user", toggleUserId, is_active ? "user.reactivated" : "user.deactivated", { is_active });
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -292,7 +332,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Prevent self-deletion
         if (deleteUserId === caller.id) {
           return new Response(JSON.stringify({ error: "Não é possível excluir a própria conta" }), {
             status: 400,
@@ -300,7 +339,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Only super_admin and admin can delete users
         if (!isSuperAdmin && !isAdmin) {
           return new Response(JSON.stringify({ error: "Apenas administradores podem excluir usuários" }), {
             status: 403,
@@ -308,20 +346,41 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Get user info for audit before deletion
+        // Non-super_admin: verify target user is in their managed tenants
+        if (!isSuperAdmin) {
+          const { data: targetMemberships } = await adminClient
+            .from("user_memberships")
+            .select("tenant_id, role")
+            .eq("user_id", deleteUserId);
+
+          const targetTenantIds = (targetMemberships || []).map((m: any) => m.tenant_id);
+          const hasAccess = targetTenantIds.some((tid: string) => callerAdminTenantIds.includes(tid));
+          if (!hasAccess) {
+            return new Response(JSON.stringify({ error: "Sem permissão para excluir este usuário" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Admin cannot delete super_admin users
+          const targetRoles = (targetMemberships || []).map((m: any) => m.role);
+          if (targetRoles.includes("super_admin")) {
+            return new Response(JSON.stringify({ error: "Não é possível excluir um super administrador" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
         const { data: deletedProfile } = await adminClient
           .from("profiles")
           .select("name, email")
           .eq("id", deleteUserId)
           .single();
 
-        // Delete all memberships
         await adminClient.from("user_memberships").delete().eq("user_id", deleteUserId);
-
-        // Delete profile
         await adminClient.from("profiles").delete().eq("id", deleteUserId);
 
-        // Delete auth user
         const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(deleteUserId);
         if (deleteAuthError) {
           return new Response(JSON.stringify({ error: deleteAuthError.message }), {
