@@ -8,7 +8,7 @@ import {
   StickyNote, AlarmClock, Workflow, Target, Sparkles,
   Monitor, Boxes, History, MonitorSmartphone, Palette,
   Network, Key, AlertTriangle, BookOpen, ListChecks,
-  Code2, ShoppingCart, Briefcase, ArrowUpRight,
+  Code2, ShoppingCart, Briefcase, ArrowUpRight, ChevronLeft as ChevronLeftIcon, MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -165,9 +165,13 @@ const whatsappLink = (msg: string) =>
 export default function ShowcasePage() {
   const { scrollYProgress } = useScroll();
   const [activeScreenshot, setActiveScreenshot] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(1);
 
   useEffect(() => {
-    const t = setInterval(() => setActiveScreenshot(p => (p + 1) % screenshots.length), 5000);
+    const t = setInterval(() => {
+      setSlideDirection(1);
+      setActiveScreenshot(p => (p + 1) % screenshots.length);
+    }, 5000);
     return () => clearInterval(t);
   }, []);
 
@@ -362,37 +366,72 @@ export default function ShowcasePage() {
             ))}
           </div>
 
-          {/* Browser frame */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeScreenshot}
-              className="relative max-w-5xl mx-auto"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ duration: 0.35 }}
+          {/* Carousel with slide animation */}
+          <div className="relative max-w-5xl mx-auto">
+            {/* Browser chrome */}
+            <div className="rounded-t-xl bg-slate-900/80 border border-white/[0.06] border-b-0 px-4 py-2.5 flex items-center gap-2">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
+              </div>
+              <div className="flex-1 ml-4">
+                <div className="bg-white/[0.04] rounded-lg px-4 py-1.5 text-[11px] text-slate-600 max-w-xs mx-auto text-center font-mono">
+                  app.ordfy.com.br
+                </div>
+              </div>
+            </div>
+
+            {/* Image viewport - fixed aspect ratio to prevent layout shift */}
+            <div className="relative overflow-hidden rounded-b-xl border border-white/[0.06] border-t-0 shadow-2xl shadow-black/40 aspect-[16/9]">
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.img
+                  key={activeScreenshot}
+                  src={screenshots[activeScreenshot].src}
+                  alt={screenshots[activeScreenshot].title}
+                  className="absolute inset-0 w-full h-full object-cover object-top"
+                  initial={{ x: slideDirection > 0 ? '100%' : '-100%', opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: slideDirection > 0 ? '-100%' : '100%', opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              </AnimatePresence>
+            </div>
+
+            {/* Nav arrows */}
+            <button
+              onClick={() => { setSlideDirection(-1); setActiveScreenshot(p => (p - 1 + screenshots.length) % screenshots.length); }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-all"
             >
-              <div className="rounded-t-xl bg-slate-900/80 border border-white/[0.06] border-b-0 px-4 py-2.5 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
-                </div>
-                <div className="flex-1 ml-4">
-                  <div className="bg-white/[0.04] rounded-lg px-4 py-1.5 text-[11px] text-slate-600 max-w-xs mx-auto text-center font-mono">
-                    app.ordfy.com.br
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-b-xl overflow-hidden border border-white/[0.06] border-t-0 shadow-2xl shadow-black/40">
-                <img src={screenshots[activeScreenshot].src} alt={screenshots[activeScreenshot].title} className="w-full h-auto" />
-              </div>
-              <div className="text-center mt-6">
-                <h3 className="text-lg font-semibold text-white">{screenshots[activeScreenshot].title}</h3>
-                <p className="text-sm text-slate-500 mt-1">{screenshots[activeScreenshot].desc}</p>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => { setSlideDirection(1); setActiveScreenshot(p => (p + 1) % screenshots.length); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-all"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Dots */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+              {screenshots.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setSlideDirection(i > activeScreenshot ? 1 : -1); setActiveScreenshot(i); }}
+                  className={cn(
+                    'rounded-full transition-all duration-300',
+                    activeScreenshot === i ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/50'
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Caption below */}
+          <div className="text-center mt-6 max-w-5xl mx-auto">
+            <h3 className="text-lg font-semibold text-white">{screenshots[activeScreenshot].title}</h3>
+            <p className="text-sm text-slate-500 mt-1">{screenshots[activeScreenshot].desc}</p>
+          </div>
         </div>
       </SectionSnap>
 
@@ -543,9 +582,11 @@ export default function ShowcasePage() {
               <p className="text-xs text-slate-500 mt-2 leading-relaxed flex-1">
                 Código-fonte completo (frontend + backend + edge functions), documentação técnica e direito de uso comercial ilimitado.
               </p>
-              <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <span className="text-2xl font-black text-white">A partir de R$ 80k</span>
-              </div>
+              <a href={whatsappLink('Olá! Tenho interesse na licença do código-fonte do OrdFy.')} target="_blank" rel="noopener noreferrer" className="mt-5">
+                <Button className="w-full rounded-full h-10 bg-white/[0.06] text-white border border-white/[0.08] hover:bg-white/[0.12] text-xs font-medium gap-2">
+                  <MessageCircle className="h-3.5 w-3.5" /> Entre em contato
+                </Button>
+              </a>
             </motion.div>
 
             {/* Código + Suporte */}
@@ -564,9 +605,11 @@ export default function ShowcasePage() {
               <p className="text-xs text-slate-500 mt-2 leading-relaxed flex-1">
                 Tudo da licença básica + 6 meses de suporte técnico, treinamento da equipe, customizações sob demanda e consultoria de implantação.
               </p>
-              <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <span className="text-2xl font-black text-white">A partir de R$ 150k</span>
-              </div>
+              <a href={whatsappLink('Olá! Tenho interesse no pacote Código + Suporte do OrdFy.')} target="_blank" rel="noopener noreferrer" className="mt-5">
+                <Button className="w-full rounded-full h-10 bg-white text-slate-900 hover:bg-slate-100 text-xs font-medium shadow-lg shadow-white/10 gap-2">
+                  <MessageCircle className="h-3.5 w-3.5" /> Entre em contato
+                </Button>
+              </a>
             </motion.div>
 
             {/* Full Solution */}
@@ -584,9 +627,11 @@ export default function ShowcasePage() {
               <p className="text-xs text-slate-500 mt-2 leading-relaxed flex-1">
                 Código + marca própria + setup de infraestrutura + 12 meses de suporte + atualizações. Pronto para operar como seu SaaS.
               </p>
-              <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <span className="text-2xl font-black text-white">Sob consulta</span>
-              </div>
+              <a href={whatsappLink('Olá! Tenho interesse na Solução Completa do OrdFy (white-label).')} target="_blank" rel="noopener noreferrer" className="mt-5">
+                <Button className="w-full rounded-full h-10 bg-white/[0.06] text-white border border-white/[0.08] hover:bg-white/[0.12] text-xs font-medium gap-2">
+                  <MessageCircle className="h-3.5 w-3.5" /> Entre em contato
+                </Button>
+              </a>
             </motion.div>
           </div>
 
