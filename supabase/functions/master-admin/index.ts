@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
         // 2. Create subscription
         const trialEnd = trial_days
           ? new Date(Date.now() + trial_days * 86400000).toISOString()
-          : null;
+          : null; // null = indefinite / no expiry
 
         const allModules = ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications', 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'canvas', 'notes', 'reminders', 'vault', 'audit', 'disposal', 'api', 'theme'];
 
@@ -147,16 +147,26 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Determine status: custom/enterprise without trial_days = active (indefinite)
+        const resolvedPlan = plan || 'trial';
+        const isIndefinite = !trial_days && (resolvedPlan === 'custom' || resolvedPlan === 'enterprise');
+        const resolvedStatus = isIndefinite ? 'active' : (resolvedPlan === 'trial' || !plan ? 'trial' : 'active');
+
+        // For indefinite plans, set period end far in the future
+        const periodEnd = isIndefinite
+          ? '2099-12-31'
+          : new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+
         await adminClient.from("tenant_subscriptions").insert({
           tenant_id: tenant.id,
-          plan: plan || 'trial',
-          status: plan === 'trial' || !plan ? 'trial' : 'active',
+          plan: resolvedPlan,
+          status: resolvedStatus,
           max_users: max_users || 5,
           enabled_modules: resolvedModules,
           trial_ends_at: trialEnd,
           monthly_price: monthly_price || 0,
           current_period_start: new Date().toISOString().split('T')[0],
-          current_period_end: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+          current_period_end: periodEnd,
         });
 
         // 3. Create admin auth user

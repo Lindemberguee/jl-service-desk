@@ -118,6 +118,11 @@ export function EditSubscriptionDialog({ tenant, open, onClose }: Props) {
                 </p>
                 <p className="text-[10px] text-muted-foreground">Trial restante</p>
               </>
+            ) : periodEnd && periodEnd.getFullYear() >= 2090 ? (
+              <>
+                <p className="text-lg font-bold text-emerald-500">∞</p>
+                <p className="text-[10px] text-muted-foreground">Indeterminado</p>
+              </>
             ) : periodEnd ? (
               <>
                 <p className="text-lg font-bold">{format(periodEnd, 'dd/MM')}</p>
