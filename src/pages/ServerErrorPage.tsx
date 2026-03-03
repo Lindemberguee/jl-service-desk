@@ -1,16 +1,10 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Home, ArrowLeft, Search } from "lucide-react";
+import { Home, RotateCcw, ServerCrash } from "lucide-react";
 
-const NotFound = () => {
-  const location = useLocation();
+const ServerErrorPage = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -25,9 +19,9 @@ const NotFound = () => {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.6, type: "spring" }}
-            className="text-[10rem] font-black leading-none text-primary/10 select-none"
+            className="text-[10rem] font-black leading-none text-orange-500/10 select-none"
           >
-            404
+            500
           </motion.div>
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
@@ -35,20 +29,20 @@ const NotFound = () => {
             transition={{ delay: 0.3, duration: 0.4, type: "spring" }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="rounded-full bg-primary/10 p-5">
-              <Search className="h-10 w-10 text-primary" />
+            <div className="rounded-full bg-orange-500/10 p-5">
+              <ServerCrash className="h-10 w-10 text-orange-500" />
             </div>
           </motion.div>
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight mb-2">Página não encontrada</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-2">Erro interno do servidor</h1>
         <p className="text-muted-foreground mb-8">
-          A página <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{location.pathname}</code> não existe ou foi movida.
+          Algo deu errado do nosso lado. Tente novamente em alguns instantes. Se o problema persistir, entre em contato com o suporte.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 w-full sm:w-auto">
-            <ArrowLeft className="h-4 w-4" /> Voltar
+          <Button variant="outline" onClick={() => window.location.reload()} className="gap-2 w-full sm:w-auto">
+            <RotateCcw className="h-4 w-4" /> Tentar novamente
           </Button>
           <Button onClick={() => navigate("/")} className="gap-2 w-full sm:w-auto">
             <Home className="h-4 w-4" /> Ir para o início
@@ -59,4 +53,4 @@ const NotFound = () => {
   );
 };
 
-export default NotFound;
+export default ServerErrorPage;

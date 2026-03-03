@@ -36,6 +36,8 @@ import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
 import AdminSystemHealth from "@/pages/admin/AdminSystemHealth";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
+import ForbiddenPage from "@/pages/ForbiddenPage";
+import ServerErrorPage from "@/pages/ServerErrorPage";
 import ShowcasePage from "@/pages/ShowcasePage";
 import LandingPage from "@/pages/LandingPage";
 import PublicCanvasPage from "@/pages/PublicCanvasPage";
@@ -226,6 +228,8 @@ const App = () => (
               <Route path="admin/saude" element={<PermissionGuard permission="settings:manage"><AdminSystemHealth /></PermissionGuard>} />
             </Route>
 
+            <Route path="/403" element={<ForbiddenPage />} />
+            <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

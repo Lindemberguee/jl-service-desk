@@ -1,16 +1,10 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Home, ArrowLeft, Search } from "lucide-react";
+import { Home, ArrowLeft, ShieldAlert } from "lucide-react";
 
-const NotFound = () => {
-  const location = useLocation();
+const ForbiddenPage = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -25,9 +19,9 @@ const NotFound = () => {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.6, type: "spring" }}
-            className="text-[10rem] font-black leading-none text-primary/10 select-none"
+            className="text-[10rem] font-black leading-none text-destructive/10 select-none"
           >
-            404
+            403
           </motion.div>
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
@@ -35,15 +29,15 @@ const NotFound = () => {
             transition={{ delay: 0.3, duration: 0.4, type: "spring" }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="rounded-full bg-primary/10 p-5">
-              <Search className="h-10 w-10 text-primary" />
+            <div className="rounded-full bg-destructive/10 p-5">
+              <ShieldAlert className="h-10 w-10 text-destructive" />
             </div>
           </motion.div>
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight mb-2">Página não encontrada</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-2">Acesso negado</h1>
         <p className="text-muted-foreground mb-8">
-          A página <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{location.pathname}</code> não existe ou foi movida.
+          Você não tem permissão para acessar esta página. Entre em contato com o administrador caso precise de acesso.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -59,4 +53,4 @@ const NotFound = () => {
   );
 };
 
-export default NotFound;
+export default ForbiddenPage;
