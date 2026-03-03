@@ -777,12 +777,13 @@ const slides = [
   SlideScreenshots,
   SlideFeatures,
   SlideDiferenciais,
-  SlideRoadmap,
+  // SlideRoadmap, // desativado temporariamente — reativar quando houver roadmap definido
 ];
 
 const slideLabels = [
   'Visão Geral', 'Módulos', 'Fluxo de OS', 'Arquitetura', 'Acesso',
-  'Multi-Tenant', 'Portais', 'Interface', 'Funcionalidades', 'Diferenciais', 'Roadmap',
+  'Multi-Tenant', 'Portais', 'Interface', 'Funcionalidades', 'Diferenciais',
+  // 'Roadmap',
 ];
 
 /* ------------------------------------------------------------------ */
