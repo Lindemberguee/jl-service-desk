@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { useUpdateSubscription } from '@/hooks/useMasterAdmin';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -188,8 +189,12 @@ export function EditSubscriptionDialog({ tenant, open, onClose }: Props) {
               <Input type="number" min={1} value={form.max_users} onChange={e => set('max_users', parseInt(e.target.value) || 5)} className="h-8 text-xs" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Preço/mês (R$)</Label>
-              <Input type="number" min={0} step={0.01} value={form.monthly_price} onChange={e => set('monthly_price', parseFloat(e.target.value) || 0)} className="h-8 text-xs" />
+              <Label className="text-xs">Preço/mês</Label>
+              <CurrencyInput
+                value={String(form.monthly_price || '')}
+                onValueChange={(raw) => set('monthly_price', parseFloat(raw) || 0)}
+                className="h-8 text-xs"
+              />
             </div>
           </div>
 
