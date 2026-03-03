@@ -46,6 +46,8 @@ function getExpiryInfo(sub: any): { label: string; urgent: boolean; icon: React.
 
   if (sub.current_period_end) {
     const endDate = parseISO(sub.current_period_end);
+    // Indefinite plans (2099+)
+    if (endDate.getFullYear() >= 2090) return { label: 'Indeterminado ∞', urgent: false, icon: Clock };
     if (isPast(endDate)) return { label: 'Período expirado', urgent: true, icon: CalendarX };
     const days = differenceInDays(endDate, new Date());
     if (days <= 7) return { label: `Renova em ${days}d`, urgent: true, icon: AlertTriangle };

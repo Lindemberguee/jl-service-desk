@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useOnboardTenant } from '@/hooks/useMasterAdmin';
 import { Loader2 } from 'lucide-react';
 
@@ -12,19 +13,22 @@ interface Props {
   onClose: () => void;
 }
 
+const allModuleKeys = ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications', 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'canvas', 'notes', 'reminders', 'vault', 'audit', 'disposal', 'api', 'theme'];
+
 const planModules: Record<string, string[]> = {
   starter: ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications'],
   professional: ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications', 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'api'],
-  enterprise: ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications', 'kpis', 'manutencao', 'reports', 'docs', 'knowledge', 'checklist', 'canvas', 'notes', 'reminders', 'vault', 'audit', 'disposal', 'api', 'theme'],
+  enterprise: allModuleKeys,
+  custom: allModuleKeys,
   trial: ['os', 'dashboard', 'assets', 'stock', 'portal', 'notifications'],
 };
 
 const planMaxUsers: Record<string, number> = {
-  starter: 5, professional: 20, enterprise: 999, trial: 5,
+  starter: 5, professional: 20, enterprise: 999, custom: 999, trial: 5,
 };
 
 const planPrices: Record<string, number> = {
-  starter: 299, professional: 799, enterprise: 1999, trial: 0,
+  starter: 299, professional: 799, enterprise: 1999, custom: 0, trial: 0,
 };
 
 export function OnboardTenantDialog({ open, onClose }: Props) {
@@ -33,6 +37,7 @@ export function OnboardTenantDialog({ open, onClose }: Props) {
     tenant_name: '', tenant_slug: '', plan: 'trial',
     admin_email: '', admin_password: '', admin_name: '',
     max_users: 5, monthly_price: 0, trial_days: 14,
+    indefinite: false, custom_days: 365,
   });
 
   const update = (key: string, val: any) => setForm(prev => ({ ...prev, [key]: val }));
@@ -48,14 +53,22 @@ export function OnboardTenantDialog({ open, onClose }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onboard.mutateAsync({
+    const payload: any = {
       ...form,
       enabled_modules: planModules[form.plan] || planModules.starter,
-    });
+    };
+    // For custom/enterprise with indefinite, set trial_days to a very large number
+    if (form.indefinite) {
+      payload.trial_days = null; // signal to backend: no expiry
+    } else if (form.plan === 'custom') {
+      payload.trial_days = form.custom_days;
+    }
+    await onboard.mutateAsync(payload);
     setForm({
       tenant_name: '', tenant_slug: '', plan: 'trial',
       admin_email: '', admin_password: '', admin_name: '',
       max_users: 5, monthly_price: 0, trial_days: 14,
+      indefinite: false, custom_days: 365,
     });
     onClose();
   };
@@ -103,6 +116,7 @@ export function OnboardTenantDialog({ open, onClose }: Props) {
                   <SelectItem value="starter">Starter</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
                   <SelectItem value="enterprise">Enterprise</SelectItem>
+                  <SelectItem value="custom">Custom (Personalizado)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -132,6 +146,32 @@ export function OnboardTenantDialog({ open, onClose }: Props) {
                 value={form.trial_days}
                 onChange={e => update('trial_days', parseInt(e.target.value) || 14)}
               />
+            </div>
+          )}
+
+          {(form.plan === 'custom' || form.plan === 'enterprise') && (
+            <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={form.indefinite}
+                  onCheckedChange={(v) => update('indefinite', !!v)}
+                />
+                <span className="text-xs font-medium">Validade indeterminada (sem expiração)</span>
+              </label>
+              {!form.indefinite && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Validade em dias</Label>
+                  <Input
+                    type="number" min={1}
+                    value={form.custom_days}
+                    onChange={e => update('custom_days', parseInt(e.target.value) || 365)}
+                    placeholder="365"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    ≈ {Math.round((form.custom_days || 365) / 365 * 10) / 10} ano(s)
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
