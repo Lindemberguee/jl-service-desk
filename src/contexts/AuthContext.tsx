@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 import type { AppRole } from '@/lib/permissions';
 
 interface Membership {
@@ -129,6 +130,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...prev, user, profile, memberships, rolePermissions,
       currentTenantId: defaultTenant, currentRole, subscription, loading: false,
     }));
+
+    // Show subscription warnings after login
+    if (subscription && currentRole !== 'super_admin') {
+      const { status, trial_ends_at, current_period_end } = subscription;
+      if (['expired', 'suspended', 'cancelled'].includes(status)) {
+        setTimeout(() => toast.error('⚠️ Plano expirado ou suspenso. Algumas funcionalidades estão limitadas. Contate o administrador.', { duration: 8000 }), 500);
+      } else if (status === 'trial' && trial_ends_at) {
+        const daysLeft = Math.ceil((new Date(trial_ends_at).getTime() - Date.now()) / 86400000);
+        if (daysLeft <= 0) {
+          setTimeout(() => toast.error('⚠️ Período de trial expirado. Funcionalidades limitadas.', { duration: 8000 }), 500);
+        } else if (daysLeft <= 7) {
+          setTimeout(() => toast.warning(`⏳ Seu trial expira em ${daysLeft} dia${daysLeft > 1 ? 's' : ''}. Contate o administrador para ativar o plano.`, { duration: 6000 }), 500);
+        }
+      } else if (current_period_end) {
+        const endDate = new Date(current_period_end);
+        if (endDate.getFullYear() < 2090) {
+          const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / 86400000);
+          if (daysLeft <= 0) {
+            setTimeout(() => toast.error('⚠️ Período do plano expirado. Contate o administrador.', { duration: 8000 }), 500);
+          } else if (daysLeft <= 7) {
+            setTimeout(() => toast.warning(`📅 Seu plano renova em ${daysLeft} dia${daysLeft > 1 ? 's' : ''}.`, { duration: 5000 }), 500);
+          }
+        }
+      }
+    }
   }, [loadSubscription]);
 
   useEffect(() => {

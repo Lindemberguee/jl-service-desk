@@ -35,7 +35,7 @@ export function useOnboardTenant() {
       tenant_name: string; tenant_slug: string; plan?: string;
       max_users?: number; enabled_modules?: string[];
       admin_email: string; admin_password: string; admin_name: string;
-      monthly_price?: number; trial_days?: number;
+      monthly_price?: number; trial_days?: number | null;
     }) => callMasterAdmin('onboard_tenant', data),
     onSuccess: () => {
       toast.success('Empresa criada com sucesso!');
@@ -56,7 +56,39 @@ export function useUpdateSubscription() {
     onSuccess: () => {
       toast.success('Plano atualizado!');
       qc.invalidateQueries({ queryKey: ['master-tenants'] });
+      qc.invalidateQueries({ queryKey: ['platform-stats'] });
     },
     onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useDeleteTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tenant_id: string) => callMasterAdmin('delete_tenant', { tenant_id }),
+    onSuccess: () => {
+      toast.success('Empresa excluída com sucesso!');
+      qc.invalidateQueries({ queryKey: ['master-tenants'] });
+      qc.invalidateQueries({ queryKey: ['platform-stats'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useMasterAllUsers() {
+  return useQuery({
+    queryKey: ['master-all-users'],
+    queryFn: () => callMasterAdmin('list_all_users'),
+    select: (data: any) => data.users || [],
+    staleTime: 30_000,
+  });
+}
+
+export function useMasterAuditLogs(limit = 100) {
+  return useQuery({
+    queryKey: ['master-audit-logs', limit],
+    queryFn: () => callMasterAdmin('list_audit_logs', { limit }),
+    select: (data: any) => data.logs || [],
+    staleTime: 15_000,
   });
 }

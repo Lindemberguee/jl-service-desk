@@ -55,6 +55,8 @@ import TechWorkOrderDetail from "@/pages/tech/TechWorkOrderDetail";
 import TechProfile from "@/pages/tech/TechProfile";
 import { MasterLayout } from "@/components/layout/MasterLayout";
 import MasterDashboard from "@/pages/master/MasterDashboard";
+import MasterUsersPage from "@/pages/master/MasterUsersPage";
+import MasterAuditPage from "@/pages/master/MasterAuditPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -215,6 +217,8 @@ const App = () => (
             {/* Master Admin Panel — super_admin only */}
             <Route path="/master" element={<ProtectedMasterRoutes />}>
               <Route index element={<MasterDashboard />} />
+              <Route path="usuarios" element={<MasterUsersPage />} />
+              <Route path="auditoria" element={<MasterAuditPage />} />
             </Route>
 
             {/* Admin/Operational Layout */}
