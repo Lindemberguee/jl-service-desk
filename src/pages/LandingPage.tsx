@@ -12,7 +12,7 @@ import {
   BarChart, PieChart, Workflow, ClipboardCheck, Boxes, AlertTriangle,
   Bot, Target, Sparkles, Play, ChevronRight, Menu, X, HelpCircle, Plus, Minus,
   ArrowUpRight, Hexagon, CircuitBoard, Fingerprint, Radar, Crosshair,
-  type LucideIcon
+  type LucideIcon, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -320,14 +320,51 @@ const allModules = [
     desc: 'CRUD completo de unidades, locais, categorias e colaboradores.',
     features: ['Unidades, Locais, Categorias', 'Solicitantes com conta de acesso', 'Colaboradores com matrícula', 'Campos personalizados', 'Ativação/desativação'],
   },
+  {
+    icon: FolderOpen, title: 'Documentos & Biblioteca', gradient: 'from-blue-500 to-indigo-500',
+    desc: 'Gestão documental com versionamento, pastas e vinculação a OS e ativos.',
+    features: ['Upload com versionamento automático', 'Organização por pastas e categorias', 'Vinculação a OS e ativos', 'Controle de permissões por perfil', 'Busca e filtros avançados'],
+  },
+  {
+    icon: AlertTriangle, title: 'Gestão de Descartes', gradient: 'from-red-500 to-orange-500',
+    desc: 'Controle de descarte de materiais e ativos com workflow de aprovação.',
+    features: ['Fluxo: Pendente → Aprovado/Rejeitado', 'Origem: Estoque ou Ativos', 'Motivos: Defeito, Vencido, Obsoleto, etc.', 'Anexos e valor residual', 'Aprovação por gestor com registro'],
+  },
+  {
+    icon: Lock, title: 'Cofre Digital', gradient: 'from-slate-500 to-zinc-500',
+    desc: 'Armazenamento seguro de senhas, credenciais e informações sensíveis.',
+    features: ['Criptografia de dados sensíveis', 'Organização por categorias', 'Acesso restrito por permissão', 'Histórico de alterações', 'Busca rápida e segura'],
+  },
+  {
+    icon: BookOpen, title: 'Base de Conhecimento', gradient: 'from-emerald-500 to-green-500',
+    desc: 'Wiki interna com artigos técnicos, tutoriais e documentação operacional.',
+    features: ['Editor rich text completo', 'Categorias e tags', 'Controle de publicação', 'Contador de visualizações', 'Busca por título e conteúdo'],
+  },
+  {
+    icon: ListChecks, title: 'Templates de Checklist', gradient: 'from-cyan-500 to-sky-500',
+    desc: 'Modelos reutilizáveis de checklists vinculados a categorias de OS.',
+    features: ['Criação de templates flexíveis', 'Vinculação por categoria de OS', 'Itens ordenáveis', 'Aplicação automática na OS', 'Gestão centralizada'],
+  },
+  {
+    icon: Sparkles, title: 'Tema Personalizado', gradient: 'from-fuchsia-500 to-pink-500',
+    desc: 'Personalização visual individual com cores e temas por usuário.',
+    features: ['Temas prontos (8+ opções)', 'Cor primária customizável', 'Fundo do menu personalizável', 'Dark mode nativo', 'Preview em tempo real'],
+  },
+  {
+    icon: Network, title: 'API & Integrações', gradient: 'from-violet-500 to-indigo-500',
+    desc: 'API RESTful documentada com chaves de acesso e logs de requisição.',
+    features: ['Documentação interativa', 'Chaves de API por tenant', 'Logs de requisição com latência', 'Rate limiting configurável', 'Endpoints para OS, estoque e mais'],
+  },
 ];
 
 const moduleCategories = [
   { label: 'Todos', filter: null },
-  { label: 'Operacional', filter: ['Ordens de Serviço', 'Dashboard Operacional', 'Controle de Estoque', 'Gestão de Manutenção', 'Gestão de Ativos', 'Relatórios Avançados'] },
+  { label: 'Operacional', filter: ['Ordens de Serviço', 'Dashboard Operacional', 'Controle de Estoque', 'Gestão de Manutenção', 'Gestão de Ativos', 'Relatórios Avançados', 'Gestão de Descartes'] },
   { label: 'Estratégico', filter: ['KPIs & OKRs', 'Canvas Colaborativo', 'Anotações Enterprise', 'Lembretes Inteligentes'] },
-  { label: 'Segurança', filter: ['RBAC com 7 Cargos', 'Multi-departamento', 'Auditoria Global'] },
+  { label: 'Conhecimento', filter: ['Documentos & Biblioteca', 'Base de Conhecimento', 'Templates de Checklist'] },
+  { label: 'Segurança', filter: ['RBAC com 7 Cargos', 'Multi-departamento', 'Auditoria Global', 'Cofre Digital'] },
   { label: 'Interfaces', filter: ['Painel do Técnico', 'Portal do Solicitante', 'Painel Administrativo', 'Dados Mestres (CRUD)'] },
+  { label: 'Plataforma', filter: ['Notificações Real-time', 'Tema Personalizado', 'API & Integrações'] },
 ];
 
 const roleDetails = [
@@ -356,7 +393,7 @@ const techStack = [
 ];
 
 const faqItems = [
-  { q: 'O que é o OrdFy?', a: 'O OrdFy é uma plataforma completa de gestão de manutenção e facilities com 18+ módulos integrados, 7 perfis de acesso, multi-departamento e tudo em tempo real.' },
+  { q: 'O que é o OrdFy?', a: 'O OrdFy é uma plataforma completa de gestão de manutenção e facilities com 25+ módulos integrados, 7 perfis de acesso, multi-departamento e tudo em tempo real.' },
   { q: 'Preciso instalar alguma coisa?', a: 'Não! É 100% web. Funciona em qualquer navegador moderno — computador, tablet ou celular.' },
   { q: 'Quantos usuários posso ter?', a: 'Depende do plano contratado. Podemos personalizar de acordo com sua operação. Fale conosco pelo WhatsApp.' },
   { q: 'Como funciona o controle de acesso?', a: '7 perfis (Super Admin, Admin, Coordenador, Técnico, Analista, Solicitante e Leitura) com matriz de permissões granulares e isolamento total por departamento.' },
@@ -531,7 +568,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            18+ módulos integrados para ordens de serviço, estoque, ativos, manutenção,
+            25+ módulos integrados para ordens de serviço, estoque, ativos, manutenção,
             KPIs, canvas colaborativo, auditoria e muito mais.
           </motion.p>
 
@@ -561,7 +598,7 @@ export default function LandingPage() {
             transition={{ delay: 0.6 }}
           >
             {[
-              { value: 18, suffix: '+', label: 'Módulos' },
+              { value: 25, suffix: '+', label: 'Módulos' },
               { value: 7, suffix: '', label: 'Perfis de Acesso' },
               { value: 10, suffix: '+', label: 'Status de OS' },
               { value: 100, suffix: '%', label: 'Tempo Real' },
@@ -593,7 +630,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
               <Badge className="mb-4 bg-blue-500/[0.08] text-blue-400 border-blue-500/20 rounded-full text-xs px-4 py-1.5">
-                18+ Módulos Integrados
+                25+ Módulos Integrados
               </Badge>
             </motion.div>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mt-4">
@@ -772,7 +809,7 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-6 text-base text-slate-500 max-w-lg mx-auto">
-              18+ módulos, 7 perfis de acesso, SLA inteligente, auditoria global e muito mais. Comece agora.
+              25+ módulos, 7 perfis de acesso, SLA inteligente, auditoria global e muito mais. Comece agora.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a href="/login">
