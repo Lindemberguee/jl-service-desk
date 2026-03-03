@@ -10,26 +10,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    --background: 220 20% 97%;
+    --foreground: 224 40% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 224 40% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 213 94% 38%;
+    --popover-foreground: 224 40% 14%;
+    --primary: 217 91% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 16% 93%;
-    --secondary-foreground: 222 47% 20%;
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 14% 46%;
-    --accent: 210 16% 93%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 45%;
+    --secondary: 218 18% 94%;
+    --secondary-foreground: 224 40% 22%;
+    --muted: 220 18% 96%;
+    --muted-foreground: 220 12% 50%;
+    --accent: 218 18% 94%;
+    --accent-foreground: 224 40% 14%;
+    --destructive: 0 68% 48%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 213 94% 38%;
-    --radius: 0.375rem;
+    --border: 220 16% 91%;
+    --input: 220 16% 91%;
+    --ring: 217 91% 42%;
+    --radius: 0.5rem;
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 213 31% 91%;
@@ -42,19 +42,19 @@
     --sidebar-muted-foreground: 218 11% 55%;
 
     /* Semantic status tokens */
-    --success: 142 71% 38%;
+    --success: 152 68% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 38 92% 10%;
-    --info: 199 89% 48%;
+    --info: 205 85% 48%;
     --info-foreground: 0 0% 100%;
 
     /* Chart tokens */
-    --chart-1: 213 94% 38%;
-    --chart-2: 142 71% 38%;
+    --chart-1: 217 91% 42%;
+    --chart-2: 152 68% 38%;
     --chart-3: 38 92% 50%;
-    --chart-4: 262 60% 50%;
-    --chart-5: 0 72% 45%;
+    --chart-4: 265 55% 52%;
+    --chart-5: 0 68% 48%;
   }
 
   .dark {
@@ -111,6 +111,7 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.011em;
   }
 }
 
@@ -122,6 +123,11 @@
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+}
+
+/* Light-mode elevated card glow */
+:root:not(.dark) .card-glow {
+  box-shadow: 0 1px 3px 0 hsl(var(--foreground) / 0.04), 0 0 0 1px hsl(var(--border) / 0.6);
 }
 
 /* Premium global scrollbar */
