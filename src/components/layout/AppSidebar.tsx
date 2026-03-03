@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ClipboardList, Plus, Building2, Package,
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
-  UserCircle, Contact, Target, FileText, Trash2,
+  UserCircle, Contact, Target, FileText, Trash2, Crown,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -225,6 +225,19 @@ export function AppSidebar() {
                     />
                   );
                 })}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => navigate('/master')}
+                    tooltip="Painel Master"
+                    className="relative transition-all duration-200 group/btn hover:translate-x-0.5"
+                  >
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span className="text-[13px] flex-1">Painel Master</span>
+                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-normal bg-amber-500/10 text-amber-500 border-0">
+                      SaaS
+                    </Badge>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroup>
           </>
