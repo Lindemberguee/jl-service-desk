@@ -5,6 +5,7 @@ import { friendlyErrorMessage } from '@/lib/errorMessages';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
   AlertTriangle, History, Link2, Filter, RotateCcw,
   Pencil, Trash2, Save, Download, Upload, FileDown,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X,
+  DollarSign, Boxes,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -111,6 +113,20 @@ export default function Stock() {
   const [movWoId, setMovWoId] = useState('');
 
   const lowStockCount = items.filter((i: any) => (i.current_level || 0) <= (i.min_level || 0) && i.min_level > 0).length;
+
+  const totalItemsCount = items.filter((i: any) => (i.status || 'ativo') === 'ativo').length;
+  const totalStockValue = useMemo(() => {
+    return items.reduce((acc: number, i: any) => {
+      if (i.unit_price != null && i.current_level > 0) {
+        return acc + (i.unit_price * i.current_level);
+      }
+      return acc;
+    }, 0);
+  }, [items]);
+  const totalUnits = useMemo(() => {
+    return items.reduce((acc: number, i: any) => acc + (i.current_level || 0), 0);
+  }, [items]);
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   const filteredItems = useMemo(() => {
     const result = items.filter((item: any) => {
@@ -441,6 +457,54 @@ export default function Stock() {
           </div>
         </div>
       )}
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2.5">
+              <Boxes className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Itens Ativos</p>
+              <p className="text-xl font-bold">{totalItemsCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-500/10 p-2.5">
+              <Package className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Unidades em Estoque</p>
+              <p className="text-xl font-bold">{totalUnits.toLocaleString('pt-BR')}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-500/10 p-2.5">
+              <DollarSign className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Valor Total</p>
+              <p className="text-xl font-bold">{formatCurrency(totalStockValue)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`rounded-lg p-2.5 ${lowStockCount > 0 ? 'bg-destructive/10' : 'bg-emerald-500/10'}`}>
+              <AlertTriangle className={`h-5 w-5 ${lowStockCount > 0 ? 'text-destructive' : 'text-emerald-500'}`} />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Estoque Baixo</p>
+              <p className={`text-xl font-bold ${lowStockCount > 0 ? 'text-destructive' : ''}`}>{lowStockCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
