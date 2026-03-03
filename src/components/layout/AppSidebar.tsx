@@ -75,9 +75,9 @@ const knowledgeItems: MenuItem[] = [
 ];
 
 const toolsItems: MenuItem[] = [
-  { label: 'Canvas', icon: PenTool, path: '/ferramentas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
-  { label: 'Anotações', icon: StickyNote, path: '/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
-  { label: 'Lembretes', icon: Bell, path: '/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
+  { label: 'Canvas', icon: PenTool, path: '/ferramentas/canvas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
+  { label: 'Anotações', icon: StickyNote, path: '/ferramentas/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
+  { label: 'Lembretes', icon: Bell, path: '/ferramentas/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
 ];
 
 const adminItems = [
