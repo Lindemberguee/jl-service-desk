@@ -466,6 +466,13 @@ function SolicitantesSection({ readOnly }: { readOnly: boolean }) {
     }
     setCreating(true);
     try {
+      // Validar limite de usuários do plano antes de criar
+      const { data: canAdd } = await supabase.rpc('can_tenant_add_user', { _tenant_id: currentTenantId });
+      if (!canAdd) {
+        toast({ title: 'Limite de usuários atingido', description: 'O plano atual não permite mais usuários. Contate o administrador para fazer upgrade.', variant: 'destructive' });
+        setCreating(false);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('admin-users', {
         body: {
           action: 'create_user',
