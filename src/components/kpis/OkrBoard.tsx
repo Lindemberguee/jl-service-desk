@@ -584,9 +584,9 @@ export function OkrBoard() {
                             )}
                             onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
                           >
-                            <td className="px-4 py-2.5 max-w-0 overflow-hidden">
-                              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
+                            <td className="px-4 py-2.5 max-w-0">
+                              <div className="flex items-start gap-2 min-w-0">
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" onClick={e => e.stopPropagation()}>
                                   {canManage && (
                                     <>
                                       <Tooltip>
@@ -624,26 +624,32 @@ export function OkrBoard() {
                                     </>
                                   )}
                                 </div>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="text-sm truncate block min-w-0 cursor-default">{activity.title}</span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="max-w-xs">{activity.title}</TooltipContent>
-                                </Tooltip>
-                                {activity.kpi_id && (() => {
-                                  const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
-                                  return linkedKpi ? (
-                                    <Badge variant="outline" className="text-[8px] shrink-0 h-4 gap-0.5 border-primary/30 text-primary">
-                                      <BarChart3 className="h-2.5 w-2.5" />
-                                      {linkedKpi.name}
-                                    </Badge>
-                                  ) : null;
-                                })()}
-                                {deadlineInfo && (
-                                  <Badge variant="outline" className={cn("text-[8px] shrink-0 h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
-                                    {deadlineInfo.text}
-                                  </Badge>
-                                )}
+                                <div className="min-w-0 flex-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-sm truncate block min-w-0 cursor-default">{activity.title}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">{activity.title}</TooltipContent>
+                                  </Tooltip>
+                                  {(activity.kpi_id || deadlineInfo) && (
+                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                      {activity.kpi_id && (() => {
+                                        const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
+                                        return linkedKpi ? (
+                                          <Badge variant="outline" className="text-[8px] h-4 gap-0.5 border-primary/30 text-primary">
+                                            <BarChart3 className="h-2.5 w-2.5" />
+                                            {linkedKpi.name}
+                                          </Badge>
+                                        ) : null;
+                                      })()}
+                                      {deadlineInfo && (
+                                        <Badge variant="outline" className={cn("text-[8px] h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
+                                          {deadlineInfo.text}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-2.5 text-xs text-muted-foreground truncate whitespace-nowrap">{activity.responsible_name || '—'}</td>
