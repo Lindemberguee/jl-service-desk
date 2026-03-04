@@ -56,9 +56,10 @@ export default function PortalNewRequest() {
     setAssetId('');
   }, [selectedTenantId]);
 
-  // Reset location when unit changes
+  // Reset location/asset when unit changes
   useEffect(() => {
     setLocationId('');
+    setAssetId('');
   }, [unitId]);
 
   // Auto-fill email from profile
