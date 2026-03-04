@@ -66,7 +66,7 @@ async function getAuthHeaders() {
 
 export default function DisposalPage() {
   const { currentRole, rolePermissions, currentTenantId } = useAuth();
-  const { disposals, isLoading, createDisposal, updateDisposal, approveDisposal, rejectDisposal, deleteDisposal } = useDisposals();
+  const { disposals, isLoading, createDisposal, updateDisposal, approveDisposal, rejectDisposal, reopenDisposal, deleteDisposal } = useDisposals();
   const canManage = currentRole ? hasPermission(currentRole, 'disposal:manage', undefined, rolePermissions) : false;
 
   const [search, setSearch] = useState('');
@@ -308,9 +308,8 @@ export default function DisposalPage() {
   };
 
   const handleReopen = async (d: Disposal) => {
-    await updateDisposal.mutateAsync({ id: d.id, status: 'pendente' as any, approved_by: null as any, approved_at: null as any, rejection_note: null as any });
-    toast.success('Descarte reaberto');
-    setShowDetail({ ...d, status: 'pendente' as any });
+    await reopenDisposal.mutateAsync(d.id);
+    setShowDetail(null);
   };
 
   const handleDelete = async () => {
