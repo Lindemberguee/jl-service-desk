@@ -309,6 +309,7 @@ export function useDisposals() {
     updateDisposal,
     approveDisposal,
     rejectDisposal,
+    reopenDisposal,
     deleteDisposal,
   };
 }
