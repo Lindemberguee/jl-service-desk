@@ -125,7 +125,6 @@ export default function PortalNewRequest() {
         .from('assets')
         .select('id, name, patrimony_code, serial_number, unit_id, status')
         .eq('tenant_id', selectedTenantId)
-        .eq('status', 'ativo')
         .order('name');
       if (error) throw error;
       return data || [];
