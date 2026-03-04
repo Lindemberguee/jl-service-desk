@@ -325,21 +325,25 @@ export default function Dashboard() {
               Conformidade SLA
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center">
+          <CardContent className="flex flex-col items-center pt-2">
             {isLoading ? <Skeleton className="h-[180px] w-[180px] rounded-full" /> : (
               <>
-                <ResponsiveContainer width="100%" height={180}>
-                  <RadialBarChart cx="50%" cy="50%" innerRadius="70%" outerRadius="90%" barSize={14} data={slaGaugeData} startAngle={90} endAngle={-270}>
-                    <RadialBar background={{ fill: 'hsl(var(--muted))' }} dataKey="value" cornerRadius={10} />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-                <div className="text-center -mt-24 mb-4">
-                  <p className={cn('text-3xl font-bold', slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive')}>
-                    {slaCompliance}%
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">dentro do prazo</p>
+                <div className="relative w-[180px] h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart cx="50%" cy="50%" innerRadius="65%" outerRadius="90%" barSize={14} data={slaGaugeData} startAngle={90} endAngle={-270}>
+                      <RadialBar background={{ fill: 'hsl(var(--muted))' }} dataKey="value" cornerRadius={10} />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className={cn('text-3xl font-bold', slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive')}>
+                        {slaCompliance}%
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">dentro do prazo</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-[11px] mt-2">
+                <div className="flex items-center gap-4 text-[11px] mt-3">
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                     <span className="text-muted-foreground">No prazo: <span className="font-semibold text-foreground">{totalActive - overdue}</span></span>
