@@ -116,9 +116,31 @@ export default function PortalNewRequest() {
     enabled: !!selectedTenantId,
   });
 
+  // Load assets for selected department
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets', selectedTenantId],
+    queryFn: async () => {
+      if (!selectedTenantId) return [];
+      const { data, error } = await supabase
+        .from('assets')
+        .select('id, name, patrimony_code, serial_number, unit_id, status')
+        .eq('tenant_id', selectedTenantId)
+        .eq('status', 'ativo')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedTenantId,
+  });
+
   const filteredLocations = useMemo(
     () => unitId ? allLocations.filter((l: any) => l.unit_id === unitId) : allLocations,
     [allLocations, unitId]
+  );
+
+  const filteredAssets = useMemo(
+    () => unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets,
+    [assets, unitId]
   );
 
   const insertMutation = useMutation({
