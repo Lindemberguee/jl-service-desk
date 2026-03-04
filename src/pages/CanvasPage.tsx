@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit3, LayoutGrid, Loader2, ArrowLeft, Workflow, Users, Eye, Pencil } from 'lucide-react';
+import { Plus, Trash2, Edit3, LayoutGrid, Loader2, ArrowLeft, Workflow, Users, Eye, Pencil, FolderTree, Loader } from 'lucide-react';
 import { useCanvasBoards } from '@/hooks/useCanvasBoards';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import CanvasShareDialog from '@/components/canvas/CanvasShareDialog';
@@ -16,6 +16,8 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { INFRA_TEMPLATES } from '@/lib/canvasInfraTemplates';
+import { toast } from 'sonner';
 
 export default function CanvasPage() {
   const { boards, loading, saving, createBoard, saveBoard, deleteBoard, renameBoard } = useCanvasBoards();
@@ -25,7 +27,34 @@ export default function CanvasPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [generatingTemplates, setGeneratingTemplates] = useState(false);
   const navigate = useNavigate();
+
+  const handleGenerateInfraTemplates = async () => {
+    setGeneratingTemplates(true);
+    try {
+      let count = 0;
+      for (const tpl of INFRA_TEMPLATES) {
+        // Check if a board with same name already exists
+        const exists = boards.find(b => b.name === tpl.name);
+        if (exists) continue;
+        const result = await createBoard(tpl.name);
+        if (result) {
+          await saveBoard(result.id, tpl.nodes, tpl.edges, { x: 200, y: 50, zoom: 0.75 });
+          count++;
+        }
+      }
+      if (count > 0) {
+        toast.success(`${count} fluxos de infraestrutura criados!`);
+      } else {
+        toast.info('Os fluxos de infraestrutura já existem.');
+      }
+    } catch {
+      toast.error('Erro ao gerar templates');
+    } finally {
+      setGeneratingTemplates(false);
+    }
+  };
 
   const board = boards.find(b => b.id === activeBoard);
 
@@ -206,6 +235,16 @@ export default function CanvasPage() {
         />
         <Button size="sm" onClick={handleCreate} className="gap-1">
           <Plus className="h-4 w-4" /> Criar Canvas
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleGenerateInfraTemplates}
+          disabled={generatingTemplates}
+          className="gap-1.5"
+        >
+          {generatingTemplates ? <Loader className="h-4 w-4 animate-spin" /> : <FolderTree className="h-4 w-4" />}
+          Gerar Fluxos de Infraestrutura
         </Button>
       </div>
 
