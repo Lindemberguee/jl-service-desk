@@ -343,6 +343,12 @@ export default function PortalNewRequest() {
                   <p className="text-sm">{getLocationName(locationId)}</p>
                 </div>
               )}
+              {assetId && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Equipamento</p>
+                  <p className="text-sm">{getAssetName(assetId)}</p>
+                </div>
+              )}
               {contactEmail && (
                 <div>
                   <p className="text-[11px] uppercase font-medium text-muted-foreground">E-mail</p>
