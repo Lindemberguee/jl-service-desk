@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format, parseISO, differenceInDays, isAfter, isBefore } from 'date-fns';
+import { format, parseISO, differenceInDays, isAfter, isBefore, endOfMonth, eachMonthOfInterval, getMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const cycleTypes = [
@@ -85,6 +85,7 @@ export function OkrBoard() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArea, setFilterArea] = useState<string>('all');
   const [filterResponsible, setFilterResponsible] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
 
   // Dialogs
   const [cycleDialogOpen, setCycleDialogOpen] = useState(false);
@@ -421,6 +422,51 @@ export function OkrBoard() {
           </div>
         )}
 
+        {/* Month filter buttons */}
+        {activeCycle && (() => {
+          const months = eachMonthOfInterval({
+            start: parseISO(activeCycle.starts_at),
+            end: parseISO(activeCycle.ends_at),
+          });
+          const monthLabels = months.map(m => ({
+            key: `${getYear(m)}-${String(getMonth(m) + 1).padStart(2, '0')}`,
+            label: format(m, 'MMM', { locale: ptBR }).replace('.', ''),
+            year: getYear(m),
+          }));
+          const showYear = new Set(monthLabels.map(m => m.year)).size > 1;
+          return (
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setFilterMonth('all')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all border",
+                  filterMonth === 'all'
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                )}
+              >
+                Todos
+              </button>
+              {monthLabels.map(m => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setFilterMonth(filterMonth === m.key ? 'all' : m.key)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all border capitalize",
+                    filterMonth === m.key
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                  )}
+                >
+                  {m.label}{showYear ? ` ${String(m.year).slice(2)}` : ''}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Filters + Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -489,7 +535,19 @@ export function OkrBoard() {
             .filter(kr => kr.objective_id === obj.id)
             .filter(kr => filterStatus === 'all' || kr.activity_status === filterStatus)
             .filter(kr => filterArea === 'all' || kr.area === filterArea)
-            .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible);
+            .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible)
+            .filter(kr => {
+              if (filterMonth === 'all') return true;
+              const [y, m] = filterMonth.split('-').map(Number);
+              const monthStart = new Date(y, m - 1, 1);
+              const monthEnd = endOfMonth(monthStart);
+              const start = kr.start_date ? parseISO(kr.start_date) : null;
+              const end = kr.end_date ? parseISO(kr.end_date) : null;
+              if (start && end) return start <= monthEnd && end >= monthStart;
+              if (start) return start <= monthEnd && start >= monthStart;
+              if (end) return end >= monthStart && end <= monthEnd;
+              return true;
+            });
 
           const totalActivities = keyResults.filter(kr => kr.objective_id === obj.id).length;
           const completedActivities = keyResults.filter(kr => kr.objective_id === obj.id && (kr.activity_status === 'finalizado' || kr.activity_status === 'finalizado_com_atraso')).length;
