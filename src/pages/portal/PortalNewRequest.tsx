@@ -554,7 +554,7 @@ export default function PortalNewRequest() {
                           const isInactive = a.status !== 'ativo';
                           const statusLabel = a.status === 'descartado' ? 'Descartado' : a.status === 'em_manutencao' ? 'Em manutenção' : a.status === 'inativo' ? 'Inativo' : '';
                           return (
-                            <SelectItem key={a.id} value={a.id} className={isInactive ? 'opacity-50' : ''}>
+                            <SelectItem key={a.id} value={a.id} disabled={isInactive} className={isInactive ? 'opacity-50' : ''}>
                               <span className="flex items-center gap-2">
                                 <span className={isInactive ? 'line-through' : ''}>
                                   {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
