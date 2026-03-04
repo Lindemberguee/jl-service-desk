@@ -918,6 +918,35 @@ export default function WorkOrderDetail() {
                 try {
                   await updateWO(updates, 'resolved', { technical_note: technicalNote.trim(), resolution_quality: resolutionQuality, resolution_time_rating: resolutionTimeRating });
                   await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: 'concluida' } });
+
+                  // Auto-create maintenance record if asset is linked
+                  if (wo?.asset_id && currentTenantId) {
+                    try {
+                      await supabase.from('asset_maintenance_records').insert({
+                        tenant_id: currentTenantId,
+                        asset_id: wo.asset_id,
+                        work_order_id: id!,
+                        title: `Manutenção OS ${wo.code || ''} — ${wo.title || ''}`.substring(0, 200),
+                        type: 'corretiva' as any,
+                        status: 'concluida' as any,
+                        description: technicalNote.trim() || wo.description || null,
+                        cost: wo.total_cost || 0,
+                        scheduled_at: wo.created_at,
+                        started_at: wo.started_at || wo.created_at,
+                        completed_at: new Date().toISOString(),
+                        created_by: user?.id || null,
+                      });
+                      await logAudit({
+                        entity: 'maintenance',
+                        action: 'maintenance.auto_created',
+                        tenantId: currentTenantId,
+                        diff: { asset_id: wo.asset_id, work_order_id: id, source: 'work_order_resolution' },
+                      });
+                    } catch (maintenanceErr) {
+                      console.warn('Falha ao criar registro de manutenção automático:', maintenanceErr);
+                    }
+                  }
+
                   invalidateAll();
                   toast({ title: 'OS resolvida!' });
                   setShowResolveDialog(false);
