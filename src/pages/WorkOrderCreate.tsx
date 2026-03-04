@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
   MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link,
-  Paperclip, Upload, Trash2
+  Paperclip, Upload, Trash2, Building2, ChevronDown
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
