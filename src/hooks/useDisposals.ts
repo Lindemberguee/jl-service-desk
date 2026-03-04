@@ -191,6 +191,79 @@ export function useDisposals() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const reopenDisposal = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders();
+
+      // Fetch current disposal to know what to reverse
+      const dRes = await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}&select=*`, { headers });
+      if (!dRes.ok) throw new Error('Erro ao buscar descarte');
+      const disposal = (await dRes.json())[0] as Disposal;
+      if (!disposal) throw new Error('Descarte não encontrado');
+
+      // Only reverse if it was efetivado (stock/asset changes were made)
+      if (disposal.status === 'efetivado') {
+        // Reverse stock changes
+        if (disposal.origin_type === 'estoque' && disposal.stock_item_id) {
+          // Increment stock level back
+          const stockRes = await fetch(
+            `${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}&select=current_level`,
+            { headers }
+          );
+          if (stockRes.ok) {
+            const stockData = await stockRes.json();
+            const currentLevel = stockData[0]?.current_level || 0;
+            const restoredLevel = currentLevel + disposal.quantity;
+            await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
+              method: 'PATCH',
+              headers: { ...headers, Prefer: 'return=minimal' },
+              body: JSON.stringify({ current_level: restoredLevel, status: 'ativo' }),
+            });
+          }
+
+          // Delete the stock movement if it exists
+          if (disposal.stock_movement_id) {
+            await fetch(`${BASE_URL}/rest/v1/stock_movements?id=eq.${disposal.stock_movement_id}`, {
+              method: 'DELETE',
+              headers,
+            });
+          }
+        }
+
+        // Reverse asset status
+        if (disposal.origin_type === 'ativo' && disposal.asset_id) {
+          await fetch(`${BASE_URL}/rest/v1/assets?id=eq.${disposal.asset_id}`, {
+            method: 'PATCH',
+            headers: { ...headers, Prefer: 'return=minimal' },
+            body: JSON.stringify({ status: 'ativo' }),
+          });
+        }
+      }
+
+      // Reset disposal to pendente
+      const res = await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          status: 'pendente',
+          approved_by: null,
+          approved_at: null,
+          rejection_note: null,
+          stock_movement_id: null,
+        }),
+      });
+      if (!res.ok) throw new Error('Erro ao reabrir descarte');
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['disposals'] });
+      qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
+      toast.success('Descarte reaberto — alterações de estoque/ativo revertidas');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const rejectDisposal = useMutation({
     mutationFn: async ({ id, note }: { id: string; note: string }) => {
       const headers = await getAuthHeaders();
