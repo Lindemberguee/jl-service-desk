@@ -216,6 +216,7 @@ export default function PortalNewRequest() {
         category_id: categoryId || null,
         unit_id: unitId || null,
         location_id: locationId || null,
+        asset_id: assetId || null,
         code: '',
         visibility: 'customer',
         requester_user_id: user?.id || null,
