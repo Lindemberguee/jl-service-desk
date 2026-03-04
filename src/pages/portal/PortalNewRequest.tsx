@@ -550,11 +550,22 @@ export default function PortalNewRequest() {
                     <Select value={assetId} onValueChange={setAssetId}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o equipamento relacionado" /></SelectTrigger>
                       <SelectContent>
-                        {filteredAssets.map((a: any) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
-                          </SelectItem>
-                        ))}
+                        {filteredAssets.map((a: any) => {
+                          const isInactive = a.status !== 'ativo';
+                          const statusLabel = a.status === 'descartado' ? 'Descartado' : a.status === 'em_manutencao' ? 'Em manutenção' : a.status === 'inativo' ? 'Inativo' : '';
+                          return (
+                            <SelectItem key={a.id} value={a.id} className={isInactive ? 'opacity-50' : ''}>
+                              <span className="flex items-center gap-2">
+                                <span className={isInactive ? 'line-through' : ''}>
+                                  {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
+                                </span>
+                                {isInactive && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">{statusLabel}</span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground">
