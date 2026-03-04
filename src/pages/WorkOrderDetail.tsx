@@ -551,7 +551,39 @@ export default function WorkOrderDetail() {
                 <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
                 <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
                 <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
-                <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
+                <div className="space-y-1">
+                  <InfoField icon={Package} label="Equipamento / Ativo" value={getAssetDisplay(wo.asset_id)} />
+                  {(canManage || canAssign) && (
+                    <Select
+                      value={wo.asset_id || 'none'}
+                      onValueChange={async (val) => {
+                        const assetId = val === 'none' ? null : val;
+                        try {
+                          await updateWO({ asset_id: assetId });
+                          await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.asset_changed', tenantId: currentTenantId, diff: { from: wo.asset_id, to: assetId } });
+                          invalidateAll();
+                          toast({ title: 'Equipamento atualizado!' });
+                        } catch (err: any) {
+                          toast({ title: 'Erro ao alterar equipamento', description: err.message, variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Vincular equipamento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {assets
+                          .filter((a: any) => !['descartado', 'inativo'].includes(a.status))
+                          .map((a: any) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
               {(wo as any).external_link && (
                 <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-lg p-3">
