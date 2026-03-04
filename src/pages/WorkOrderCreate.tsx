@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
-  const { currentTenantId, user, profile, currentRole } = useAuth();
+  const { currentTenantId, user, profile, currentRole, memberships, switchTenant } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
