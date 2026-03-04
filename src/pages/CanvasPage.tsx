@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { INFRA_TEMPLATES } from '@/lib/canvasInfraTemplates';
 import { toast } from 'sonner';
+import AiFlowGeneratorDialog from '@/components/canvas/AiFlowGeneratorDialog';
 
 export default function CanvasPage() {
   const { boards, loading, saving, createBoard, saveBoard, deleteBoard, renameBoard } = useCanvasBoards();
@@ -64,6 +65,14 @@ export default function CanvasPage() {
     if (result) {
       setActiveBoard(result.id);
       setNewBoardName('');
+    }
+  };
+
+  const handleAiGenerated = async (name: string, nodes: any[], edges: any[]) => {
+    const result = await createBoard(name);
+    if (result) {
+      await saveBoard(result.id, nodes, edges, { x: 100, y: 50, zoom: 0.7 });
+      setActiveBoard(result.id);
     }
   };
 
@@ -236,6 +245,7 @@ export default function CanvasPage() {
         <Button size="sm" onClick={handleCreate} className="gap-1">
           <Plus className="h-4 w-4" /> Criar Canvas
         </Button>
+        <AiFlowGeneratorDialog onGenerated={handleAiGenerated} />
         <Button
           size="sm"
           variant="outline"
