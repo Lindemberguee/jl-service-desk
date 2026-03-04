@@ -308,9 +308,8 @@ export default function DisposalPage() {
   };
 
   const handleReopen = async (d: Disposal) => {
-    await updateDisposal.mutateAsync({ id: d.id, status: 'pendente' as any, approved_by: null as any, approved_at: null as any, rejection_note: null as any });
-    toast.success('Descarte reaberto');
-    setShowDetail({ ...d, status: 'pendente' as any });
+    await reopenDisposal.mutateAsync(d.id);
+    setShowDetail(null);
   };
 
   const handleDelete = async () => {
