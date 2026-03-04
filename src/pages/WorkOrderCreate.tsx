@@ -122,9 +122,16 @@ export default function WorkOrderCreate() {
     [allLocations, unitId]
   );
 
-  // Assets filtered by selected unit
+  // Assets filtered by selected unit, active first
   const filteredAssets = useMemo(
-    () => unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets,
+    () => {
+      const filtered = unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets;
+      return [...filtered].sort((a: any, b: any) => {
+        if (a.status === 'ativo' && b.status !== 'ativo') return -1;
+        if (a.status !== 'ativo' && b.status === 'ativo') return 1;
+        return 0;
+      });
+    },
     [assets, unitId]
   );
 
