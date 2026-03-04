@@ -130,7 +130,7 @@ export function useDisposals() {
         });
       }
 
-      // If origin is stock: create movement and update stock item status
+      // If origin is stock: create movement, update current_level, and update stock item status
       if (createStockMovement && disposal.stock_item_id) {
         const mvRes = await fetch(`${BASE_URL}/rest/v1/stock_movements`, {
           method: 'POST',
@@ -146,17 +146,29 @@ export function useDisposals() {
         });
         if (mvRes.ok) {
           const mv = (await mvRes.json())[0];
+
+          // Fetch current stock level and decrement
+          const stockRes = await fetch(
+            `${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}&select=current_level`,
+            { headers }
+          );
+          if (stockRes.ok) {
+            const stockData = await stockRes.json();
+            const currentLevel = stockData[0]?.current_level || 0;
+            const newLevel = Math.max(0, currentLevel - disposal.quantity);
+
+            await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
+              method: 'PATCH',
+              headers: { ...headers, Prefer: 'return=minimal' },
+              body: JSON.stringify({ current_level: newLevel, status: newLevel === 0 ? 'descartado' : 'ativo' }),
+            });
+          }
+
           // Link movement to disposal and mark as effected
           await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
             method: 'PATCH',
             headers: { ...headers, Prefer: 'return=minimal' },
             body: JSON.stringify({ stock_movement_id: mv.id, status: 'efetivado' }),
-          });
-          // Update stock item status to 'descartado'
-          await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
-            method: 'PATCH',
-            headers: { ...headers, Prefer: 'return=minimal' },
-            body: JSON.stringify({ status: 'descartado' }),
           });
         }
       } else if (disposal.asset_id) {
