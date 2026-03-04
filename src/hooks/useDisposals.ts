@@ -132,7 +132,6 @@ export function useDisposals() {
 
       // If origin is stock: create movement, update current_level, and update stock item status
       if (createStockMovement && disposal.stock_item_id) {
-        console.log('[Disposal] Creating stock movement for item:', disposal.stock_item_id, 'qty:', disposal.quantity);
         const mvRes = await fetch(`${BASE_URL}/rest/v1/stock_movements`, {
           method: 'POST',
           headers: { ...headers, Prefer: 'return=representation' },
@@ -146,14 +145,8 @@ export function useDisposals() {
           }),
         });
 
-        if (!mvRes.ok) {
-          const errBody = await mvRes.text();
-          console.error('[Disposal] Failed to create stock movement:', mvRes.status, errBody);
-        }
-
         if (mvRes.ok) {
           const mv = (await mvRes.json())[0];
-          console.log('[Disposal] Stock movement created:', mv?.id);
 
           // Fetch current stock level and decrement
           const stockRes = await fetch(
@@ -164,16 +157,12 @@ export function useDisposals() {
             const stockData = await stockRes.json();
             const currentLevel = stockData[0]?.current_level || 0;
             const newLevel = Math.max(0, currentLevel - disposal.quantity);
-            console.log('[Disposal] Updating stock level:', currentLevel, '->', newLevel);
 
-            const updateRes = await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
+            await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
               method: 'PATCH',
               headers: { ...headers, Prefer: 'return=minimal' },
               body: JSON.stringify({ current_level: newLevel, status: newLevel === 0 ? 'descartado' : 'ativo' }),
             });
-            if (!updateRes.ok) {
-              console.error('[Disposal] Failed to update stock level:', await updateRes.text());
-            }
           }
 
           // Link movement to disposal and mark as effected
@@ -184,7 +173,6 @@ export function useDisposals() {
           });
         }
       } else {
-        console.log('[Disposal] No stock movement needed. origin:', disposal.origin_type, 'stock_item_id:', disposal.stock_item_id, 'createStockMovement:', createStockMovement);
         // Mark disposal as effected for assets too
         await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
           method: 'PATCH',
