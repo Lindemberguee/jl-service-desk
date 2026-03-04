@@ -36,6 +36,7 @@ export default function PortalNewRequest() {
   const [contactEmail, setContactEmail] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [assetId, setAssetId] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
