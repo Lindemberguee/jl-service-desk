@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Building2 } from 'lucide-react';
 import { useTenantQuery, useTenantInsert } from '@/hooks/useTenantQuery';
 import { logAudit } from '@/lib/audit';
 import { supabase } from '@/integrations/supabase/client';
