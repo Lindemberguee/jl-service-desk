@@ -556,16 +556,14 @@ export function OkrBoard() {
                   {objActivities.length > 0 && (
                     <div className="overflow-x-auto border-b">
                       {/* Header */}
-                      <table className="w-full min-w-[960px] table-fixed">
+                      <table className="w-full min-w-[700px] table-fixed">
                         <thead>
                           <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50">
-                            <th className="text-left px-4 py-2 w-[30%]">Atividade</th>
-                            <th className="text-left px-3 py-2 w-[14%]">Responsável</th>
-                            <th className="text-left px-3 py-2 w-[14%]">Área / Apoio</th>
-                            <th className="text-left px-3 py-2 w-[10%]">Início</th>
-                            <th className="text-left px-3 py-2 w-[10%]">Final</th>
-                            <th className="text-left px-3 py-2 w-[10%]">Entrega</th>
-                            <th className="text-left px-3 py-2 w-[12%]">Status</th>
+                            <th className="text-left px-4 py-2 w-[38%]">Atividade</th>
+                            <th className="text-left px-3 py-2 w-[18%]">Responsável</th>
+                            <th className="text-left px-3 py-2 w-[18%]">Prazo</th>
+                            <th className="text-left px-3 py-2 w-[12%]">Entrega</th>
+                            <th className="text-left px-3 py-2 w-[14%]">Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -584,7 +582,7 @@ export function OkrBoard() {
                             )}
                             onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
                           >
-                            <td className="px-4 py-2.5 max-w-0">
+                            <td className="px-4 py-3 max-w-0">
                               <div className="flex items-start gap-2 min-w-0">
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" onClick={e => e.stopPropagation()}>
                                   {canManage && (
@@ -652,23 +650,29 @@ export function OkrBoard() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground truncate whitespace-nowrap">{activity.responsible_name || '—'}</td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground truncate whitespace-nowrap">
-                              {activity.area && <span>{activity.area}</span>}
-                              {activity.area && activity.support_team && <span> / </span>}
-                              {activity.support_team && <span className="text-primary/70">{activity.support_team}</span>}
-                              {!activity.area && !activity.support_team && '—'}
+                            <td className="px-3 py-3">
+                              <div>
+                                <span className="text-xs truncate block">{activity.responsible_name || '—'}</span>
+                                {(activity.area || activity.support_team) && (
+                                  <span className="text-[10px] text-muted-foreground truncate block mt-0.5">
+                                    {activity.area}{activity.area && activity.support_team ? ' / ' : ''}{activity.support_team && <span className="text-primary/70">{activity.support_team}</span>}
+                                  </span>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                              {activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}
+                            <td className="px-3 py-3">
+                              <div>
+                                <span className="text-xs whitespace-nowrap">
+                                  {activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}
+                                  {' → '}
+                                  {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
+                                </span>
+                              </div>
                             </td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                              {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
-                            </td>
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                            <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                               {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
                             </td>
-                            <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                               {canManage ? (
                                 <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
                                   <SelectTrigger className={cn("h-7 text-[10px] font-semibold border", actStatus.bgClass)}>
