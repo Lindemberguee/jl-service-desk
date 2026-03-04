@@ -9,14 +9,14 @@ import { Progress } from '@/components/ui/progress';
 import { statusLabels, priorityLabels } from '@/lib/permissions';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area,
+  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, RadialBarChart, RadialBar,
 } from 'recharts';
 import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
-  Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck,
+  Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck, Gauge,
 } from 'lucide-react';
-import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   baixa: 'hsl(215, 14%, 46%)', media: 'hsl(213, 94%, 38%)',
   alta: 'hsl(25, 95%, 53%)', critica: 'hsl(0, 72%, 45%)',
 };
-const tooltipStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '10px', fontSize: '12px', boxShadow: '0 8px 30px -12px hsl(var(--foreground) / 0.15)' };
 
 type Period = '7d' | '30d' | '90d' | '12m';
 
@@ -82,6 +81,20 @@ export default function Reports() {
     if (r.length === 0) return 0;
     return Math.round(r.reduce((acc: number, wo: any) => acc + differenceInMinutes(parseISO(wo.started_at), parseISO(wo.created_at)), 0) / r.length);
   }, [filteredWO]);
+
+  // ─── Previous period comparison ───────────────────────────
+  const prevCutoff = useMemo(() => {
+    const diff = new Date().getTime() - cutoff.getTime();
+    return new Date(cutoff.getTime() - diff);
+  }, [cutoff]);
+  const prevWO = useMemo(() => workOrders.filter((wo: any) => {
+    const d = parseISO(wo.created_at);
+    return isAfter(d, prevCutoff) && !isAfter(d, cutoff);
+  }), [workOrders, prevCutoff, cutoff]);
+  const prevTotal = prevWO.length;
+  const totalChange = prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : 0;
+  const prevResolved = prevWO.filter((wo: any) => ['concluida', 'aprovada', 'encerrada'].includes(wo.status)).length;
+  const resolvedChange = prevResolved > 0 ? Math.round(((resolved - prevResolved) / prevResolved) * 100) : 0;
 
   // ─── Status distribution ──────────────────────────────────
   const statusData = useMemo(() => Object.entries(statusLabels).map(([key, label]) => ({
@@ -141,20 +154,21 @@ export default function Reports() {
   const agingData = useMemo(() => {
     const now = new Date();
     const bands = [
-      { label: '0-2 dias', min: 0, max: 2 },
-      { label: '3-7 dias', min: 3, max: 7 },
-      { label: '8-15 dias', min: 8, max: 15 },
-      { label: '16-30 dias', min: 16, max: 30 },
-      { label: '30+ dias', min: 31, max: Infinity },
+      { label: '0-2d', min: 0, max: 2, color: 'hsl(142, 71%, 45%)' },
+      { label: '3-7d', min: 3, max: 7, color: 'hsl(213, 94%, 50%)' },
+      { label: '8-15d', min: 8, max: 15, color: 'hsl(38, 92%, 50%)' },
+      { label: '16-30d', min: 16, max: 30, color: 'hsl(25, 95%, 53%)' },
+      { label: '30+d', min: 31, max: Infinity, color: 'hsl(0, 72%, 51%)' },
     ];
     const openWO = workOrders.filter((wo: any) => !['concluida', 'aprovada', 'encerrada'].includes(wo.status));
-    return bands.map(band => {
-      const count = openWO.filter((wo: any) => {
+    return bands.map(band => ({
+      name: band.label,
+      value: openWO.filter((wo: any) => {
         const age = differenceInDays(now, parseISO(wo.created_at));
         return age >= band.min && age <= band.max;
-      }).length;
-      return { name: band.label, value: count };
-    });
+      }).length,
+      fill: band.color,
+    }));
   }, [workOrders]);
 
   const totalBacklog = agingData.reduce((a, b) => a + b.value, 0);
@@ -163,26 +177,19 @@ export default function Reports() {
   const resolutionTrendData = useMemo(() => {
     const resolvedWO = filteredWO.filter((wo: any) => wo.resolved_at);
     if (resolvedWO.length === 0) return [];
-
     const isWeekly = period === '90d' || period === '12m';
     const fmtStr = period === '12m' ? 'MMM/yy' : 'dd/MM';
     const groups: Record<string, { totalHrs: number; count: number }> = {};
-
     resolvedWO.forEach((wo: any) => {
       const resolvedDate = parseISO(wo.resolved_at);
       const key = isWeekly
         ? `Sem ${format(startOfWeek(resolvedDate, { locale: ptBR }), 'dd/MM', { locale: ptBR })}`
         : format(resolvedDate, fmtStr, { locale: ptBR });
-
       if (!groups[key]) groups[key] = { totalHrs: 0, count: 0 };
       groups[key].totalHrs += differenceInHours(resolvedDate, parseISO(wo.created_at));
       groups[key].count++;
     });
-
-    return Object.entries(groups).map(([name, v]) => ({
-      name,
-      avgHours: Math.round(v.totalHrs / v.count),
-    }));
+    return Object.entries(groups).map(([name, v]) => ({ name, avgHours: Math.round(v.totalHrs / v.count) }));
   }, [filteredWO, period]);
 
   // ─── Tech performance ─────────────────────────────────────
@@ -214,7 +221,6 @@ export default function Reports() {
     name: `${star}★`, value: ratingEvents.filter((ev: any) => (ev.payload as any)?.rating === star).length,
   })), [ratingEvents]);
 
-  // ─── Satisfaction Trend ───────────────────────────────────
   const satisfactionTrend = useMemo(() => {
     if (ratingEvents.length === 0) return [];
     const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
@@ -225,13 +231,9 @@ export default function Reports() {
       groups[key].total += (ev.payload as any)?.rating || 0;
       groups[key].count++;
     });
-    return Object.entries(groups).map(([name, v]) => ({
-      name,
-      avgRating: +(v.total / v.count).toFixed(1),
-    }));
+    return Object.entries(groups).map(([name, v]) => ({ name, avgRating: +(v.total / v.count).toFixed(1) }));
   }, [ratingEvents, period]);
 
-  // ─── Satisfaction by Technician ───────────────────────────
   const techSatisfaction = useMemo(() => {
     const techs = memberships.filter((m: any) => ['tecnico', 'coordenador', 'admin', 'super_admin'].includes(m.role));
     return techs.map((t: any) => {
@@ -272,6 +274,26 @@ export default function Reports() {
     return Object.entries(groups).map(([name, v]) => ({ name, ...v }));
   }, [stockMovements, cutoff, period]);
 
+  // ─── SLA Gauge ────────────────────────────────────────────
+  const slaGaugeData = [{ name: 'SLA', value: slaCompliance, fill: slaCompliance >= 90 ? 'hsl(142, 71%, 45%)' : slaCompliance >= 70 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)' }];
+  const resRateGaugeData = [{ name: 'Resolução', value: resolutionRate, fill: resolutionRate >= 70 ? 'hsl(142, 71%, 45%)' : resolutionRate >= 50 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)' }];
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-popover border border-border rounded-xl shadow-xl p-3 text-xs backdrop-blur-sm">
+        <p className="font-semibold text-foreground mb-1.5">{label}</p>
+        {payload.map((entry: any, i: number) => (
+          <div key={i} className="flex items-center gap-2 py-0.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-muted-foreground">{entry.name}:</span>
+            <span className="font-semibold text-foreground">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-5">
       {/* ─── Header ─────────────────────────────────────────── */}
@@ -296,8 +318,8 @@ export default function Reports() {
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KPICard icon={ClipboardList} label="Total de OS" value={total} />
-        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" />
+        <KPICard icon={ClipboardList} label="Total de OS" value={total} change={totalChange} />
+        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" change={resolvedChange} />
         <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} />
         <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} />
         <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} />
@@ -308,12 +330,18 @@ export default function Reports() {
 
       {overdue > 0 && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-xs text-destructive font-medium">
+          className="flex items-center gap-2 bg-destructive/8 border border-destructive/15 rounded-xl p-3 text-xs text-destructive font-medium">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>{overdue} OS com SLA atrasado no momento</span>
           <Badge variant="destructive" className="ml-auto text-[10px]">Atenção</Badge>
         </motion.div>
       )}
+
+      {/* ─── Gauges Row ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <GaugeCard title="Conformidade SLA" value={slaCompliance} data={slaGaugeData} subtitle={`${overdue} atrasadas de ${total} total`} />
+        <GaugeCard title="Taxa de Resolução" value={resolutionRate} data={resRateGaugeData} subtitle={`${resolved} resolvidas de ${total} total`} />
+      </div>
 
       {/* ─── Tabs ───────────────────────────────────────────── */}
       <Tabs defaultValue="os" className="space-y-4">
@@ -333,54 +361,96 @@ export default function Reports() {
                 <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="gradCreated" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="gradClosed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                    <linearGradient id="gradClosedR" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="created" name="Criadas" stroke="hsl(var(--primary))" fill="url(#gradCreated)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="closed" name="Encerradas" stroke="hsl(142, 71%, 45%)" fill="url(#gradClosed)" strokeWidth={2} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
+                  <Area type="monotone" dataKey="created" name="Criadas" stroke="hsl(var(--primary))" fill="url(#gradCreated)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                  <Area type="monotone" dataKey="closed" name="Encerradas" stroke="hsl(142, 71%, 45%)" fill="url(#gradClosedR)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </ChartCard>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Status Pie */}
+            {/* Status Donut */}
             <ChartCard title="Distribuição por Status" icon={Layers}>
               {statusData.length === 0 ? <EmptyChart /> : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}>
-                      {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <ResponsiveContainer width={180} height={180}>
+                      <PieChart>
+                        <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
+                          {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{total}</p>
+                        <p className="text-[9px] text-muted-foreground">total</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {statusData.map((d, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[11px]">
+                        <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.fill }} />
+                        <span className="truncate text-muted-foreground flex-1">{d.name}</span>
+                        <span className="font-semibold tabular-nums">{d.value}</span>
+                        <span className="text-muted-foreground tabular-nums">({total > 0 ? Math.round((d.value / total) * 100) : 0}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </ChartCard>
 
-            {/* Priority Pie */}
+            {/* Priority Donut */}
             <ChartCard title="Distribuição por Prioridade" icon={AlertTriangle}>
               {priorityData.length === 0 ? <EmptyChart /> : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie data={priorityData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}>
-                      {priorityData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <ResponsiveContainer width={180} height={180}>
+                      <PieChart>
+                        <Pie data={priorityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
+                          {priorityData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{total}</p>
+                        <p className="text-[9px] text-muted-foreground">total</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {priorityData.map((d, i) => (
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.fill }} />
+                            <span className="text-muted-foreground">{d.name}</span>
+                          </div>
+                          <span className="font-semibold tabular-nums">{d.value}</span>
+                        </div>
+                        <Progress value={total > 0 ? (d.value / total) * 100 : 0} className="h-1" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </ChartCard>
           </div>
@@ -392,28 +462,20 @@ export default function Reports() {
                 <>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={agingData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} />
-                      <Tooltip contentStyle={tooltipStyle} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="value" name="OS Abertas" radius={[6, 6, 0, 0]}>
-                        {agingData.map((_, i) => (
-                          <Cell key={i} fill={
-                            i === 0 ? 'hsl(142, 71%, 45%)' :
-                            i === 1 ? 'hsl(213, 94%, 50%)' :
-                            i === 2 ? 'hsl(38, 92%, 50%)' :
-                            i === 3 ? 'hsl(25, 95%, 53%)' :
-                            'hsl(0, 72%, 51%)'
-                          } />
-                        ))}
+                        {agingData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                   <div className="grid grid-cols-5 gap-1 mt-2">
                     {agingData.map((band, i) => (
                       <div key={i} className="text-center">
-                        <p className={cn("text-lg font-bold", 
-                          i >= 3 && band.value > 0 ? 'text-destructive' : 
+                        <p className={cn("text-lg font-bold",
+                          i >= 3 && band.value > 0 ? 'text-destructive' :
                           i >= 2 && band.value > 0 ? 'text-amber-500' : ''
                         )}>{band.value}</p>
                         <p className="text-[10px] text-muted-foreground">{band.name}</p>
@@ -428,13 +490,19 @@ export default function Reports() {
             <ChartCard title="Tendência do Tempo de Resolução" subtitle="Tempo médio (horas) ao longo do período" icon={Timer}>
               {resolutionTrendData.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={resolutionTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} unit="h" />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
-                    <Line type="monotone" dataKey="avgHours" name="Tempo médio" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
-                  </LineChart>
+                  <AreaChart data={resolutionTrendData}>
+                    <defs>
+                      <linearGradient id="gradRes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} unit="h" axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
+                    <Area type="monotone" dataKey="avgHours" name="Tempo médio" stroke="hsl(var(--primary))" fill="url(#gradRes)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
+                  </AreaChart>
                 </ResponsiveContainer>
               )}
             </ChartCard>
@@ -463,7 +531,7 @@ export default function Reports() {
                         return (
                           <td key={p} className="py-1.5 px-3 text-center">
                             <div className={cn(
-                              "mx-auto w-10 h-8 rounded-md flex items-center justify-center font-semibold text-xs transition-colors",
+                              "mx-auto w-10 h-8 rounded-lg flex items-center justify-center font-semibold text-xs transition-colors",
                               intensity === 0 ? 'bg-muted/30 text-muted-foreground/40' :
                               intensity < 0.33 ? 'bg-primary/10 text-primary/70' :
                               intensity < 0.66 ? 'bg-primary/25 text-primary' :
@@ -489,10 +557,10 @@ export default function Reports() {
               <ResponsiveContainer width="100%" height={Math.max(220, techPerformance.length * 50)}>
                 <BarChart data={techPerformance} layout="vertical" barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={130} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={130} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Bar dataKey="total" name="Atribuídas" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="resolved" name="Resolvidas" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -504,10 +572,10 @@ export default function Reports() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {techPerformance.map((t, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Card className="border-border">
+                  <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
                           {t.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -515,12 +583,14 @@ export default function Reports() {
                           <p className="text-[11px] text-muted-foreground">{t.resolved}/{t.total} OS resolvidas</p>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Taxa de resolução</span>
-                          <span className={cn('font-semibold', t.rate >= 70 ? 'text-emerald-500' : 'text-amber-500')}>{t.rate}%</span>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-muted-foreground">Taxa de resolução</span>
+                            <span className={cn('font-semibold', t.rate >= 70 ? 'text-emerald-500' : 'text-amber-500')}>{t.rate}%</span>
+                          </div>
+                          <Progress value={t.rate} className="h-1.5" />
                         </div>
-                        <Progress value={t.rate} className="h-1.5" />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>Tempo médio</span>
                           <span className="font-medium text-foreground">{t.avgHours}h</span>
@@ -558,10 +628,10 @@ export default function Reports() {
               {ratingEvents.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={ratingDistribution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="Avaliações" fill="hsl(38, 92%, 50%)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -569,22 +639,26 @@ export default function Reports() {
             </ChartCard>
           </div>
 
-          {/* Satisfaction Trend */}
           <ChartCard title="Tendência de Satisfação" subtitle="Evolução da nota média ao longo do período" icon={TrendingUp}>
             {satisfactionTrend.length === 0 ? <EmptyChart /> : (
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={satisfactionTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} domain={[0, 5]} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [value, 'Nota média']} />
-                  <Line type="monotone" dataKey="avgRating" name="Nota média" stroke="hsl(38, 92%, 50%)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(38, 92%, 50%)' }} activeDot={{ r: 5 }} />
-                </LineChart>
+                <AreaChart data={satisfactionTrend}>
+                  <defs>
+                    <linearGradient id="gradSat" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} domain={[0, 5]} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'Nota média']} />
+                  <Area type="monotone" dataKey="avgRating" name="Nota média" stroke="hsl(38, 92%, 50%)" fill="url(#gradSat)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(38, 92%, 50%)' }} activeDot={{ r: 5 }} />
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </ChartCard>
 
-          {/* Satisfaction by Technician */}
           {techSatisfaction.length > 0 && (
             <ChartCard title="Satisfação por Técnico" subtitle="Nota média de cada membro da equipe" icon={UserCheck}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -630,11 +704,11 @@ export default function Reports() {
               {stockTrend.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={stockTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                     <Bar dataKey="entradas" name="Entradas" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="saidas" name="Saídas" fill="hsl(25, 95%, 53%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -646,10 +720,10 @@ export default function Reports() {
               {topConsumed.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={Math.max(200, topConsumed.length * 35)}>
                   <BarChart data={topConsumed} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={120} />
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={120} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="qty" name="Saídas" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -683,16 +757,57 @@ export default function Reports() {
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function KPICard({ icon: Icon, label, value, accent }: { icon: React.ElementType; label: string; value: string | number; accent?: string }) {
+function KPICard({ icon: Icon, label, value, accent, change }: { icon: React.ElementType; label: string; value: string | number; accent?: string; change?: number }) {
   return (
-    <Card className="border-border overflow-hidden group">
-      <CardContent className="p-3 flex items-center gap-2.5">
-        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
-          <Icon className="h-4 w-4 text-primary" />
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_12px_0_hsl(var(--foreground)/0.08)] transition-shadow rounded-xl overflow-hidden group">
+        <CardContent className="p-3 flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-muted-foreground truncate">{label}</p>
+            <div className="flex items-center gap-1.5">
+              <p className={cn('text-lg font-bold leading-tight tracking-tight', accent)}>{value}</p>
+              {change !== undefined && change !== 0 && (
+                <Badge variant="secondary" className={cn('text-[9px] h-4 px-1', change > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600')}>
+                  {change > 0 ? '+' : ''}{change}%
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function GaugeCard({ title, value, data, subtitle }: { title: string; value: number; data: any[]; subtitle: string }) {
+  return (
+    <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
+      <CardContent className="p-5 flex items-center gap-6">
+        <div className="relative shrink-0">
+          <ResponsiveContainer width={120} height={120}>
+            <RadialBarChart cx="50%" cy="50%" innerRadius="70%" outerRadius="90%" barSize={10} data={data} startAngle={90} endAngle={-270}>
+              <RadialBar background={{ fill: 'hsl(var(--muted))' }} dataKey="value" cornerRadius={10} />
+            </RadialBarChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className={cn('text-2xl font-bold', value >= 90 ? 'text-emerald-500' : value >= 70 ? 'text-amber-500' : 'text-destructive')}>
+              {value}%
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[10px] text-muted-foreground truncate">{label}</p>
-          <p className={cn('text-lg font-bold leading-tight tracking-tight', accent)}>{value}</p>
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+          <Badge variant="secondary" className={cn('mt-2 text-[10px]',
+            value >= 90 ? 'bg-emerald-500/10 text-emerald-600' :
+            value >= 70 ? 'bg-amber-500/10 text-amber-600' :
+            'bg-destructive/10 text-destructive'
+          )}>
+            {value >= 90 ? 'Excelente' : value >= 70 ? 'Atenção' : 'Crítico'}
+          </Badge>
         </div>
       </CardContent>
     </Card>
@@ -703,7 +818,7 @@ function ChartCard({ title, subtitle, icon: Icon, iconAccent, children }: {
   title: string; subtitle?: string; icon?: React.ElementType; iconAccent?: string; children: React.ReactNode;
 }) {
   return (
-    <Card className="border-border">
+    <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
       <CardHeader className="pb-2 flex flex-row items-center gap-2">
         {Icon && (
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
