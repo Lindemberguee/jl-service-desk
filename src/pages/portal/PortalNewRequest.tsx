@@ -138,7 +138,15 @@ export default function PortalNewRequest() {
   );
 
   const filteredAssets = useMemo(
-    () => unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets,
+    () => {
+      const filtered = unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets;
+      // Sort: active first, then others
+      return [...filtered].sort((a: any, b: any) => {
+        if (a.status === 'ativo' && b.status !== 'ativo') return -1;
+        if (a.status !== 'ativo' && b.status === 'ativo') return 1;
+        return 0;
+      });
+    },
     [assets, unitId]
   );
 
