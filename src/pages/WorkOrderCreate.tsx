@@ -17,11 +17,11 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
   MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link,
-  Paperclip, Upload, Trash2
+  Paperclip, Upload, Trash2, Building2, ChevronDown
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
-  const { currentTenantId, user, profile, currentRole } = useAuth();
+  const { currentTenantId, user, profile, currentRole, memberships, switchTenant } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -328,6 +328,41 @@ export default function WorkOrderCreate() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Department Selector */}
+        {memberships.length > 1 && (
+          <Card className="border-primary/30 bg-primary/5 shadow-sm">
+            <CardContent className="px-5 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Building2 className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground tracking-wide">Departamento de destino</p>
+                  <p className="text-sm font-semibold">
+                    {memberships.find(m => m.tenant_id === currentTenantId)?.tenant_name || 'Selecione'}
+                  </p>
+                </div>
+              </div>
+              <Select value={currentTenantId || ''} onValueChange={(val) => { switchTenant(val); setUnitId(''); setLocationId(''); setAssetId(''); setCategoryId(''); setAssignedToId(''); setRequesterId(''); }}>
+                <SelectTrigger className="w-[200px] h-8 text-xs">
+                  <SelectValue placeholder="Trocar departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {memberships.map(m => (
+                    <SelectItem key={m.tenant_id} value={m.tenant_id}>
+                      {m.tenant_name || m.tenant_slug || m.tenant_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+        {memberships.length <= 1 && currentTenantId && (
+          <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+            <Building2 className="h-3.5 w-3.5" />
+            <span>Departamento: <span className="font-medium text-foreground">{memberships.find(m => m.tenant_id === currentTenantId)?.tenant_name || '—'}</span></span>
+          </div>
+        )}
+
         {/* Section 1: Informações Básicas */}
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-3 pt-4 px-5">
