@@ -199,6 +199,11 @@ export default function PortalNewRequest() {
     if (!l) return '';
     return `${l.name}${l.description ? ` — ${l.description}` : ''}`;
   };
+  const getAssetName = (id: string) => {
+    const a = assets.find((asset: any) => asset.id === id);
+    if (!a) return '';
+    return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`;
+  };
   const getDeptName = (id: string) => memberships.find(m => m.tenant_id === id)?.tenant_name || '';
 
   const handleSubmit = async () => {
