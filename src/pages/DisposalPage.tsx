@@ -66,7 +66,7 @@ async function getAuthHeaders() {
 
 export default function DisposalPage() {
   const { currentRole, rolePermissions, currentTenantId } = useAuth();
-  const { disposals, isLoading, createDisposal, updateDisposal, approveDisposal, rejectDisposal, deleteDisposal } = useDisposals();
+  const { disposals, isLoading, createDisposal, updateDisposal, approveDisposal, rejectDisposal, reopenDisposal, deleteDisposal } = useDisposals();
   const canManage = currentRole ? hasPermission(currentRole, 'disposal:manage', undefined, rolePermissions) : false;
 
   const [search, setSearch] = useState('');
