@@ -36,6 +36,7 @@ export default function PortalNewRequest() {
   const [contactEmail, setContactEmail] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [assetId, setAssetId] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -47,16 +48,18 @@ export default function PortalNewRequest() {
     }
   }, [memberships, selectedTenantId]);
 
-  // Reset category/unit/location when department changes
+  // Reset category/unit/location/asset when department changes
   useEffect(() => {
     setCategoryId('');
     setUnitId('');
     setLocationId('');
+    setAssetId('');
   }, [selectedTenantId]);
 
-  // Reset location when unit changes
+  // Reset location/asset when unit changes
   useEffect(() => {
     setLocationId('');
+    setAssetId('');
   }, [unitId]);
 
   // Auto-fill email from profile
@@ -113,9 +116,31 @@ export default function PortalNewRequest() {
     enabled: !!selectedTenantId,
   });
 
+  // Load assets for selected department
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets', selectedTenantId],
+    queryFn: async () => {
+      if (!selectedTenantId) return [];
+      const { data, error } = await supabase
+        .from('assets')
+        .select('id, name, patrimony_code, serial_number, unit_id, status')
+        .eq('tenant_id', selectedTenantId)
+        .eq('status', 'ativo')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedTenantId,
+  });
+
   const filteredLocations = useMemo(
     () => unitId ? allLocations.filter((l: any) => l.unit_id === unitId) : allLocations,
     [allLocations, unitId]
+  );
+
+  const filteredAssets = useMemo(
+    () => unitId ? assets.filter((a: any) => a.unit_id === unitId) : assets,
+    [assets, unitId]
   );
 
   const insertMutation = useMutation({
@@ -174,6 +199,11 @@ export default function PortalNewRequest() {
     if (!l) return '';
     return `${l.name}${l.description ? ` — ${l.description}` : ''}`;
   };
+  const getAssetName = (id: string) => {
+    const a = assets.find((asset: any) => asset.id === id);
+    if (!a) return '';
+    return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`;
+  };
   const getDeptName = (id: string) => memberships.find(m => m.tenant_id === id)?.tenant_name || '';
 
   const handleSubmit = async () => {
@@ -191,6 +221,7 @@ export default function PortalNewRequest() {
         category_id: categoryId || null,
         unit_id: unitId || null,
         location_id: locationId || null,
+        asset_id: assetId || null,
         code: '',
         visibility: 'customer',
         requester_user_id: user?.id || null,
@@ -249,7 +280,7 @@ export default function PortalNewRequest() {
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
           <Button variant="outline" onClick={() => navigate('/portal')}>Ver Minhas OS</Button>
-          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setFiles([]); setExternalLink(''); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
+          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setAssetId(''); setFiles([]); setExternalLink(''); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
             Abrir Outra
           </Button>
         </div>
@@ -310,6 +341,12 @@ export default function PortalNewRequest() {
                 <div>
                   <p className="text-[11px] uppercase font-medium text-muted-foreground">Sala / Espaço</p>
                   <p className="text-sm">{getLocationName(locationId)}</p>
+                </div>
+              )}
+              {assetId && (
+                <div>
+                  <p className="text-[11px] uppercase font-medium text-muted-foreground">Equipamento</p>
+                  <p className="text-sm">{getAssetName(assetId)}</p>
                 </div>
               )}
               {contactEmail && (
@@ -499,7 +536,27 @@ export default function PortalNewRequest() {
                   </div>
                 )}
 
-                {/* Contact info */}
+                {/* Asset (Equipamento) - optional */}
+                {filteredAssets.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Equipamento / Ativo (opcional)</Label>
+                    <Select value={assetId} onValueChange={setAssetId}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o equipamento relacionado" /></SelectTrigger>
+                      <SelectContent>
+                        {filteredAssets.map((a: any) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      💡 Vincular o equipamento ajuda a equipe técnica a identificar o problema mais rápido.
+                    </p>
+                  </div>
+                )}
+
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">E-mail</Label>
