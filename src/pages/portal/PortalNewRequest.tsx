@@ -530,7 +530,27 @@ export default function PortalNewRequest() {
                   </div>
                 )}
 
-                {/* Contact info */}
+                {/* Asset (Equipamento) - optional */}
+                {filteredAssets.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Equipamento / Ativo (opcional)</Label>
+                    <Select value={assetId} onValueChange={setAssetId}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o equipamento relacionado" /></SelectTrigger>
+                      <SelectContent>
+                        {filteredAssets.map((a: any) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}{a.serial_number ? ` (S/N: ${a.serial_number})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      💡 Vincular o equipamento ajuda a equipe técnica a identificar o problema mais rápido.
+                    </p>
+                  </div>
+                )}
+
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">E-mail</Label>
