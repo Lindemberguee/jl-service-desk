@@ -174,6 +174,28 @@ export default function WorkOrderDetail() {
       }
       await updateWO(updates, 'status_changed', { from: wo?.status, to: status });
       await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: status } });
+
+      // Auto-create maintenance record if asset linked and status is concluida
+      if (status === 'concluida' && wo?.asset_id && currentTenantId) {
+        try {
+          await supabase.from('asset_maintenance_records').insert({
+            tenant_id: currentTenantId,
+            asset_id: wo.asset_id,
+            work_order_id: id!,
+            title: `Manutenção OS ${wo.code || ''} — ${wo.title || ''}`.substring(0, 200),
+            type: 'corretiva' as any,
+            status: 'concluida' as any,
+            description: wo.description || null,
+            cost: wo.total_cost || 0,
+            scheduled_at: wo.created_at,
+            started_at: wo.started_at || wo.created_at,
+            completed_at: new Date().toISOString(),
+            created_by: user?.id || null,
+          });
+        } catch (err) {
+          console.warn('Falha ao criar registro de manutenção:', err);
+        }
+      }
     },
     onSuccess: () => { invalidateAll(); toast({ title: 'Status atualizado!' }); },
   });
