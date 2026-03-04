@@ -803,12 +803,28 @@ export function OkrBoard() {
         })}
 
         {/* Board View - Kanban by status */}
-        {viewMode === 'board' && (
+        {viewMode === 'board' && (() => {
+          const filteredBoardActivities = allActivities
+            .filter(kr => filterArea === 'all' || kr.area === filterArea)
+            .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible)
+            .filter(kr => {
+              if (filterMonth === 'all') return true;
+              const [y, m] = filterMonth.split('-').map(Number);
+              const monthStart = new Date(y, m - 1, 1);
+              const mEnd = endOfMonth(monthStart);
+              const start = kr.start_date ? parseISO(kr.start_date) : null;
+              const end = kr.end_date ? parseISO(kr.end_date) : null;
+              if (start && end) return start <= mEnd && end >= monthStart;
+              if (start) return start <= mEnd && start >= monthStart;
+              if (end) return end >= monthStart && end <= mEnd;
+              return true;
+            });
+          return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {(['a_iniciar', 'em_andamento', 'no_prazo', 'atrasado'] as const).map(status => {
               const statusInfo = activityStatuses[status];
               const StatusIcon = statusInfo.icon;
-              const activities = allActivities.filter(a => {
+              const activities = filteredBoardActivities.filter(a => {
                 if (status === 'em_andamento') return a.activity_status === 'em_andamento' || a.activity_status === 'no_prazo';
                 if (status === 'no_prazo') return false; // merged with em_andamento
                 return a.activity_status === status;
@@ -868,11 +884,11 @@ export function OkrBoard() {
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>Finalizados</span>
                 <Badge variant="secondary" className="ml-auto h-5 text-[10px]">
-                  {allActivities.filter(a => a.activity_status === 'finalizado' || a.activity_status === 'finalizado_com_atraso').length}
+                  {filteredBoardActivities.filter(a => a.activity_status === 'finalizado' || a.activity_status === 'finalizado_com_atraso').length}
                 </Badge>
               </div>
               <div className="space-y-2">
-                {allActivities.filter(a => a.activity_status === 'finalizado' || a.activity_status === 'finalizado_com_atraso').map(activity => (
+                {filteredBoardActivities.filter(a => a.activity_status === 'finalizado' || a.activity_status === 'finalizado_com_atraso').map(activity => (
                   <Card key={activity.id} className="opacity-70 hover:opacity-100 transition-opacity">
                     <CardContent className="p-3">
                       <p className="text-sm font-medium line-through">{activity.title}</p>
@@ -888,7 +904,8 @@ export function OkrBoard() {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ===== DIALOGS ===== */}
 
