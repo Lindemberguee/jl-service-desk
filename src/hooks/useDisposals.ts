@@ -139,7 +139,7 @@ export function useDisposals() {
           body: JSON.stringify({
             stock_item_id: disposal.stock_item_id,
             tenant_id: currentTenantId,
-            type: 'saida',
+            type: 'out',
             qty: disposal.quantity,
             reference: `Descarte #${disposal.id.slice(0, 8)}`,
             created_by: user?.id,
