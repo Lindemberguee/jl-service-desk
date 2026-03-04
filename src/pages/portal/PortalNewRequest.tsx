@@ -48,11 +48,12 @@ export default function PortalNewRequest() {
     }
   }, [memberships, selectedTenantId]);
 
-  // Reset category/unit/location when department changes
+  // Reset category/unit/location/asset when department changes
   useEffect(() => {
     setCategoryId('');
     setUnitId('');
     setLocationId('');
+    setAssetId('');
   }, [selectedTenantId]);
 
   // Reset location when unit changes
