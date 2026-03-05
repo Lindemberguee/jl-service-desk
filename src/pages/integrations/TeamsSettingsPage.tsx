@@ -84,6 +84,12 @@ export default function TeamsSettingsPage() {
         notify_os_created: settings.notify_os_created,
         notify_os_status_changed: settings.notify_os_status_changed,
         notify_stock_critical: settings.notify_stock_critical,
+        notify_new_user: settings.notify_new_user,
+        notify_maintenance: settings.notify_maintenance,
+        notify_sla_warning: settings.notify_sla_warning,
+        webhook_url_os: settings.webhook_url_os || null,
+        webhook_url_stock: settings.webhook_url_stock || null,
+        webhook_url_maintenance: settings.webhook_url_maintenance || null,
       };
 
       if (settings.id) {
