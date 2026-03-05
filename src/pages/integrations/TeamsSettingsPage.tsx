@@ -44,6 +44,12 @@ export default function TeamsSettingsPage() {
     notify_os_created: true,
     notify_os_status_changed: true,
     notify_stock_critical: true,
+    notify_new_user: false,
+    notify_maintenance: false,
+    notify_sla_warning: false,
+    webhook_url_os: '',
+    webhook_url_stock: '',
+    webhook_url_maintenance: '',
   });
 
   useEffect(() => {
