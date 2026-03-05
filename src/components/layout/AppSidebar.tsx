@@ -13,7 +13,7 @@ import {
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
-  MessageCircle, PenTool, StickyNote, Bell,
+  MessageCircle, PenTool, StickyNote, Bell, Plug,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
