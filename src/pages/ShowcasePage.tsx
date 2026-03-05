@@ -321,7 +321,7 @@ export default function ShowcasePage() {
             transition={{ delay: 0.6 }}
           >
             {[
-              { value: 25, suffix: '+', label: 'Módulos' },
+              { value: 30, suffix: '+', label: 'Módulos' },
               { value: 7, suffix: '', label: 'Perfis de Acesso' },
               { value: 100, suffix: '%', label: 'Tempo Real' },
               { value: 99, suffix: '.9%', label: 'Uptime' },
