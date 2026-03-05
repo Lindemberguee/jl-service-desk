@@ -170,7 +170,7 @@ function SlideModules() {
     <div className="flex flex-col items-center justify-center h-full px-8">
       <GlowOrb color="rgba(6,182,212,0.08)" x="60%" y="10%" size={500} />
       <GlowOrb color="rgba(139,92,246,0.06)" x="20%" y="70%" size={400} delay={2} />
-      <SlideTitle icon={Layers} iconColor="from-cyan-500 to-blue-500" title="" highlight="25+ Módulos" subtitle="Cada módulo é independente e pode ser ativado por plano de assinatura" />
+      <SlideTitle icon={Layers} iconColor="from-cyan-500 to-blue-500" title="" highlight="30+ Módulos" subtitle="Cada módulo é independente e pode ser ativado por plano de assinatura" />
       <motion.div
         className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-w-5xl"
         initial={{ opacity: 0 }}
