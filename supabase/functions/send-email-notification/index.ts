@@ -125,8 +125,13 @@ serve(async (req) => {
       },
     });
 
+    // Hostinger and many SMTP providers require the "from" address to match the authenticated user
+    const fromEmail = smtp.smtp_from_email || smtp.smtp_user;
+    const fromName = smtp.smtp_from_name || 'Sistema';
+
     await transporter.sendMail({
-      from: `"${smtp.smtp_from_name || 'Sistema'}" <${smtp.smtp_from_email}>`,
+      from: `"${fromName}" <${smtp.smtp_user}>`,
+      replyTo: fromEmail !== smtp.smtp_user ? `"${fromName}" <${fromEmail}>` : undefined,
       to: recipientEmail,
       subject: emailSubject,
       html: emailHtml,
