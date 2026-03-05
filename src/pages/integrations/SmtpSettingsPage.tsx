@@ -178,6 +178,9 @@ export default function SmtpSettingsPage() {
         notify_os_created: settings.notify_os_created,
         notify_os_status_changed: settings.notify_os_status_changed,
         notify_stock_critical: settings.notify_stock_critical,
+        notify_new_user: settings.notify_new_user,
+        notify_maintenance: settings.notify_maintenance,
+        notify_sla_warning: settings.notify_sla_warning,
       };
 
       if (settings.id) {
