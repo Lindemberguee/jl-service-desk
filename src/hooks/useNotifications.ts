@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -30,15 +30,38 @@ interface UseNotificationsReturn {
   refetch: () => Promise<void>;
 }
 
+const TOAST_DEDUPE_WINDOW_MS = 8000;
+const recentNotificationToasts = new Map<string, number>();
+
+function shouldShowNotificationToast(notificationId: string) {
+  const now = Date.now();
+
+  for (const [id, timestamp] of recentNotificationToasts.entries()) {
+    if (now - timestamp > TOAST_DEDUPE_WINDOW_MS) {
+      recentNotificationToasts.delete(id);
+    }
+  }
+
+  if (recentNotificationToasts.has(notificationId)) return false;
+
+  recentNotificationToasts.set(notificationId, now);
+  return true;
+}
+
 export function useNotifications(): UseNotificationsReturn {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -76,14 +99,20 @@ export function useNotifications(): UseNotificationsReturn {
         },
         (payload) => {
           const newNotif = payload.new as unknown as Notification;
-          setNotifications((prev) => [newNotif, ...prev]);
-          
-          // Play sound + show toast for new notification
-          playNotificationSound();
-          toast(newNotif.title, {
-            description: newNotif.body,
-            duration: 5000,
+
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === newNotif.id)) return prev;
+            return [newNotif, ...prev];
           });
+
+          // Play sound + show toast once per notification id
+          if (shouldShowNotificationToast(newNotif.id)) {
+            playNotificationSound();
+            toast(newNotif.title, {
+              description: newNotif.body,
+              duration: 5000,
+            });
+          }
         }
       )
       .on(
@@ -96,9 +125,11 @@ export function useNotifications(): UseNotificationsReturn {
         },
         (payload) => {
           const updated = payload.new as unknown as Notification;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
-          );
+          setNotifications((prev) => {
+            const idx = prev.findIndex((n) => n.id === updated.id);
+            if (idx === -1) return [updated, ...prev];
+            return prev.map((n) => (n.id === updated.id ? updated : n));
+          });
         }
       )
       .on(
@@ -116,8 +147,6 @@ export function useNotifications(): UseNotificationsReturn {
       )
       .subscribe();
 
-    channelRef.current = channel;
-
     return () => {
       supabase.removeChannel(channel);
     };
@@ -126,19 +155,23 @@ export function useNotifications(): UseNotificationsReturn {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const markAsRead = useCallback(async (id: string) => {
+    const readAt = new Date().toISOString();
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n))
+      prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: readAt } : n))
     );
+
     await supabase
       .from('notifications')
-      .update({ is_read: true, read_at: new Date().toISOString() } as any)
+      .update({ is_read: true, read_at: readAt } as any)
       .eq('id', id);
   }, []);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
+
     const now = new Date().toISOString();
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read_at: now })));
+
     await supabase
       .from('notifications')
       .update({ is_read: true, read_at: now } as any)
