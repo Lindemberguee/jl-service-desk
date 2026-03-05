@@ -50,21 +50,29 @@ function buildTestCard() {
   });
 }
 
-function buildOsCreatedCard(code: string, title: string) {
+function buildOsCreatedCard(code: string, title: string, description?: string, attachments?: { name: string; url: string }[]) {
+  const sections: any[] = [
+    factSection([
+      { title: 'Código', value: code || '—' },
+      { title: 'Título', value: title || '—' },
+      { title: 'Status', value: '🔵 Aberta' },
+      { title: 'Registrado em', value: nowBRT() },
+    ]),
+  ];
+
+  if (description) {
+    sections.push(descriptionBlock(description));
+  }
+  if (attachments && attachments.length > 0) {
+    sections.push(attachmentsBlock(attachments));
+  }
+
   return wrapCard({
     accentColor: COLORS.info,
     icon: '📋',
     title: 'Nova Ordem de Serviço',
     subtitle: `${code} foi criada e atribuída a um técnico`,
-    sections: [
-      factSection([
-        { title: 'Código', value: code || '—' },
-        { title: 'Título', value: title || '—' },
-        { title: 'Status', value: '🔵 Aberta' },
-        { title: 'Registrado em', value: nowBRT() },
-      ]),
-    ],
-    actions: [{ type: 'Action.OpenUrl', title: '📂 Ver OS no Sistema', url: '#' }],
+    sections,
   });
 }
 
