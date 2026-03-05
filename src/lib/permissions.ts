@@ -18,7 +18,8 @@ export type Permission =
   | 'docs:read' | 'docs:manage'
   | 'vault:read' | 'vault:manage'
   | 'kb:read' | 'kb:manage'
-  | 'disposal:read' | 'disposal:manage';
+  | 'disposal:read' | 'disposal:manage'
+  | 'integrations:manage';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
