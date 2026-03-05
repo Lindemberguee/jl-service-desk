@@ -9,7 +9,7 @@ import {
   Building2, FileText, Settings, Layers, UserCheck,
   StickyNote, AlarmClock, Workflow, Target, Sparkles,
   Monitor, Boxes, History, MonitorSmartphone, Palette,
-  Network, Key, AlertTriangle, BookOpen, ListChecks,
+  Network, Key, AlertTriangle, BookOpen, ListChecks, Plug, Contact, Activity,
   Code2, ShoppingCart, Briefcase, ArrowUpRight, ChevronLeft as ChevronLeftIcon, MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
