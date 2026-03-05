@@ -2117,6 +2117,47 @@ export type Database = {
           },
         ]
       }
+      teams_notification_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          notification_type: string
+          payload: Json | null
+          status: string
+          tenant_id: string
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          payload?: Json | null
+          status?: string
+          tenant_id: string
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          payload?: Json | null
+          status?: string
+          tenant_id?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_notification_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_api_keys: {
         Row: {
           created_at: string
