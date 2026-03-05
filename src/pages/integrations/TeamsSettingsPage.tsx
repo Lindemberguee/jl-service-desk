@@ -14,6 +14,8 @@ import {
   MessageSquare, Shield, Send, CheckCircle2, XCircle, Loader2,
   Bell, ClipboardList, Package, AlertTriangle, ArrowLeft, Webhook, ExternalLink,
 } from 'lucide-react';
+import { NotificationEventRow } from '@/components/notifications/NotificationEventRow';
+import { Users, Wrench } from 'lucide-react';
 
 interface TeamsSettings {
   id?: string;
@@ -29,6 +31,7 @@ interface TeamsSettings {
   webhook_url_os: string;
   webhook_url_stock: string;
   webhook_url_maintenance: string;
+  target_roles: Record<string, string[]>;
 }
 
 export default function TeamsSettingsPage() {
@@ -37,6 +40,15 @@ export default function TeamsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const defaultTargetRoles: Record<string, string[]> = {
+    os_created: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    os_status_changed: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    stock_critical: ['super_admin', 'admin', 'coordenador', 'analista'],
+    new_user: ['super_admin', 'admin'],
+    maintenance: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    sla_warning: ['super_admin', 'admin', 'coordenador'],
+  };
+
   const [settings, setSettings] = useState<TeamsSettings>({
     tenant_id: currentTenantId || '',
     webhook_url: '',
@@ -50,7 +62,15 @@ export default function TeamsSettingsPage() {
     webhook_url_os: '',
     webhook_url_stock: '',
     webhook_url_maintenance: '',
+    target_roles: defaultTargetRoles,
   });
+
+  const handleRolesChange = (eventKey: string, roles: string[]) => {
+    setSettings(p => ({
+      ...p,
+      target_roles: { ...p.target_roles, [eventKey]: roles },
+    }));
+  };
 
   useEffect(() => {
     if (!currentTenantId) return;
@@ -66,7 +86,9 @@ export default function TeamsSettingsPage() {
       .maybeSingle();
 
     if (data) {
-      setSettings(data as unknown as TeamsSettings);
+      const parsed = data as unknown as TeamsSettings;
+      parsed.target_roles = { ...defaultTargetRoles, ...(parsed.target_roles || {}) };
+      setSettings(parsed);
     } else {
       setSettings(prev => ({ ...prev, tenant_id: currentTenantId! }));
     }
@@ -90,6 +112,7 @@ export default function TeamsSettingsPage() {
         webhook_url_os: settings.webhook_url_os || null,
         webhook_url_stock: settings.webhook_url_stock || null,
         webhook_url_maintenance: settings.webhook_url_maintenance || null,
+        target_roles: settings.target_roles,
       };
 
       if (settings.id) {

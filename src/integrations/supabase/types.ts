@@ -2187,6 +2187,7 @@ export type Database = {
           smtp_pass: string
           smtp_port: number
           smtp_user: string
+          target_roles: Json
           tenant_id: string
           updated_at: string
           use_tls: boolean
@@ -2207,6 +2208,7 @@ export type Database = {
           smtp_pass?: string
           smtp_port?: number
           smtp_user?: string
+          target_roles?: Json
           tenant_id: string
           updated_at?: string
           use_tls?: boolean
@@ -2227,6 +2229,7 @@ export type Database = {
           smtp_pass?: string
           smtp_port?: number
           smtp_user?: string
+          target_roles?: Json
           tenant_id?: string
           updated_at?: string
           use_tls?: boolean
@@ -2308,6 +2311,7 @@ export type Database = {
           notify_os_status_changed: boolean
           notify_sla_warning: boolean
           notify_stock_critical: boolean
+          target_roles: Json
           tenant_id: string
           updated_at: string
           webhook_url: string
@@ -2325,6 +2329,7 @@ export type Database = {
           notify_os_status_changed?: boolean
           notify_sla_warning?: boolean
           notify_stock_critical?: boolean
+          target_roles?: Json
           tenant_id: string
           updated_at?: string
           webhook_url?: string
@@ -2342,6 +2347,7 @@ export type Database = {
           notify_os_status_changed?: boolean
           notify_sla_warning?: boolean
           notify_stock_critical?: boolean
+          target_roles?: Json
           tenant_id?: string
           updated_at?: string
           webhook_url?: string

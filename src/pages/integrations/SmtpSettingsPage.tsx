@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { NotificationEventRow } from '@/components/notifications/NotificationEventRow';
+import { Users, Wrench } from 'lucide-react';
 
 interface SmtpSettings {
   id?: string;
@@ -39,6 +41,7 @@ interface SmtpSettings {
   notify_new_user: boolean;
   notify_maintenance: boolean;
   notify_sla_warning: boolean;
+  target_roles: Record<string, string[]>;
 }
 
 interface EmailLog {
@@ -100,6 +103,15 @@ export default function SmtpSettingsPage() {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const defaultTargetRoles: Record<string, string[]> = {
+    os_created: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    os_status_changed: ['super_admin', 'admin', 'coordenador', 'tecnico', 'solicitante'],
+    stock_critical: ['super_admin', 'admin', 'coordenador', 'analista'],
+    new_user: ['super_admin', 'admin'],
+    maintenance: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    sla_warning: ['super_admin', 'admin', 'coordenador'],
+  };
+
   const [settings, setSettings] = useState<SmtpSettings>({
     tenant_id: currentTenantId || '',
     smtp_host: '',
@@ -116,7 +128,15 @@ export default function SmtpSettingsPage() {
     notify_new_user: false,
     notify_maintenance: false,
     notify_sla_warning: false,
+    target_roles: defaultTargetRoles,
   });
+
+  const handleRolesChange = (eventKey: string, roles: string[]) => {
+    setSettings(p => ({
+      ...p,
+      target_roles: { ...p.target_roles, [eventKey]: roles },
+    }));
+  };
 
   useEffect(() => {
     if (!currentTenantId) return;
@@ -132,7 +152,9 @@ export default function SmtpSettingsPage() {
       .maybeSingle();
 
     if (data) {
-      setSettings(data as unknown as SmtpSettings);
+      const parsed = data as unknown as SmtpSettings;
+      parsed.target_roles = { ...defaultTargetRoles, ...(parsed.target_roles || {}) };
+      setSettings(parsed);
     } else {
       setSettings(prev => ({ ...prev, tenant_id: currentTenantId! }));
     }
@@ -181,6 +203,7 @@ export default function SmtpSettingsPage() {
         notify_new_user: settings.notify_new_user,
         notify_maintenance: settings.notify_maintenance,
         notify_sla_warning: settings.notify_sla_warning,
+        target_roles: settings.target_roles,
       };
 
       if (settings.id) {
