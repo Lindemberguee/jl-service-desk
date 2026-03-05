@@ -113,6 +113,9 @@ export default function SmtpSettingsPage() {
     notify_os_created: true,
     notify_os_status_changed: true,
     notify_stock_critical: true,
+    notify_new_user: false,
+    notify_maintenance: false,
+    notify_sla_warning: false,
   });
 
   useEffect(() => {
