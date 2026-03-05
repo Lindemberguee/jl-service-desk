@@ -285,6 +285,13 @@ export function AppSidebar() {
           {renderMenuGroup(toolsItems)}
         </SidebarGroup>
 
+        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
+
+        <SidebarGroup className="py-1">
+          <SectionLabel>Configuração</SectionLabel>
+          {renderMenuGroup(integrationItems)}
+        </SidebarGroup>
+
         {currentRole && hasPermission(currentRole, 'settings:manage', undefined, rolePermissions) && (
           <>
             <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>

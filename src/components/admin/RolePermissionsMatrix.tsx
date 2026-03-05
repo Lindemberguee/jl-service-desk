@@ -261,7 +261,7 @@ export default function RolePermissionsMatrix() {
     : ['coordenador', 'tecnico', 'analista', 'solicitante', 'leitura'];
 
   // Permissions that only super_admin can manage
-  const superAdminOnlyPermissions: Permission[] = ['settings:manage', 'users:manage', 'api:manage'];
+  const superAdminOnlyPermissions: Permission[] = ['settings:manage', 'users:manage', 'api:manage', 'integrations:manage'];
 
   const canEditCell = (role: AppRole, perm: Permission): boolean => {
     if (!editableRoles.includes(role)) return false;
