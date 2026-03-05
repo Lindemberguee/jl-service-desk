@@ -722,7 +722,7 @@ export default function ShowcasePage() {
             <h4 className="text-sm font-semibold text-white mb-5">O que está incluso no código-fonte</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                '25+ módulos frontend',
+                '30+ módulos frontend',
                 'Edge Functions backend',
                 'Multi-tenancy completo',
                 'RBAC com 7 perfis',
