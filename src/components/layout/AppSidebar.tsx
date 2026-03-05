@@ -182,10 +182,12 @@ export function AppSidebar() {
   const isSuperAdmin = currentRole === 'super_admin';
   const subActive = isSubscriptionActive();
 
+  const getVisibleItems = (items: MenuItem[]) =>
+    items.filter(item => currentRole && hasPermission(currentRole, item.permission, undefined, rolePermissions));
+
   const renderMenuGroup = (items: MenuItem[]) => (
     <SidebarMenu>
       {items.map(item => {
-        if (currentRole && !hasPermission(currentRole, item.permission, undefined, rolePermissions)) return null;
         const isActive = isPathActive(location.pathname, item.path);
         const moduleKey = item.moduleKey;
         const locked = moduleKey ? !isModuleEnabled(moduleKey) : false;
@@ -201,6 +203,19 @@ export function AppSidebar() {
       })}
     </SidebarMenu>
   );
+
+  const sections: { label: string; items: MenuItem[] }[] = [
+    { label: 'Operacional', items: operationalItems },
+    { label: 'Infraestrutura', items: infraItems },
+    { label: 'Gestão', items: managementItems },
+    { label: 'Conhecimento', items: knowledgeItems },
+    { label: 'Ferramentas', items: toolsItems },
+    { label: 'Configuração', items: integrationItems },
+  ];
+
+  const visibleSections = sections
+    .map(s => ({ ...s, visible: getVisibleItems(s.items) }))
+    .filter(s => s.visible.length > 0);
 
   return (
     <Sidebar>
@@ -225,7 +240,6 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Subscription warning banner */}
         {!subActive && !isSuperAdmin && (
           <div className="mt-2 px-2 py-1.5 rounded-lg bg-destructive/10 border border-destructive/20">
             <p className="text-[10px] text-destructive font-medium">
@@ -252,45 +266,15 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="py-3 px-1">
-        <SidebarGroup className="py-1">
-          <SectionLabel>Operacional</SectionLabel>
-          {renderMenuGroup(operationalItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Infraestrutura</SectionLabel>
-          {renderMenuGroup(infraItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Gestão</SectionLabel>
-          {renderMenuGroup(managementItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Conhecimento</SectionLabel>
-          {renderMenuGroup(knowledgeItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Ferramentas</SectionLabel>
-          {renderMenuGroup(toolsItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Configuração</SectionLabel>
-          {renderMenuGroup(integrationItems)}
-        </SidebarGroup>
+        {visibleSections.map((section, idx) => (
+          <div key={section.label}>
+            {idx > 0 && <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>}
+            <SidebarGroup className="py-1">
+              <SectionLabel>{section.label}</SectionLabel>
+              {renderMenuGroup(section.visible)}
+            </SidebarGroup>
+          </div>
+        ))}
 
         {currentRole && hasPermission(currentRole, 'settings:manage', undefined, rolePermissions) && (
           <>
