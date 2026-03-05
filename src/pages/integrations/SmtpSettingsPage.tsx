@@ -39,6 +39,7 @@ interface SmtpSettings {
   notify_new_user: boolean;
   notify_maintenance: boolean;
   notify_sla_warning: boolean;
+  target_roles: Record<string, string[]>;
 }
 
 interface EmailLog {
