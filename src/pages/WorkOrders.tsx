@@ -289,10 +289,19 @@ export default function WorkOrders() {
     dateTo && { key: 'dateTo', label: `Até: ${format(dateTo, 'dd/MM/yy')}`, clear: () => { setDateTo(undefined); resetPage(); } },
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
 
+  const getAssignedProfile = (id: string | null) => {
+    if (!id) return null;
+    return profiles.find((p: any) => p.id === id) || null;
+  };
+
   const getAssignedName = (id: string | null) => {
     if (!id) return '—';
     const p = profiles.find((p: any) => p.id === id);
     return p?.name || id.slice(0, 8);
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   };
 
   const getRequesterName = (wo: any) => {
