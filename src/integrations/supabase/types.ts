@@ -2244,6 +2244,50 @@ export type Database = {
           },
         ]
       }
+      tenant_teams_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          notify_os_created: boolean
+          notify_os_status_changed: boolean
+          notify_stock_critical: boolean
+          tenant_id: string
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_os_created?: boolean
+          notify_os_status_changed?: boolean
+          notify_stock_critical?: boolean
+          tenant_id: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_os_created?: boolean
+          notify_os_status_changed?: boolean
+          notify_stock_critical?: boolean
+          tenant_id?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_teams_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           accent_color: string | null
@@ -2989,6 +3033,10 @@ export type Database = {
           _to_email: string
           _type: string
         }
+        Returns: undefined
+      }
+      send_teams_notification_async: {
+        Args: { _extra?: Json; _tenant_id: string; _type: string }
         Returns: undefined
       }
     }

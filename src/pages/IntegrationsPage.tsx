@@ -41,11 +41,13 @@ const integrations: IntegrationCard[] = [
   {
     id: 'teams',
     name: 'Microsoft Teams',
-    description: 'Integre notificações e alertas ao Microsoft Teams da sua organização.',
+    description: 'Envie alertas de OS, status e estoque crítico para canais do Microsoft Teams.',
     icon: MessageSquare,
-    available: false,
+    route: '/integracoes/teams',
+    available: true,
     gradient: 'from-indigo-500/20 to-blue-500/10',
     iconColor: 'text-indigo-500',
+    badgeLabel: 'Disponível',
   },
   {
     id: 'whatsapp',
