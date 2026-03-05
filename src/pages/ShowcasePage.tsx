@@ -152,7 +152,7 @@ const plans = [
   },
   {
     name: 'Professional', price: 'R$ 799', period: '/mês', users: '20 usuários', popular: true,
-    features: ['Tudo do Starter +', 'KPIs & OKRs', 'Manutenção preventiva', 'Relatórios avançados', 'Documentos & Biblioteca', 'Base de Conhecimento', 'Checklists', 'API & Integrações', 'Painel do Técnico', 'Suporte prioritário'],
+    features: ['Tudo do Starter +', 'KPIs & OKRs', 'Manutenção preventiva', 'Relatórios avançados', 'Documentos & Biblioteca', 'Base de Conhecimento', 'Checklists', 'Integrações Teams/E-mail', 'API REST', 'Painel do Técnico', 'Suporte prioritário'],
   },
   {
     name: 'Enterprise', price: 'R$ 1.999', period: '/mês', users: 'Ilimitado', popular: false,
