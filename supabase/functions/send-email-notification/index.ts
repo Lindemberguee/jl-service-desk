@@ -7,6 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-trigger',
 };
 
+/* ── Rate limiter (per tenant, in-memory) ───────────────────────── */
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 30;       // max emails per window
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+
+function checkRateLimit(tenantId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(tenantId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(tenantId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 /* ── Shared layout ──────────────────────────────────────────────── */
 
 function emailLayout(opts: {
@@ -130,16 +148,10 @@ function buildOsCreatedEmail(code: string, title: string) {
 
 function buildOsStatusChangedEmail(code: string, title: string, status: string) {
   const statusColors: Record<string, string> = {
-    'Aberta': '#3b82f6',
-    'Em Triagem': '#6366f1',
-    'Em Execução': '#f59e0b',
-    'Aguardando Peça': '#f97316',
-    'Aguardando Solicitante': '#8b5cf6',
-    'Aguardando Terceiro': '#ec4899',
-    'Concluída': '#22c55e',
-    'Aprovada': '#10b981',
-    'Encerrada': '#6b7280',
-    'Reaberta': '#ef4444',
+    'Aberta': '#3b82f6', 'Em Triagem': '#6366f1', 'Em Execução': '#f59e0b',
+    'Aguardando Peça': '#f97316', 'Aguardando Solicitante': '#8b5cf6',
+    'Aguardando Terceiro': '#ec4899', 'Concluída': '#22c55e',
+    'Aprovada': '#10b981', 'Encerrada': '#6b7280', 'Reaberta': '#ef4444',
   };
   const badgeColor = statusColors[status] || '#6b7280';
 
@@ -201,6 +213,160 @@ function buildStockCriticalEmail(name: string, current: number, min: number) {
   });
 }
 
+/* ── Build email content based on type ─────────────────────────── */
+
+function buildEmailContent(type: string, body: any, smtp: any): { subject: string; html: string } {
+  const { work_order_code, work_order_title, status_label, item_name, current_level, min_level, subject, html_body } = body;
+
+  switch (type) {
+    case 'test':
+      return { subject: '✅ Teste de Configuração SMTP', html: buildTestEmail(smtp) };
+    case 'os_created':
+      return { subject: `📋 Nova OS: ${work_order_code} — ${work_order_title}`, html: buildOsCreatedEmail(work_order_code || '', work_order_title || '') };
+    case 'os_status_changed':
+      return { subject: `🔄 OS ${work_order_code} — Status: ${status_label}`, html: buildOsStatusChangedEmail(work_order_code || '', work_order_title || '', status_label || '') };
+    case 'stock_critical':
+      return { subject: `🚨 Estoque Crítico: ${item_name}`, html: buildStockCriticalEmail(item_name || '', current_level ?? 0, min_level ?? 0) };
+    default:
+      return { subject: subject || 'Notificação do Sistema', html: html_body || '' };
+  }
+}
+
+/* ── Send a single email and log result ─────────────────────────── */
+
+async function sendAndLog(
+  adminClient: any,
+  smtp: any,
+  recipientEmail: string,
+  emailSubject: string,
+  emailHtml: string,
+  tenantId: string,
+  emailType: string,
+  queueId?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtp.smtp_host,
+      port: smtp.smtp_port,
+      secure: smtp.smtp_port === 465,
+      auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+
+    const fromEmail = smtp.smtp_from_email || smtp.smtp_user;
+    const fromName = smtp.smtp_from_name || 'OrdFy';
+
+    await transporter.sendMail({
+      from: `"${fromName}" <${smtp.smtp_user}>`,
+      replyTo: fromEmail !== smtp.smtp_user ? `"${fromName}" <${fromEmail}>` : undefined,
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailHtml,
+    });
+
+    // Log success
+    await adminClient.from('email_logs').insert({
+      tenant_id: tenantId,
+      queue_id: queueId || null,
+      email_type: emailType,
+      to_email: recipientEmail,
+      subject: emailSubject,
+      status: 'sent',
+      smtp_host: smtp.smtp_host,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    // Log failure
+    await adminClient.from('email_logs').insert({
+      tenant_id: tenantId,
+      queue_id: queueId || null,
+      email_type: emailType,
+      to_email: recipientEmail,
+      subject: emailSubject,
+      status: 'failed',
+      error_message: err.message || 'Unknown error',
+      smtp_host: smtp.smtp_host,
+    });
+
+    return { success: false, error: err.message };
+  }
+}
+
+/* ── Process retry queue ────────────────────────────────────────── */
+
+async function processRetryQueue(adminClient: any) {
+  const { data: pending } = await adminClient
+    .from('email_queue')
+    .select('*')
+    .in('status', ['pending', 'retrying'])
+    .lte('next_retry_at', new Date().toISOString())
+    .lt('attempts', 3)
+    .order('created_at', { ascending: true })
+    .limit(10);
+
+  if (!pending || pending.length === 0) return;
+
+  for (const item of pending) {
+    // Mark as processing
+    await adminClient.from('email_queue').update({
+      status: 'processing',
+      processed_at: new Date().toISOString(),
+      attempts: item.attempts + 1,
+    }).eq('id', item.id);
+
+    // Get SMTP settings
+    const { data: smtp } = await adminClient
+      .from('tenant_smtp_settings')
+      .select('*')
+      .eq('tenant_id', item.tenant_id)
+      .eq('is_active', true)
+      .single();
+
+    if (!smtp) {
+      await adminClient.from('email_queue').update({
+        status: 'failed',
+        last_error: 'SMTP não configurado ou inativo',
+        completed_at: new Date().toISOString(),
+      }).eq('id', item.id);
+      continue;
+    }
+
+    const { subject, html } = buildEmailContent(item.email_type, item.payload, smtp);
+    const result = await sendAndLog(
+      adminClient, smtp, item.to_email,
+      subject, html, item.tenant_id, item.email_type, item.id
+    );
+
+    if (result.success) {
+      await adminClient.from('email_queue').update({
+        status: 'sent',
+        completed_at: new Date().toISOString(),
+      }).eq('id', item.id);
+    } else {
+      const newAttempts = item.attempts + 1;
+      if (newAttempts >= item.max_attempts) {
+        await adminClient.from('email_queue').update({
+          status: 'failed',
+          last_error: result.error,
+          completed_at: new Date().toISOString(),
+        }).eq('id', item.id);
+      } else {
+        // Exponential backoff: 30s, 120s, 480s
+        const delayMs = 30000 * Math.pow(4, newAttempts - 1);
+        await adminClient.from('email_queue').update({
+          status: 'retrying',
+          last_error: result.error,
+          next_retry_at: new Date(Date.now() + delayMs).toISOString(),
+        }).eq('id', item.id);
+      }
+    }
+  }
+}
+
 /* ── Main handler ───────────────────────────────────────────────── */
 
 serve(async (req) => {
@@ -229,7 +395,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { type, tenant_id, to_email, subject, html_body, work_order_code, work_order_title, status_label, item_name, current_level, min_level } = body;
+    const { type, tenant_id, to_email } = body;
 
     if (!tenant_id) {
       return new Response(JSON.stringify({ success: false, error: 'tenant_id is required' }), {
@@ -241,6 +407,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // Process retry queue opportunistically
+    processRetryQueue(adminClient).catch(err => console.warn('Retry queue error:', err));
+
+    // Rate limit check
+    if (!checkRateLimit(tenant_id)) {
+      // Queue instead of dropping
+      await adminClient.from('email_queue').insert({
+        tenant_id,
+        email_type: type || 'custom',
+        to_email: to_email || '',
+        payload: body,
+        status: 'pending',
+        next_retry_at: new Date(Date.now() + 60000).toISOString(),
+      });
+      return new Response(JSON.stringify({ success: true, queued: true, message: 'Rate limit atingido, e-mail adicionado à fila' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: smtp, error: smtpError } = await adminClient
       .from('tenant_smtp_settings')
@@ -260,58 +445,41 @@ serve(async (req) => {
       });
     }
 
-    // Fetch tenant branding for personalized emails
-    let brandName = 'OrdFy';
-    try {
-      const { data: tenant } = await adminClient
-        .from('tenants')
-        .select('name')
-        .eq('id', tenant_id)
-        .single();
-      if (tenant?.name) brandName = tenant.name;
-    } catch (_) { /* fallback to OrdFy */ }
+    const recipientEmail = type === 'test' ? smtp.smtp_user : (to_email || smtp.smtp_from_email);
+    const { subject: emailSubject, html: emailHtml } = buildEmailContent(type, body, smtp);
 
-    let emailSubject = subject || 'Notificação do Sistema';
-    let emailHtml = html_body || '';
-    let recipientEmail = to_email || smtp.smtp_from_email;
+    const result = await sendAndLog(
+      adminClient, smtp, recipientEmail,
+      emailSubject, emailHtml, tenant_id, type || 'custom'
+    );
 
-    if (type === 'test') {
-      emailSubject = '✅ Teste de Configuração SMTP';
-      emailHtml = buildTestEmail(smtp);
-      recipientEmail = smtp.smtp_user;
-    } else if (type === 'os_created') {
-      emailSubject = `📋 Nova OS: ${work_order_code} — ${work_order_title}`;
-      emailHtml = buildOsCreatedEmail(work_order_code || '', work_order_title || '');
-    } else if (type === 'os_status_changed') {
-      emailSubject = `🔄 OS ${work_order_code} — Status: ${status_label}`;
-      emailHtml = buildOsStatusChangedEmail(work_order_code || '', work_order_title || '', status_label || '');
-    } else if (type === 'stock_critical') {
-      emailSubject = `🚨 Estoque Crítico: ${item_name}`;
-      emailHtml = buildStockCriticalEmail(item_name || '', current_level ?? 0, min_level ?? 0);
+    if (result.success) {
+      console.log(`Email sent: type=${type}, to=${recipientEmail}`);
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: smtp.smtp_host,
-      port: smtp.smtp_port,
-      secure: smtp.smtp_port === 465,
-      auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
-      tls: { rejectUnauthorized: false },
-    });
+    // Failed — queue for retry (except test emails)
+    if (type !== 'test') {
+      await adminClient.from('email_queue').insert({
+        tenant_id,
+        email_type: type || 'custom',
+        to_email: recipientEmail,
+        subject: emailSubject,
+        payload: body,
+        status: 'retrying',
+        attempts: 1,
+        last_error: result.error,
+        next_retry_at: new Date(Date.now() + 30000).toISOString(),
+      });
 
-    const fromEmail = smtp.smtp_from_email || smtp.smtp_user;
-    const fromName = smtp.smtp_from_name || brandName;
+      return new Response(JSON.stringify({ success: false, queued: true, error: result.error, message: 'Falha no envio. E-mail adicionado à fila de retry.' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    await transporter.sendMail({
-      from: `"${fromName}" <${smtp.smtp_user}>`,
-      replyTo: fromEmail !== smtp.smtp_user ? `"${fromName}" <${fromEmail}>` : undefined,
-      to: recipientEmail,
-      subject: emailSubject,
-      html: emailHtml,
-    });
-
-    console.log(`Email sent: type=${type}, to=${recipientEmail}`);
-
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: false, error: result.error || 'Erro ao enviar e-mail' }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
