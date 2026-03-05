@@ -179,6 +179,13 @@ const permissionGroups: PermissionGroup[] = [
     ],
   },
   {
+    label: 'Integrações',
+    icon: Plug,
+    permissions: [
+      { key: 'integrations:manage', label: 'Gerenciar', description: 'Configurar integrações de e-mail SMTP e notificações externas' },
+    ],
+  },
+  {
     label: 'API',
     icon: Key,
     permissions: [
