@@ -939,6 +939,119 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          queue_id: string | null
+          smtp_host: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          to_email: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          queue_id?: string | null
+          smtp_host?: string | null
+          status?: string
+          subject?: string
+          tenant_id: string
+          to_email: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          queue_id?: string | null
+          smtp_host?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "email_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_queue: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          email_type: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_retry_at: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          email_type?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_retry_at?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id: string
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          email_type?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_retry_at?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_articles: {
         Row: {
           author_id: string
