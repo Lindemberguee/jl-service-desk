@@ -182,10 +182,12 @@ export function AppSidebar() {
   const isSuperAdmin = currentRole === 'super_admin';
   const subActive = isSubscriptionActive();
 
+  const getVisibleItems = (items: MenuItem[]) =>
+    items.filter(item => currentRole && hasPermission(currentRole, item.permission, undefined, rolePermissions));
+
   const renderMenuGroup = (items: MenuItem[]) => (
     <SidebarMenu>
       {items.map(item => {
-        if (currentRole && !hasPermission(currentRole, item.permission, undefined, rolePermissions)) return null;
         const isActive = isPathActive(location.pathname, item.path);
         const moduleKey = item.moduleKey;
         const locked = moduleKey ? !isModuleEnabled(moduleKey) : false;
@@ -202,95 +204,18 @@ export function AppSidebar() {
     </SidebarMenu>
   );
 
-  return (
-    <Sidebar>
-      <SidebarHeader className="p-4 border-b border-sidebar-border/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="flex items-center gap-3 relative">
-          {tenantLogo ? (
-            <img src={tenantLogo} alt={tenantName} className="h-9 w-9 rounded-xl object-contain bg-white/10 p-0.5" />
-          ) : (
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 flex items-center justify-center shadow-lg shadow-sidebar-primary/20">
-              <Wrench className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
-          )}
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">{tenantName}</span>
-            <div className="flex items-center gap-1.5">
-              <CircleDot className={cn("h-2 w-2", subActive ? "text-emerald-400" : "text-red-400")} />
-              <span className="text-[11px] text-sidebar-foreground/40 truncate max-w-[120px]">
-                {currentTenant?.tenant_name || 'Sem departamento'}
-              </span>
-            </div>
-          </div>
-        </div>
+  const sections: { label: string; items: MenuItem[] }[] = [
+    { label: 'Operacional', items: operationalItems },
+    { label: 'Infraestrutura', items: infraItems },
+    { label: 'Gestão', items: managementItems },
+    { label: 'Conhecimento', items: knowledgeItems },
+    { label: 'Ferramentas', items: toolsItems },
+    { label: 'Configuração', items: integrationItems },
+  ];
 
-        {/* Subscription warning banner */}
-        {!subActive && !isSuperAdmin && (
-          <div className="mt-2 px-2 py-1.5 rounded-lg bg-destructive/10 border border-destructive/20">
-            <p className="text-[10px] text-destructive font-medium">
-              ⚠️ Plano expirado ou suspenso. Contate o administrador.
-            </p>
-          </div>
-        )}
-
-        {subscription?.status === 'trial' && subscription.trial_ends_at && !isSuperAdmin && (
-          (() => {
-            const daysLeft = Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / 86400000);
-            if (daysLeft <= 7 && daysLeft > 0) {
-              return (
-                <div className="mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-[10px] text-amber-600 font-medium">
-                    ⏳ Trial expira em {daysLeft} dia{daysLeft > 1 ? 's' : ''}
-                  </p>
-                </div>
-              );
-            }
-            return null;
-          })()
-        )}
-      </SidebarHeader>
-
-      <SidebarContent className="py-3 px-1">
-        <SidebarGroup className="py-1">
-          <SectionLabel>Operacional</SectionLabel>
-          {renderMenuGroup(operationalItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Infraestrutura</SectionLabel>
-          {renderMenuGroup(infraItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Gestão</SectionLabel>
-          {renderMenuGroup(managementItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Conhecimento</SectionLabel>
-          {renderMenuGroup(knowledgeItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Ferramentas</SectionLabel>
-          {renderMenuGroup(toolsItems)}
-        </SidebarGroup>
-
-        <div className="mx-4 my-1"><Separator className="bg-sidebar-border/30" /></div>
-
-        <SidebarGroup className="py-1">
-          <SectionLabel>Configuração</SectionLabel>
-          {renderMenuGroup(integrationItems)}
-        </SidebarGroup>
+  const visibleSections = sections
+    .map(s => ({ ...s, visible: getVisibleItems(s.items) }))
+    .filter(s => s.visible.length > 0);
 
         {currentRole && hasPermission(currentRole, 'settings:manage', undefined, rolePermissions) && (
           <>
