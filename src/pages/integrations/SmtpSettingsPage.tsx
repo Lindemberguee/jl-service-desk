@@ -419,6 +419,45 @@ export default function SmtpSettingsPage() {
                 </div>
                 <Switch checked={settings.notify_stock_critical} onCheckedChange={v => setSettings(p => ({ ...p, notify_stock_critical: v }))} />
               </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <Bell className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Novo Usuário</p>
+                    <p className="text-xs text-muted-foreground">Notificar quando um novo membro é adicionado</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_new_user} onCheckedChange={v => setSettings(p => ({ ...p, notify_new_user: v }))} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-cyan-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Manutenção Preventiva</p>
+                    <p className="text-xs text-muted-foreground">Alertar sobre manutenções programadas próximas</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_maintenance} onCheckedChange={v => setSettings(p => ({ ...p, notify_maintenance: v }))} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Alerta de SLA</p>
+                    <p className="text-xs text-muted-foreground">Notificar quando uma OS está próxima de estourar o SLA</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_sla_warning} onCheckedChange={v => setSettings(p => ({ ...p, notify_sla_warning: v }))} />
+              </div>
             </CardContent>
           </Card>
 
