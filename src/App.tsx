@@ -47,6 +47,7 @@ import DocumentsPage from "@/pages/DocumentsPage";
 import DisposalPage from "@/pages/DisposalPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
 import SmtpSettingsPage from "@/pages/integrations/SmtpSettingsPage";
+import TeamsSettingsPage from "@/pages/integrations/TeamsSettingsPage";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
