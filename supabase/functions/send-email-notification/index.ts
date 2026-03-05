@@ -10,8 +10,8 @@ const corsHeaders = {
 /* ── Rate limiter (per tenant, in-memory) ───────────────────────── */
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 30;       // max emails per window
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 30;
+const RATE_LIMIT_WINDOW = 60000;
 
 function checkRateLimit(tenantId: string): boolean {
   const now = Date.now();
@@ -46,42 +46,23 @@ function emailLayout(opts: {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        
-        <!-- Header -->
         <tr><td style="background:${headerBg};padding:32px 40px;text-align:center;">
           <div style="font-size:36px;margin-bottom:8px;">${headerIcon}</div>
           <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">${headerTitle}</h1>
         </td></tr>
-        
-        <!-- Body -->
-        <tr><td style="padding:32px 40px;">
-          ${bodyHtml}
-        </td></tr>
-
-        <!-- Divider -->
-        <tr><td style="padding:0 40px;">
-          <div style="height:1px;background:linear-gradient(90deg,transparent,#e2e8f0,transparent);"></div>
-        </td></tr>
-        
-        <!-- Footer -->
+        <tr><td style="padding:32px 40px;">${bodyHtml}</td></tr>
+        <tr><td style="padding:0 40px;"><div style="height:1px;background:linear-gradient(90deg,transparent,#e2e8f0,transparent);"></div></td></tr>
         <tr><td style="padding:24px 40px;text-align:center;">
           ${footerText ? `<p style="margin:0 0 12px;font-size:13px;color:#64748b;">${footerText}</p>` : ''}
-          <p style="margin:0;font-size:12px;color:#94a3b8;">
-            Enviado por <strong style="color:#3b82f6;">${brandName}</strong> · ${year}
-          </p>
-          <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;">
-            Este é um e-mail automático. Por favor, não responda diretamente.
-          </p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">Enviado por <strong style="color:#3b82f6;">${brandName}</strong> · ${year}</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;">Este é um e-mail automático. Por favor, não responda diretamente.</p>
         </td></tr>
-
       </table>
     </td></tr>
   </table>
 </body>
 </html>`;
 }
-
-/* ── Info row helper ────────────────────────────────────────────── */
 
 function infoRow(label: string, value: string, iconColor = '#3b82f6') {
   return `
@@ -95,8 +76,6 @@ function infoRow(label: string, value: string, iconColor = '#3b82f6') {
     </tr>
   </table>`;
 }
-
-/* ── Status badge helper ────────────────────────────────────────── */
 
 function statusBadge(label: string, color: string) {
   return `<span style="display:inline-block;padding:6px 16px;border-radius:20px;background:${color};color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.3px;">${label}</span>`;
@@ -160,9 +139,7 @@ function buildOsStatusChangedEmail(code: string, title: string, status: string) 
     headerIcon: '🔄',
     headerTitle: 'Atualização de Status',
     bodyHtml: `
-      <p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.6;">
-        O status da ordem de serviço foi atualizado. Veja o novo estado:
-      </p>
+      <p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.6;">O status da ordem de serviço foi atualizado.</p>
       ${infoRow('Ordem de Serviço', `${code} — ${title}`, '#f59e0b')}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
         <tr>
@@ -172,10 +149,7 @@ function buildOsStatusChangedEmail(code: string, title: string, status: string) 
             <div style="margin-top:6px;">${statusBadge(status, badgeColor)}</div>
           </td>
         </tr>
-      </table>
-      <div style="text-align:center;margin:24px 0 8px;">
-        <p style="margin:0;font-size:13px;color:#64748b;">Acesse o sistema para acompanhar o andamento desta solicitação.</p>
-      </div>`,
+      </table>`,
     footerText: 'Você recebeu este e-mail porque está envolvido nesta OS.',
   });
 }
@@ -190,7 +164,7 @@ function buildStockCriticalEmail(name: string, current: number, min: number) {
     headerTitle: 'Alerta de Estoque Crítico',
     bodyHtml: `
       <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
-        <p style="margin:0;font-size:14px;color:#991b1b;font-weight:600;">⚠️ Atenção: Um item atingiu o nível mínimo de estoque e precisa de reposição imediata.</p>
+        <p style="margin:0;font-size:14px;color:#991b1b;font-weight:600;">⚠️ Um item atingiu o nível mínimo de estoque.</p>
       </div>
       ${infoRow('Item', name, '#ef4444')}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
@@ -205,18 +179,78 @@ function buildStockCriticalEmail(name: string, current: number, min: number) {
             </div>
           </td>
         </tr>
-      </table>
+      </table>`,
+    footerText: 'Providencie a reposição o mais breve possível.',
+  });
+}
+
+function buildNewUserEmail(userName: string, userEmail: string, role: string) {
+  const roleLabels: Record<string, string> = {
+    super_admin: 'Super Admin', admin: 'Administrador', coordenador: 'Coordenador',
+    tecnico: 'Técnico', analista: 'Analista', solicitante: 'Solicitante',
+  };
+  return emailLayout({
+    headerBg: 'linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%)',
+    headerIcon: '👤',
+    headerTitle: 'Novo Usuário Cadastrado',
+    bodyHtml: `
+      <p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.6;">
+        Um novo membro foi adicionado ao seu departamento.
+      </p>
+      ${infoRow('Nome', userName, '#8b5cf6')}
+      ${infoRow('E-mail', userEmail, '#8b5cf6')}
+      ${infoRow('Perfil', roleLabels[role] || role, '#8b5cf6')}
       <div style="text-align:center;margin:24px 0 8px;">
-        <p style="margin:0;font-size:13px;color:#64748b;">Providencie a reposição o mais breve possível para evitar interrupções.</p>
+        <p style="margin:0;font-size:13px;color:#64748b;">Acesse o painel de usuários para gerenciar permissões.</p>
       </div>`,
-    footerText: 'Você recebeu este alerta por ser gestor/coordenador do setor.',
+    footerText: 'Você recebeu este alerta por ser administrador.',
+  });
+}
+
+function buildMaintenanceEmail(assetName: string, maintenanceTitle: string, scheduledAt: string) {
+  return emailLayout({
+    headerBg: 'linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%)',
+    headerIcon: '🔧',
+    headerTitle: 'Manutenção Preventiva Próxima',
+    bodyHtml: `
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;font-size:14px;color:#075985;font-weight:600;">📅 Uma manutenção preventiva está programada para os próximos dias.</p>
+      </div>
+      ${infoRow('Ativo', assetName, '#0ea5e9')}
+      ${infoRow('Manutenção', maintenanceTitle, '#0ea5e9')}
+      ${infoRow('Data Programada', scheduledAt, '#0ea5e9')}`,
+    footerText: 'Prepare-se antecipadamente para esta manutenção.',
+  });
+}
+
+function buildSlaWarningEmail(code: string, title: string, slaType: string, pctUsed: number) {
+  const urgencyColor = pctUsed >= 90 ? '#ef4444' : '#f59e0b';
+  return emailLayout({
+    headerBg: `linear-gradient(135deg,${urgencyColor} 0%,${pctUsed >= 90 ? '#dc2626' : '#d97706'} 100%)`,
+    headerIcon: '⏰',
+    headerTitle: 'Alerta de SLA',
+    bodyHtml: `
+      <div style="background:${pctUsed >= 90 ? '#fef2f2' : '#fffbeb'};border:1px solid ${pctUsed >= 90 ? '#fecaca' : '#fde68a'};border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;font-size:14px;color:${pctUsed >= 90 ? '#991b1b' : '#92400e'};font-weight:600;">
+          ⚠️ A OS está com ${pctUsed}% do prazo de ${slaType === 'response' ? 'resposta' : 'solução'} consumido.
+        </p>
+      </div>
+      ${infoRow('OS', `${code} — ${title}`, urgencyColor)}
+      ${infoRow('Tipo SLA', slaType === 'response' ? 'Tempo de Resposta' : 'Tempo de Solução', urgencyColor)}
+      ${infoRow('Prazo Consumido', `${pctUsed}%`, urgencyColor)}
+      <div style="margin-top:8px;background:#e2e8f0;border-radius:6px;height:10px;overflow:hidden;">
+        <div style="width:${Math.min(pctUsed, 100)}%;height:100%;background:${urgencyColor};border-radius:6px;"></div>
+      </div>`,
+    footerText: 'Tome as providências necessárias para evitar o estouro do SLA.',
   });
 }
 
 /* ── Build email content based on type ─────────────────────────── */
 
 function buildEmailContent(type: string, body: any, smtp: any): { subject: string; html: string } {
-  const { work_order_code, work_order_title, status_label, item_name, current_level, min_level, subject, html_body } = body;
+  const { work_order_code, work_order_title, status_label, item_name, current_level, min_level,
+    user_name, user_email, role, asset_name, maintenance_title, scheduled_at,
+    sla_type, pct_used, subject, html_body } = body;
 
   switch (type) {
     case 'test':
@@ -227,6 +261,12 @@ function buildEmailContent(type: string, body: any, smtp: any): { subject: strin
       return { subject: `🔄 OS ${work_order_code} — Status: ${status_label}`, html: buildOsStatusChangedEmail(work_order_code || '', work_order_title || '', status_label || '') };
     case 'stock_critical':
       return { subject: `🚨 Estoque Crítico: ${item_name}`, html: buildStockCriticalEmail(item_name || '', current_level ?? 0, min_level ?? 0) };
+    case 'new_user':
+      return { subject: `👤 Novo Usuário: ${user_name}`, html: buildNewUserEmail(user_name || '', user_email || '', role || '') };
+    case 'maintenance':
+      return { subject: `🔧 Manutenção Próxima: ${asset_name}`, html: buildMaintenanceEmail(asset_name || '', maintenance_title || '', scheduled_at || '') };
+    case 'sla_warning':
+      return { subject: `⏰ Alerta SLA: OS ${work_order_code}`, html: buildSlaWarningEmail(work_order_code || '', work_order_title || '', sla_type || 'solution', pct_used ?? 80) };
     default:
       return { subject: subject || 'Notificação do Sistema', html: html_body || '' };
   }
@@ -235,25 +275,16 @@ function buildEmailContent(type: string, body: any, smtp: any): { subject: strin
 /* ── Send a single email and log result ─────────────────────────── */
 
 async function sendAndLog(
-  adminClient: any,
-  smtp: any,
-  recipientEmail: string,
-  emailSubject: string,
-  emailHtml: string,
-  tenantId: string,
-  emailType: string,
-  queueId?: string
+  adminClient: any, smtp: any, recipientEmail: string, emailSubject: string,
+  emailHtml: string, tenantId: string, emailType: string, queueId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const transporter = nodemailer.createTransport({
-      host: smtp.smtp_host,
-      port: smtp.smtp_port,
+      host: smtp.smtp_host, port: smtp.smtp_port,
       secure: smtp.smtp_port === 465,
       auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000,
     });
 
     const fromEmail = smtp.smtp_from_email || smtp.smtp_user;
@@ -262,36 +293,20 @@ async function sendAndLog(
     await transporter.sendMail({
       from: `"${fromName}" <${smtp.smtp_user}>`,
       replyTo: fromEmail !== smtp.smtp_user ? `"${fromName}" <${fromEmail}>` : undefined,
-      to: recipientEmail,
-      subject: emailSubject,
-      html: emailHtml,
+      to: recipientEmail, subject: emailSubject, html: emailHtml,
     });
 
-    // Log success
     await adminClient.from('email_logs').insert({
-      tenant_id: tenantId,
-      queue_id: queueId || null,
-      email_type: emailType,
-      to_email: recipientEmail,
-      subject: emailSubject,
-      status: 'sent',
-      smtp_host: smtp.smtp_host,
+      tenant_id: tenantId, queue_id: queueId || null, email_type: emailType,
+      to_email: recipientEmail, subject: emailSubject, status: 'sent', smtp_host: smtp.smtp_host,
     });
-
     return { success: true };
   } catch (err: any) {
-    // Log failure
     await adminClient.from('email_logs').insert({
-      tenant_id: tenantId,
-      queue_id: queueId || null,
-      email_type: emailType,
-      to_email: recipientEmail,
-      subject: emailSubject,
-      status: 'failed',
-      error_message: err.message || 'Unknown error',
-      smtp_host: smtp.smtp_host,
+      tenant_id: tenantId, queue_id: queueId || null, email_type: emailType,
+      to_email: recipientEmail, subject: emailSubject, status: 'failed',
+      error_message: err.message || 'Unknown error', smtp_host: smtp.smtp_host,
     });
-
     return { success: false, error: err.message };
   }
 }
@@ -300,68 +315,40 @@ async function sendAndLog(
 
 async function processRetryQueue(adminClient: any) {
   const { data: pending } = await adminClient
-    .from('email_queue')
-    .select('*')
+    .from('email_queue').select('*')
     .in('status', ['pending', 'retrying'])
     .lte('next_retry_at', new Date().toISOString())
-    .lt('attempts', 3)
-    .order('created_at', { ascending: true })
-    .limit(10);
+    .lt('attempts', 3).order('created_at', { ascending: true }).limit(10);
 
   if (!pending || pending.length === 0) return;
 
   for (const item of pending) {
-    // Mark as processing
     await adminClient.from('email_queue').update({
-      status: 'processing',
-      processed_at: new Date().toISOString(),
-      attempts: item.attempts + 1,
+      status: 'processing', processed_at: new Date().toISOString(), attempts: item.attempts + 1,
     }).eq('id', item.id);
 
-    // Get SMTP settings
-    const { data: smtp } = await adminClient
-      .from('tenant_smtp_settings')
-      .select('*')
-      .eq('tenant_id', item.tenant_id)
-      .eq('is_active', true)
-      .single();
+    const { data: smtp } = await adminClient.from('tenant_smtp_settings').select('*')
+      .eq('tenant_id', item.tenant_id).eq('is_active', true).single();
 
     if (!smtp) {
       await adminClient.from('email_queue').update({
-        status: 'failed',
-        last_error: 'SMTP não configurado ou inativo',
-        completed_at: new Date().toISOString(),
+        status: 'failed', last_error: 'SMTP não configurado', completed_at: new Date().toISOString(),
       }).eq('id', item.id);
       continue;
     }
 
     const { subject, html } = buildEmailContent(item.email_type, item.payload, smtp);
-    const result = await sendAndLog(
-      adminClient, smtp, item.to_email,
-      subject, html, item.tenant_id, item.email_type, item.id
-    );
+    const result = await sendAndLog(adminClient, smtp, item.to_email, subject, html, item.tenant_id, item.email_type, item.id);
 
     if (result.success) {
-      await adminClient.from('email_queue').update({
-        status: 'sent',
-        completed_at: new Date().toISOString(),
-      }).eq('id', item.id);
+      await adminClient.from('email_queue').update({ status: 'sent', completed_at: new Date().toISOString() }).eq('id', item.id);
     } else {
       const newAttempts = item.attempts + 1;
       if (newAttempts >= item.max_attempts) {
-        await adminClient.from('email_queue').update({
-          status: 'failed',
-          last_error: result.error,
-          completed_at: new Date().toISOString(),
-        }).eq('id', item.id);
+        await adminClient.from('email_queue').update({ status: 'failed', last_error: result.error, completed_at: new Date().toISOString() }).eq('id', item.id);
       } else {
-        // Exponential backoff: 30s, 120s, 480s
         const delayMs = 30000 * Math.pow(4, newAttempts - 1);
-        await adminClient.from('email_queue').update({
-          status: 'retrying',
-          last_error: result.error,
-          next_retry_at: new Date(Date.now() + delayMs).toISOString(),
-        }).eq('id', item.id);
+        await adminClient.from('email_queue').update({ status: 'retrying', last_error: result.error, next_retry_at: new Date(Date.now() + delayMs).toISOString() }).eq('id', item.id);
       }
     }
   }
@@ -370,9 +357,7 @@ async function processRetryQueue(adminClient: any) {
 /* ── Main handler ───────────────────────────────────────────────── */
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const isInternalTrigger = req.headers.get('x-internal-trigger') === 'true';
@@ -382,110 +367,55 @@ serve(async (req) => {
       if (!authHeader?.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
       }
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
+      const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
       const token = authHeader.replace('Bearer ', '');
       const { error: claimsError } = await supabase.auth.getUser(token);
-      if (claimsError) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-      }
+      if (claimsError) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const body = await req.json();
     const { type, tenant_id, to_email } = body;
 
     if (!tenant_id) {
-      return new Response(JSON.stringify({ success: false, error: 'tenant_id is required' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ success: false, error: 'tenant_id is required' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    // Process retry queue opportunistically
     processRetryQueue(adminClient).catch(err => console.warn('Retry queue error:', err));
 
-    // Rate limit check
     if (!checkRateLimit(tenant_id)) {
-      // Queue instead of dropping
-      await adminClient.from('email_queue').insert({
-        tenant_id,
-        email_type: type || 'custom',
-        to_email: to_email || '',
-        payload: body,
-        status: 'pending',
-        next_retry_at: new Date(Date.now() + 60000).toISOString(),
-      });
-      return new Response(JSON.stringify({ success: true, queued: true, message: 'Rate limit atingido, e-mail adicionado à fila' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      await adminClient.from('email_queue').insert({ tenant_id, email_type: type || 'custom', to_email: to_email || '', payload: body, status: 'pending', next_retry_at: new Date(Date.now() + 60000).toISOString() });
+      return new Response(JSON.stringify({ success: true, queued: true, message: 'Rate limit atingido, e-mail adicionado à fila' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { data: smtp, error: smtpError } = await adminClient
-      .from('tenant_smtp_settings')
-      .select('*')
-      .eq('tenant_id', tenant_id)
-      .single();
+    const { data: smtp, error: smtpError } = await adminClient.from('tenant_smtp_settings').select('*').eq('tenant_id', tenant_id).single();
 
     if (smtpError || !smtp) {
-      return new Response(JSON.stringify({ success: false, error: 'Configurações SMTP não encontradas' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ success: false, error: 'Configurações SMTP não encontradas' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!smtp.is_active && type !== 'test') {
-      return new Response(JSON.stringify({ success: false, error: 'Envio de e-mail desativado' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ success: false, error: 'Envio de e-mail desativado' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const recipientEmail = type === 'test' ? smtp.smtp_user : (to_email || smtp.smtp_from_email);
     const { subject: emailSubject, html: emailHtml } = buildEmailContent(type, body, smtp);
-
-    const result = await sendAndLog(
-      adminClient, smtp, recipientEmail,
-      emailSubject, emailHtml, tenant_id, type || 'custom'
-    );
+    const result = await sendAndLog(adminClient, smtp, recipientEmail, emailSubject, emailHtml, tenant_id, type || 'custom');
 
     if (result.success) {
       console.log(`Email sent: type=${type}, to=${recipientEmail}`);
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Failed — queue for retry (except test emails)
     if (type !== 'test') {
-      await adminClient.from('email_queue').insert({
-        tenant_id,
-        email_type: type || 'custom',
-        to_email: recipientEmail,
-        subject: emailSubject,
-        payload: body,
-        status: 'retrying',
-        attempts: 1,
-        last_error: result.error,
-        next_retry_at: new Date(Date.now() + 30000).toISOString(),
-      });
-
-      return new Response(JSON.stringify({ success: false, queued: true, error: result.error, message: 'Falha no envio. E-mail adicionado à fila de retry.' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      await adminClient.from('email_queue').insert({ tenant_id, email_type: type || 'custom', to_email: recipientEmail, subject: emailSubject, payload: body, status: 'retrying', attempts: 1, last_error: result.error, next_retry_at: new Date(Date.now() + 30000).toISOString() });
+      return new Response(JSON.stringify({ success: false, queued: true, error: result.error, message: 'Falha no envio. E-mail adicionado à fila de retry.' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ success: false, error: result.error || 'Erro ao enviar e-mail' }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ success: false, error: result.error || 'Erro ao enviar e-mail' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
     console.error('Email send error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message || 'Erro ao enviar e-mail' }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ success: false, error: error.message || 'Erro ao enviar e-mail' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

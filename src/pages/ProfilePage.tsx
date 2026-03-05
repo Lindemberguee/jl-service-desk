@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import NotificationPreferencesCard from '@/components/notifications/NotificationPreferencesCard';
 import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -353,6 +354,9 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Notification Preferences */}
+      <NotificationPreferencesCard />
     </div>
   );
 }

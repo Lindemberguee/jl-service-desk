@@ -36,6 +36,9 @@ interface SmtpSettings {
   notify_os_created: boolean;
   notify_os_status_changed: boolean;
   notify_stock_critical: boolean;
+  notify_new_user: boolean;
+  notify_maintenance: boolean;
+  notify_sla_warning: boolean;
 }
 
 interface EmailLog {
@@ -73,6 +76,9 @@ const emailTypeLabels: Record<string, string> = {
   os_created: 'OS Criada',
   os_status_changed: 'Status OS',
   stock_critical: 'Estoque Crítico',
+  new_user: 'Novo Usuário',
+  maintenance: 'Manutenção',
+  sla_warning: 'SLA',
   custom: 'Personalizado',
 };
 
@@ -107,6 +113,9 @@ export default function SmtpSettingsPage() {
     notify_os_created: true,
     notify_os_status_changed: true,
     notify_stock_critical: true,
+    notify_new_user: false,
+    notify_maintenance: false,
+    notify_sla_warning: false,
   });
 
   useEffect(() => {
@@ -169,6 +178,9 @@ export default function SmtpSettingsPage() {
         notify_os_created: settings.notify_os_created,
         notify_os_status_changed: settings.notify_os_status_changed,
         notify_stock_critical: settings.notify_stock_critical,
+        notify_new_user: settings.notify_new_user,
+        notify_maintenance: settings.notify_maintenance,
+        notify_sla_warning: settings.notify_sla_warning,
       };
 
       if (settings.id) {
@@ -406,6 +418,45 @@ export default function SmtpSettingsPage() {
                   </div>
                 </div>
                 <Switch checked={settings.notify_stock_critical} onCheckedChange={v => setSettings(p => ({ ...p, notify_stock_critical: v }))} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <Bell className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Novo Usuário</p>
+                    <p className="text-xs text-muted-foreground">Notificar quando um novo membro é adicionado</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_new_user} onCheckedChange={v => setSettings(p => ({ ...p, notify_new_user: v }))} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-cyan-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Manutenção Preventiva</p>
+                    <p className="text-xs text-muted-foreground">Alertar sobre manutenções programadas próximas</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_maintenance} onCheckedChange={v => setSettings(p => ({ ...p, notify_maintenance: v }))} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Alerta de SLA</p>
+                    <p className="text-xs text-muted-foreground">Notificar quando uma OS está próxima de estourar o SLA</p>
+                  </div>
+                </div>
+                <Switch checked={settings.notify_sla_warning} onCheckedChange={v => setSettings(p => ({ ...p, notify_sla_warning: v }))} />
               </div>
             </CardContent>
           </Card>
