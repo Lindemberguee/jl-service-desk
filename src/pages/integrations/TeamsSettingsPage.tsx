@@ -14,6 +14,8 @@ import {
   MessageSquare, Shield, Send, CheckCircle2, XCircle, Loader2,
   Bell, ClipboardList, Package, AlertTriangle, ArrowLeft, Webhook, ExternalLink,
 } from 'lucide-react';
+import { NotificationEventRow } from '@/components/notifications/NotificationEventRow';
+import { Users, Wrench } from 'lucide-react';
 
 interface TeamsSettings {
   id?: string;
