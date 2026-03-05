@@ -352,7 +352,7 @@ export default function ShowcasePage() {
         <div className="max-w-7xl mx-auto px-6 w-full">
           <div className="text-center mb-10">
             <Badge className="mb-4 bg-blue-500/[0.08] text-blue-400 border-blue-500/20 rounded-full text-xs px-4 py-1.5">
-              <Layers className="h-3 w-3 mr-1.5" /> 25+ Módulos
+              <Layers className="h-3 w-3 mr-1.5" /> 30+ Módulos
             </Badge>
             <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Tudo que sua operação{' '}
