@@ -102,6 +102,10 @@ const modules: { icon: LucideIcon; title: string; gradient: string; desc: string
   { icon: Palette, title: 'Temas', gradient: 'from-fuchsia-500 to-pink-500', desc: 'Personalização visual' },
   { icon: Network, title: 'API REST', gradient: 'from-violet-500 to-indigo-500', desc: 'Documentada com chaves' },
   { icon: Settings, title: 'Admin', gradient: 'from-gray-500 to-slate-500', desc: 'Configurações globais' },
+  { icon: Plug, title: 'Integrações', gradient: 'from-sky-500 to-blue-500', desc: 'Teams, E-mail, SMTP' },
+  { icon: Activity, title: 'Métricas Notificações', gradient: 'from-orange-500 to-red-500', desc: 'Logs e analytics' },
+  { icon: Contact, title: 'Colaboradores', gradient: 'from-pink-500 to-rose-500', desc: 'Cadastro e vínculo' },
+  { icon: ClipboardList, title: 'Controle de Materiais', gradient: 'from-teal-500 to-emerald-500', desc: 'Entradas e saídas mensais' },
 ];
 
 const roles = [
