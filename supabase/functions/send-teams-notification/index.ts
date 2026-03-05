@@ -236,7 +236,7 @@ function attachmentsBlock(attachments: { name: string; url: string }[]) {
 }
 
 
-  const filled = Math.min(Math.max(Math.round(pct / 5), 0), 20);
+  function progressBar(pct: number) {
   const empty = 20 - filled;
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
   const color = pct >= 90 ? 'Attention' : pct >= 70 ? 'Warning' : 'Good';
