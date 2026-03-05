@@ -406,6 +406,23 @@ serve(async (req) => {
 
     const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
+    // Fetch attachments for OS notifications
+    let attachments: { name: string; url: string }[] = [];
+    if ((type === 'os_created' || type === 'os_status_changed') && body.work_order_id) {
+      try {
+        const { data: files } = await adminClient.storage.from('work-order-attachments').list(`${tenant_id}/${body.work_order_id}`);
+        if (files && files.length > 0) {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          attachments = files.map(f => ({
+            name: f.name,
+            url: `${supabaseUrl}/storage/v1/object/public/work-order-attachments/${tenant_id}/${body.work_order_id}/${f.name}`,
+          }));
+        }
+      } catch (e) {
+        console.warn('Could not fetch attachments:', e);
+      }
+    }
+
     const { data: settings, error: settingsError } = await adminClient.from('tenant_teams_settings').select('*').eq('tenant_id', tenant_id).single();
 
     if (settingsError || !settings) {
