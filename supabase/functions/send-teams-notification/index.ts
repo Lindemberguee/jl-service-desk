@@ -203,7 +203,39 @@ function factSection(facts: { title: string; value: string }[]) {
   };
 }
 
-function progressBar(pct: number) {
+function descriptionBlock(description: string) {
+  const truncated = description.length > 300 ? description.substring(0, 300) + '...' : description;
+  return {
+    type: 'Container',
+    separator: true,
+    spacing: 'Medium',
+    items: [
+      { type: 'TextBlock', text: '📝 **Descrição**', size: 'Small', weight: 'Bolder', spacing: 'None' },
+      { type: 'TextBlock', text: truncated, wrap: true, size: 'Small', isSubtle: true, spacing: 'Small' },
+    ],
+  };
+}
+
+function attachmentsBlock(attachments: { name: string; url: string }[]) {
+  const items: any[] = [
+    { type: 'TextBlock', text: `📎 **Anexos (${attachments.length})**`, size: 'Small', weight: 'Bolder', spacing: 'None' },
+  ];
+  for (const att of attachments.slice(0, 5)) {
+    items.push({
+      type: 'TextBlock',
+      text: `[${att.name}](${att.url})`,
+      size: 'Small',
+      wrap: true,
+      spacing: 'None',
+    });
+  }
+  if (attachments.length > 5) {
+    items.push({ type: 'TextBlock', text: `_...e mais ${attachments.length - 5} arquivo(s)_`, size: 'Small', isSubtle: true, spacing: 'None' });
+  }
+  return { type: 'Container', separator: true, spacing: 'Medium', items };
+}
+
+
   const filled = Math.min(Math.max(Math.round(pct / 5), 0), 20);
   const empty = 20 - filled;
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
