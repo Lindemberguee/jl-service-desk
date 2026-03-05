@@ -291,8 +291,8 @@ export default function ShowcasePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25 }}
           >
-            25+ módulos integrados para ordens de serviço, manutenção, estoque, ativos,
-            KPIs, auditoria e muito mais.
+            30+ módulos integrados para ordens de serviço, manutenção, estoque, ativos,
+            KPIs, integrações Teams/E-mail, auditoria e muito mais.
           </motion.p>
 
           <motion.div
