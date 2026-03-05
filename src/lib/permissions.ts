@@ -36,6 +36,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'api:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
+    'integrations:manage',
   ],
   admin: [
     'dashboard:read', 'my_os:read',
