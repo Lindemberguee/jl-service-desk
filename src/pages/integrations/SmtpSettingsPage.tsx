@@ -76,6 +76,9 @@ const emailTypeLabels: Record<string, string> = {
   os_created: 'OS Criada',
   os_status_changed: 'Status OS',
   stock_critical: 'Estoque Crítico',
+  new_user: 'Novo Usuário',
+  maintenance: 'Manutenção',
+  sla_warning: 'SLA',
   custom: 'Personalizado',
 };
 
