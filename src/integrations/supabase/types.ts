@@ -1414,6 +1414,50 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          channel_email: boolean
+          channel_in_app: boolean
+          channel_teams: boolean
+          created_at: string
+          event_type: string
+          id: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_email?: boolean
+          channel_in_app?: boolean
+          channel_teams?: boolean
+          created_at?: string
+          event_type: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_email?: boolean
+          channel_in_app?: boolean
+          channel_teams?: boolean
+          created_at?: string
+          event_type?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
@@ -2131,8 +2175,11 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          notify_maintenance: boolean
+          notify_new_user: boolean
           notify_os_created: boolean
           notify_os_status_changed: boolean
+          notify_sla_warning: boolean
           notify_stock_critical: boolean
           smtp_from_email: string
           smtp_from_name: string
@@ -2148,8 +2195,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          notify_maintenance?: boolean
+          notify_new_user?: boolean
           notify_os_created?: boolean
           notify_os_status_changed?: boolean
+          notify_sla_warning?: boolean
           notify_stock_critical?: boolean
           smtp_from_email?: string
           smtp_from_name?: string
@@ -2165,8 +2215,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          notify_maintenance?: boolean
+          notify_new_user?: boolean
           notify_os_created?: boolean
           notify_os_status_changed?: boolean
+          notify_sla_warning?: boolean
           notify_stock_critical?: boolean
           smtp_from_email?: string
           smtp_from_name?: string
@@ -2249,34 +2302,52 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          notify_maintenance: boolean
+          notify_new_user: boolean
           notify_os_created: boolean
           notify_os_status_changed: boolean
+          notify_sla_warning: boolean
           notify_stock_critical: boolean
           tenant_id: string
           updated_at: string
           webhook_url: string
+          webhook_url_maintenance: string | null
+          webhook_url_os: string | null
+          webhook_url_stock: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean
+          notify_maintenance?: boolean
+          notify_new_user?: boolean
           notify_os_created?: boolean
           notify_os_status_changed?: boolean
+          notify_sla_warning?: boolean
           notify_stock_critical?: boolean
           tenant_id: string
           updated_at?: string
           webhook_url?: string
+          webhook_url_maintenance?: string | null
+          webhook_url_os?: string | null
+          webhook_url_stock?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean
+          notify_maintenance?: boolean
+          notify_new_user?: boolean
           notify_os_created?: boolean
           notify_os_status_changed?: boolean
+          notify_sla_warning?: boolean
           notify_stock_critical?: boolean
           tenant_id?: string
           updated_at?: string
           webhook_url?: string
+          webhook_url_maintenance?: string | null
+          webhook_url_os?: string | null
+          webhook_url_stock?: string | null
         }
         Relationships: [
           {
