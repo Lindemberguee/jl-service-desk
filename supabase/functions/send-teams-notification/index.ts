@@ -76,7 +76,7 @@ function buildOsCreatedCard(code: string, title: string, description?: string, a
   });
 }
 
-function buildOsStatusChangedCard(code: string, title: string, status: string) {
+function buildOsStatusChangedCard(code: string, title: string, status: string, description?: string, attachments?: { name: string; url: string }[]) {
   const statusIcons: Record<string, string> = {
     'Aberta': '🔵', 'Em Triagem': '🟡', 'Em Execução': '🟠', 'Aguardando Peça': '⏳',
     'Aguardando Solicitante': '⏳', 'Aguardando Terceiro': '⏳',
@@ -84,19 +84,28 @@ function buildOsStatusChangedCard(code: string, title: string, status: string) {
   };
   const icon = statusIcons[status] || '🔄';
 
+  const sections: any[] = [
+    factSection([
+      { title: 'Código', value: code || '—' },
+      { title: 'Título', value: title || '—' },
+      { title: 'Novo Status', value: `${icon} ${status}` },
+      { title: 'Atualizado em', value: nowBRT() },
+    ]),
+  ];
+
+  if (description) {
+    sections.push(descriptionBlock(description));
+  }
+  if (attachments && attachments.length > 0) {
+    sections.push(attachmentsBlock(attachments));
+  }
+
   return wrapCard({
     accentColor: COLORS.warning,
     icon: '🔄',
     title: 'Mudança de Status',
     subtitle: `OS ${code} teve o status atualizado`,
-    sections: [
-      factSection([
-        { title: 'Código', value: code || '—' },
-        { title: 'Título', value: title || '—' },
-        { title: 'Novo Status', value: `${icon} ${status}` },
-        { title: 'Atualizado em', value: nowBRT() },
-      ]),
-    ],
+    sections,
   });
 }
 
