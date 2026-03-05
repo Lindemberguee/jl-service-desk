@@ -248,83 +248,66 @@ export default function TeamsSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <ClipboardList className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">OS Criada / Atribuída</p>
-                <p className="text-xs text-muted-foreground">Alertar o canal quando uma nova OS é criada</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_os_created} onCheckedChange={v => setSettings(p => ({ ...p, notify_os_created: v }))} />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <ClipboardList className="h-4 w-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Mudança de Status</p>
-                <p className="text-xs text-muted-foreground">Alertar sobre alterações de status de ordens de serviço</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_os_status_changed} onCheckedChange={v => setSettings(p => ({ ...p, notify_os_status_changed: v }))} />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <Package className="h-4 w-4 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Estoque Crítico</p>
-                <p className="text-xs text-muted-foreground">Alertar quando um item atinge o nível mínimo</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_stock_critical} onCheckedChange={v => setSettings(p => ({ ...p, notify_stock_critical: v }))} />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Bell className="h-4 w-4 text-purple-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Novo Usuário</p>
-                <p className="text-xs text-muted-foreground">Alertar quando um novo membro é adicionado</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_new_user} onCheckedChange={v => setSettings(p => ({ ...p, notify_new_user: v }))} />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                <ClipboardList className="h-4 w-4 text-cyan-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Manutenção Preventiva</p>
-                <p className="text-xs text-muted-foreground">Alertar sobre manutenções programadas próximas</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_maintenance} onCheckedChange={v => setSettings(p => ({ ...p, notify_maintenance: v }))} />
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Alerta de SLA</p>
-                <p className="text-xs text-muted-foreground">Alertar quando uma OS está próxima de estourar o SLA</p>
-              </div>
-            </div>
-            <Switch checked={settings.notify_sla_warning} onCheckedChange={v => setSettings(p => ({ ...p, notify_sla_warning: v }))} />
-          </div>
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center"><ClipboardList className="h-4 w-4 text-blue-500" /></div>}
+            title="OS Criada / Atribuída"
+            description="Alertar o canal quando uma nova OS é criada"
+            enabled={settings.notify_os_created}
+            onToggle={v => setSettings(p => ({ ...p, notify_os_created: v }))}
+            eventKey="os_created"
+            targetRoles={settings.target_roles.os_created || []}
+            onRolesChange={handleRolesChange}
+          />
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><ClipboardList className="h-4 w-4 text-amber-500" /></div>}
+            title="Mudança de Status"
+            description="Alertar sobre alterações de status de ordens de serviço"
+            enabled={settings.notify_os_status_changed}
+            onToggle={v => setSettings(p => ({ ...p, notify_os_status_changed: v }))}
+            eventKey="os_status_changed"
+            targetRoles={settings.target_roles.os_status_changed || []}
+            onRolesChange={handleRolesChange}
+          />
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center"><Package className="h-4 w-4 text-red-500" /></div>}
+            title="Estoque Crítico"
+            description="Alertar quando um item atinge o nível mínimo"
+            enabled={settings.notify_stock_critical}
+            onToggle={v => setSettings(p => ({ ...p, notify_stock_critical: v }))}
+            eventKey="stock_critical"
+            targetRoles={settings.target_roles.stock_critical || []}
+            onRolesChange={handleRolesChange}
+          />
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center"><Bell className="h-4 w-4 text-purple-500" /></div>}
+            title="Novo Usuário"
+            description="Alertar quando um novo membro é adicionado"
+            enabled={settings.notify_new_user}
+            onToggle={v => setSettings(p => ({ ...p, notify_new_user: v }))}
+            eventKey="new_user"
+            targetRoles={settings.target_roles.new_user || []}
+            onRolesChange={handleRolesChange}
+          />
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center"><ClipboardList className="h-4 w-4 text-cyan-500" /></div>}
+            title="Manutenção Preventiva"
+            description="Alertar sobre manutenções programadas próximas"
+            enabled={settings.notify_maintenance}
+            onToggle={v => setSettings(p => ({ ...p, notify_maintenance: v }))}
+            eventKey="maintenance"
+            targetRoles={settings.target_roles.maintenance || []}
+            onRolesChange={handleRolesChange}
+          />
+          <NotificationEventRow
+            icon={<div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center"><AlertTriangle className="h-4 w-4 text-orange-500" /></div>}
+            title="Alerta de SLA"
+            description="Alertar quando uma OS está próxima de estourar o SLA"
+            enabled={settings.notify_sla_warning}
+            onToggle={v => setSettings(p => ({ ...p, notify_sla_warning: v }))}
+            eventKey="sla_warning"
+            targetRoles={settings.target_roles.sla_warning || []}
+            onRolesChange={handleRolesChange}
+          />
         </CardContent>
       </Card>
 
