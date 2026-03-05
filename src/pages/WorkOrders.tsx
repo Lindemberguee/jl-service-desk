@@ -16,8 +16,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2, Printer, MapPin, Hash, User2, CalendarClock } from 'lucide-react';
+import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, ChevronLeft, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2, Printer, MapPin, Hash, User2, CalendarClock, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
