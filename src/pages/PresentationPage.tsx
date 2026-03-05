@@ -589,7 +589,7 @@ function SlideDiferenciais() {
     { title: 'Real-time nativo', desc: 'WebSocket em todos os módulos — dashboard, notificações, cronômetro de OS e canvas atualizam instantaneamente. Concorrentes usam polling ou refresh manual.', icon: Wifi, color: 'text-cyan-400' },
     { title: 'Multi-tenant por design', desc: 'Isolamento via Row Level Security no PostgreSQL, não por filtro de aplicação. Impossível acessar dados de outro departamento, mesmo com SQL injection.', icon: FolderLock, color: 'text-indigo-400' },
     { title: 'SLA inteligente', desc: 'Cronômetro com pausa automática por status, cálculo de atraso em tempo real e indicadores visuais integrados à listagem e ao dashboard.', icon: Timer, color: 'text-amber-400' },
-    { title: 'Plataforma completa', desc: '25+ módulos integrados numa única plataforma — OS, estoque, ativos, manutenção, KPIs, OKRs, documentos, canvas, cofre e muito mais.', icon: Layers, color: 'text-violet-400' },
+    { title: 'Plataforma completa', desc: '30+ módulos integrados numa única plataforma — OS, estoque, ativos, manutenção, KPIs, OKRs, integrações Teams/E-mail, documentos, canvas, cofre e muito mais.', icon: Layers, color: 'text-violet-400' },
     { title: 'Auditoria total', desc: 'Cada ação é registrada com diff, IP, user-agent e timestamp. Retenção configurável e dashboard analítico para compliance.', icon: History, color: 'text-emerald-400' },
     { title: 'White-Label ready', desc: 'Branding por tenant, temas personalizáveis, logo e cores próprios. Pronto para licenciamento e revenda como produto próprio.', icon: Palette, color: 'text-pink-400' },
   ];
