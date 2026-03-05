@@ -129,6 +129,10 @@ const modules: { icon: LucideIcon; title: string; gradient: string; desc: string
   { icon: ListChecks, title: 'Checklists', gradient: 'from-cyan-500 to-sky-500', desc: 'Templates reutilizáveis por categoria' },
   { icon: Palette, title: 'Temas', gradient: 'from-fuchsia-500 to-pink-500', desc: 'Personalização visual por usuário' },
   { icon: Network, title: 'API', gradient: 'from-violet-500 to-indigo-500', desc: 'REST documentada com chaves e logs' },
+  { icon: Plug, title: 'Integrações', gradient: 'from-sky-500 to-blue-500', desc: 'Teams, E-mail e SMTP configurável' },
+  { icon: Activity, title: 'Métricas', gradient: 'from-orange-500 to-red-500', desc: 'Logs de envios e analytics' },
+  { icon: Contact, title: 'Colaboradores', gradient: 'from-pink-500 to-rose-500', desc: 'Cadastro e vínculo a ativos' },
+  { icon: ClipboardList, title: 'Materiais', gradient: 'from-teal-500 to-emerald-500', desc: 'Controle mensal de entradas e saídas' },
 ];
 
 const screenshots = [
