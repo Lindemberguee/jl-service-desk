@@ -122,7 +122,7 @@ export default function WorkOrders() {
   const { data: profiles = [] } = useQuery({
     queryKey: ['profiles_list'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, name, email');
+      const { data } = await supabase.from('profiles').select('id, name, email, avatar_url');
       return data || [];
     },
   });
