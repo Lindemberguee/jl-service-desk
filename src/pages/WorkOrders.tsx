@@ -159,7 +159,18 @@ export default function WorkOrders() {
       }
       if (debouncedSearch) {
         const s = debouncedSearch.toLowerCase();
-        return wo.title?.toLowerCase().includes(s) || wo.code?.toLowerCase().includes(s);
+        const requesterName = (() => {
+          if (wo.requester_id) {
+            const c = customers.find((c: any) => c.id === wo.requester_id);
+            return c?.name?.toLowerCase() || '';
+          }
+          if (wo.requester_user_id) {
+            const p = profiles.find((p: any) => p.id === wo.requester_user_id);
+            return p?.name?.toLowerCase() || '';
+          }
+          return '';
+        })();
+        return wo.title?.toLowerCase().includes(s) || wo.code?.toLowerCase().includes(s) || requesterName.includes(s);
       }
       return true;
     });
