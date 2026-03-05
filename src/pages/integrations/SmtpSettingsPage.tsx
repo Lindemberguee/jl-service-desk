@@ -150,7 +150,9 @@ export default function SmtpSettingsPage() {
       .maybeSingle();
 
     if (data) {
-      setSettings(data as unknown as SmtpSettings);
+      const parsed = data as unknown as SmtpSettings;
+      parsed.target_roles = { ...defaultTargetRoles, ...(parsed.target_roles || {}) };
+      setSettings(parsed);
     } else {
       setSettings(prev => ({ ...prev, tenant_id: currentTenantId! }));
     }
