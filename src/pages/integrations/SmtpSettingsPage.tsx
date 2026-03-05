@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { NotificationEventRow } from '@/components/notifications/NotificationEventRow';
+import { Users, Wrench } from 'lucide-react';
 
 interface SmtpSettings {
   id?: string;
