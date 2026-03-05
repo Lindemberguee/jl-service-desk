@@ -4,7 +4,7 @@ import {
   ClipboardList, BarChart3, Package, Shield, Users, Wrench, Bell,
   Building2, FileText, Settings, Layers, UserCheck, Target, Workflow,
   StickyNote, AlarmClock, Boxes, History, MonitorSmartphone, Palette,
-  Network, Key, AlertTriangle, BookOpen, ListChecks, Lock, Eye,
+  Network, Key, AlertTriangle, BookOpen, ListChecks, Lock, Eye, Plug, Contact,
   Code2, Monitor, ChevronLeft, ChevronRight, Maximize, Minimize,
   Sparkles, Zap, CheckCircle2, Database, Globe, Cpu, Wifi, Timer,
   Gauge, ShieldCheck, Fingerprint, FolderLock, Activity, TrendingUp,
