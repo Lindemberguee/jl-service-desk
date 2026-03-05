@@ -50,25 +50,33 @@ function buildTestCard() {
   });
 }
 
-function buildOsCreatedCard(code: string, title: string) {
+function buildOsCreatedCard(code: string, title: string, description?: string, attachments?: { name: string; url: string }[]) {
+  const sections: any[] = [
+    factSection([
+      { title: 'Código', value: code || '—' },
+      { title: 'Título', value: title || '—' },
+      { title: 'Status', value: '🔵 Aberta' },
+      { title: 'Registrado em', value: nowBRT() },
+    ]),
+  ];
+
+  if (description) {
+    sections.push(descriptionBlock(description));
+  }
+  if (attachments && attachments.length > 0) {
+    sections.push(attachmentsBlock(attachments));
+  }
+
   return wrapCard({
     accentColor: COLORS.info,
     icon: '📋',
     title: 'Nova Ordem de Serviço',
     subtitle: `${code} foi criada e atribuída a um técnico`,
-    sections: [
-      factSection([
-        { title: 'Código', value: code || '—' },
-        { title: 'Título', value: title || '—' },
-        { title: 'Status', value: '🔵 Aberta' },
-        { title: 'Registrado em', value: nowBRT() },
-      ]),
-    ],
-    actions: [{ type: 'Action.OpenUrl', title: '📂 Ver OS no Sistema', url: '#' }],
+    sections,
   });
 }
 
-function buildOsStatusChangedCard(code: string, title: string, status: string) {
+function buildOsStatusChangedCard(code: string, title: string, status: string, description?: string, attachments?: { name: string; url: string }[]) {
   const statusIcons: Record<string, string> = {
     'Aberta': '🔵', 'Em Triagem': '🟡', 'Em Execução': '🟠', 'Aguardando Peça': '⏳',
     'Aguardando Solicitante': '⏳', 'Aguardando Terceiro': '⏳',
@@ -76,19 +84,28 @@ function buildOsStatusChangedCard(code: string, title: string, status: string) {
   };
   const icon = statusIcons[status] || '🔄';
 
+  const sections: any[] = [
+    factSection([
+      { title: 'Código', value: code || '—' },
+      { title: 'Título', value: title || '—' },
+      { title: 'Novo Status', value: `${icon} ${status}` },
+      { title: 'Atualizado em', value: nowBRT() },
+    ]),
+  ];
+
+  if (description) {
+    sections.push(descriptionBlock(description));
+  }
+  if (attachments && attachments.length > 0) {
+    sections.push(attachmentsBlock(attachments));
+  }
+
   return wrapCard({
     accentColor: COLORS.warning,
     icon: '🔄',
     title: 'Mudança de Status',
     subtitle: `OS ${code} teve o status atualizado`,
-    sections: [
-      factSection([
-        { title: 'Código', value: code || '—' },
-        { title: 'Título', value: title || '—' },
-        { title: 'Novo Status', value: `${icon} ${status}` },
-        { title: 'Atualizado em', value: nowBRT() },
-      ]),
-    ],
+    sections,
   });
 }
 
@@ -186,8 +203,40 @@ function factSection(facts: { title: string; value: string }[]) {
   };
 }
 
-function progressBar(pct: number) {
-  const filled = Math.min(Math.max(Math.round(pct / 5), 0), 20);
+function descriptionBlock(description: string) {
+  const truncated = description.length > 300 ? description.substring(0, 300) + '...' : description;
+  return {
+    type: 'Container',
+    separator: true,
+    spacing: 'Medium',
+    items: [
+      { type: 'TextBlock', text: '📝 **Descrição**', size: 'Small', weight: 'Bolder', spacing: 'None' },
+      { type: 'TextBlock', text: truncated, wrap: true, size: 'Small', isSubtle: true, spacing: 'Small' },
+    ],
+  };
+}
+
+function attachmentsBlock(attachments: { name: string; url: string }[]) {
+  const items: any[] = [
+    { type: 'TextBlock', text: `📎 **Anexos (${attachments.length})**`, size: 'Small', weight: 'Bolder', spacing: 'None' },
+  ];
+  for (const att of attachments.slice(0, 5)) {
+    items.push({
+      type: 'TextBlock',
+      text: `[${att.name}](${att.url})`,
+      size: 'Small',
+      wrap: true,
+      spacing: 'None',
+    });
+  }
+  if (attachments.length > 5) {
+    items.push({ type: 'TextBlock', text: `_...e mais ${attachments.length - 5} arquivo(s)_`, size: 'Small', isSubtle: true, spacing: 'None' });
+  }
+  return { type: 'Container', separator: true, spacing: 'Medium', items };
+}
+
+
+  function progressBar(pct: number) {
   const empty = 20 - filled;
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
   const color = pct >= 90 ? 'Attention' : pct >= 70 ? 'Warning' : 'Good';
@@ -348,7 +397,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { type, tenant_id, work_order_code, work_order_title, status_label, item_name, current_level, min_level,
+    const { type, tenant_id, work_order_code, work_order_title, work_order_description, status_label, item_name, current_level, min_level,
       user_name, user_email, role, asset_name, maintenance_title, scheduled_at, sla_type, pct_used } = body;
 
     if (!tenant_id) {
@@ -356,6 +405,23 @@ serve(async (req) => {
     }
 
     const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // Fetch attachments for OS notifications
+    let attachments: { name: string; url: string }[] = [];
+    if ((type === 'os_created' || type === 'os_status_changed') && body.work_order_id) {
+      try {
+        const { data: files } = await adminClient.storage.from('work-order-attachments').list(`${tenant_id}/${body.work_order_id}`);
+        if (files && files.length > 0) {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          attachments = files.map(f => ({
+            name: f.name,
+            url: `${supabaseUrl}/storage/v1/object/public/work-order-attachments/${tenant_id}/${body.work_order_id}/${f.name}`,
+          }));
+        }
+      } catch (e) {
+        console.warn('Could not fetch attachments:', e);
+      }
+    }
 
     const { data: settings, error: settingsError } = await adminClient.from('tenant_teams_settings').select('*').eq('tenant_id', tenant_id).single();
 
@@ -376,8 +442,8 @@ serve(async (req) => {
     let card: any;
     switch (type) {
       case 'test': card = buildTestCard(); break;
-      case 'os_created': card = buildOsCreatedCard(work_order_code || '', work_order_title || ''); break;
-      case 'os_status_changed': card = buildOsStatusChangedCard(work_order_code || '', work_order_title || '', status_label || ''); break;
+      case 'os_created': card = buildOsCreatedCard(work_order_code || '', work_order_title || '', work_order_description, attachments); break;
+      case 'os_status_changed': card = buildOsStatusChangedCard(work_order_code || '', work_order_title || '', status_label || '', work_order_description, attachments); break;
       case 'stock_critical': card = buildStockCriticalCard(item_name || '', current_level ?? 0, min_level ?? 0); break;
       case 'new_user': card = buildNewUserCard(user_name || '', user_email || '', role || ''); break;
       case 'maintenance': card = buildMaintenanceCard(asset_name || '', maintenance_title || '', scheduled_at || ''); break;
