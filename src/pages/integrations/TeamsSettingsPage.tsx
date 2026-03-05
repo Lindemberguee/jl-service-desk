@@ -263,6 +263,72 @@ export default function TeamsSettingsPage() {
             </div>
             <Switch checked={settings.notify_stock_critical} onCheckedChange={v => setSettings(p => ({ ...p, notify_stock_critical: v }))} />
           </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Novo Usuário</p>
+                <p className="text-xs text-muted-foreground">Alertar quando um novo membro é adicionado</p>
+              </div>
+            </div>
+            <Switch checked={settings.notify_new_user} onCheckedChange={v => setSettings(p => ({ ...p, notify_new_user: v }))} />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <ClipboardList className="h-4 w-4 text-cyan-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Manutenção Preventiva</p>
+                <p className="text-xs text-muted-foreground">Alertar sobre manutenções programadas próximas</p>
+              </div>
+            </div>
+            <Switch checked={settings.notify_maintenance} onCheckedChange={v => setSettings(p => ({ ...p, notify_maintenance: v }))} />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Alerta de SLA</p>
+                <p className="text-xs text-muted-foreground">Alertar quando uma OS está próxima de estourar o SLA</p>
+              </div>
+            </div>
+            <Switch checked={settings.notify_sla_warning} onCheckedChange={v => setSettings(p => ({ ...p, notify_sla_warning: v }))} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-event Channels */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Webhook className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm">Canais por Evento (Opcional)</CardTitle>
+          </div>
+          <CardDescription className="text-xs">
+            Configure webhooks diferentes para enviar tipos de evento a canais separados. Se vazio, usa o webhook principal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Canal de OS (criação, status, SLA)</Label>
+            <Input value={settings.webhook_url_os} onChange={e => setSettings(p => ({ ...p, webhook_url_os: e.target.value }))} placeholder="Vazio = usa webhook principal" className="font-mono text-xs" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Canal de Estoque</Label>
+            <Input value={settings.webhook_url_stock} onChange={e => setSettings(p => ({ ...p, webhook_url_stock: e.target.value }))} placeholder="Vazio = usa webhook principal" className="font-mono text-xs" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Canal de Manutenção</Label>
+            <Input value={settings.webhook_url_maintenance} onChange={e => setSettings(p => ({ ...p, webhook_url_maintenance: e.target.value }))} placeholder="Vazio = usa webhook principal" className="font-mono text-xs" />
+          </div>
         </CardContent>
       </Card>
 
