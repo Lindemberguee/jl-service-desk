@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
-import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2, Printer } from 'lucide-react';
+import { Search, Plus, X, Filter, ChevronRight, ChevronDown, ChevronUp, MoreHorizontal, ArrowUpDown, CalendarDays, AlertTriangle, Eye, UserCheck, Download, Play, Clock, ClipboardList, Building2, Printer, MapPin, Hash, User2, CalendarClock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SlaIndicator } from '@/components/SlaIndicator';
@@ -651,195 +653,277 @@ export default function WorkOrders() {
         </div>
       ) : (
         /* Desktop: Table */
-        <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40 bg-muted/20">
-                  {canUpdate && (
-                    <th className="w-10 px-3 py-2.5" onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
-                    </th>
-                  )}
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap">
-                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('code')}>
-                      Código <SortIcon field="code" />
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5 text-left">
-                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('title')}>
-                      Título <SortIcon field="title" />
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden md:table-cell">
-                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none" onClick={() => handleSort('priority')}>
-                      Prioridade / Status <SortIcon field="priority" />
-                    </button>
-                  </th>
-                  {memberships.length > 1 && (
-                    <th className="px-3 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">
-                      <span className="text-[11px] font-semibold uppercase text-muted-foreground">Depto</span>
-                    </th>
-                  )}
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">
-                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Responsável</span>
-                  </th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden xl:table-cell">
-                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Solicitante</span>
-                  </th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap hidden md:table-cell">
-                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">SLA</span>
-                  </th>
-                  <th className="px-3 py-2.5 text-right whitespace-nowrap hidden sm:table-cell">
-                    <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none ml-auto" onClick={() => handleSort('updated_at')}>
-                      Atualizada <SortIcon field="updated_at" />
-                    </button>
-                  </th>
-                  <th className="w-10 px-2 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {paginatedData.map((wo: any) => (
-                  <tr
-                    key={wo.id}
-                    className="cursor-pointer hover:bg-muted/30 transition-colors group"
-                    onClick={() => navigate(`/os/${wo.id}`)}
-                  >
+        <TooltipProvider delayDuration={200}>
+          <div className="bg-card rounded-xl shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/40">
                     {canUpdate && (
-                      <td className="px-3 py-2.5 w-10" onClick={e => e.stopPropagation()}>
-                        <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
-                      </td>
+                      <TableHead className="w-10 px-3" onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.size === paginatedData.length && paginatedData.length > 0} onCheckedChange={toggleAll} />
+                      </TableHead>
                     )}
-
-                    {/* Code */}
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className="font-mono text-xs text-muted-foreground">{wo.code}</span>
-                    </td>
-
-                    {/* Title */}
-                    <td className="px-3 py-2.5 max-w-[220px]">
-                      <p className="text-sm font-medium truncate">{wo.title}</p>
-                      {/* Mobile fallback badges */}
-                      <div className="flex items-center gap-1.5 mt-1 md:hidden flex-wrap">
-                        <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
-                          {priorityLabels[wo.priority]}
-                        </Badge>
-                        <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
-                          {statusLabels[wo.status]}
-                        </Badge>
-                        <SlaIndicator workOrder={wo} compact />
-                      </div>
-                    </td>
-
-                    {/* Priority + Status */}
-                    <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
-                          {priorityLabels[wo.priority]}
-                        </Badge>
-                        <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
-                          {statusLabels[wo.status]}
-                        </Badge>
-                      </div>
-                    </td>
-
-                    {/* Depto */}
+                    <TableHead className="px-3 w-[100px]">
+                      <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none tracking-wider" onClick={() => handleSort('code')}>
+                        <Hash className="h-3 w-3 mr-1 opacity-50" />
+                        Código <SortIcon field="code" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="px-3 min-w-[200px]">
+                      <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none tracking-wider" onClick={() => handleSort('title')}>
+                        Título <SortIcon field="title" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="px-3 whitespace-nowrap hidden md:table-cell">
+                      <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none tracking-wider" onClick={() => handleSort('priority')}>
+                        Prioridade <SortIcon field="priority" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="px-3 whitespace-nowrap hidden md:table-cell">
+                      <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none tracking-wider" onClick={() => handleSort('status')}>
+                        Status <SortIcon field="status" />
+                      </button>
+                    </TableHead>
                     {memberships.length > 1 && (
-                      <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
-                        <span className="text-xs text-muted-foreground">{tenantMap[wo.tenant_id] || '—'}</span>
-                      </td>
+                      <TableHead className="px-3 whitespace-nowrap hidden lg:table-cell">
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">Depto</span>
+                      </TableHead>
                     )}
+                    <TableHead className="px-3 whitespace-nowrap hidden lg:table-cell">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">Responsável</span>
+                    </TableHead>
+                    <TableHead className="px-3 whitespace-nowrap hidden xl:table-cell">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">Solicitante</span>
+                    </TableHead>
+                    <TableHead className="px-3 whitespace-nowrap hidden xl:table-cell">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">Local</span>
+                    </TableHead>
+                    <TableHead className="px-3 whitespace-nowrap hidden md:table-cell">
+                      <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">SLA</span>
+                    </TableHead>
+                    <TableHead className="px-3 text-right whitespace-nowrap hidden sm:table-cell">
+                      <button className="inline-flex items-center text-[11px] font-semibold uppercase text-muted-foreground select-none ml-auto tracking-wider" onClick={() => handleSort('updated_at')}>
+                        Atualizada <SortIcon field="updated_at" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-10 px-2" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((wo: any) => {
+                    const sla = calculateSlaStatus(wo);
+                    const isOverdue = sla.responseOverdue || sla.resolveOverdue;
+                    const unitName = getUnitName(wo.unit_id);
+                    const locationName = getLocationName(wo.location_id);
+                    const locationDisplay = [unitName, locationName].filter(Boolean).join(' › ') || '—';
 
-                    {/* Responsável */}
-                    <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell" onClick={e => e.stopPropagation()}>
-                      {canAssign ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors hover:bg-accent whitespace-nowrap ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-                              <UserCheck className="h-3 w-3 shrink-0" />
-                              <span className="max-w-[80px] truncate">{getAssignedName(wo.assigned_to_id)}</span>
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
-                            <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                              <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
-                            </DropdownMenuItem>
-                            {wo.assigned_to_id && (
-                              <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
-                                <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover
-                              </DropdownMenuItem>
+                    return (
+                      <TableRow
+                        key={wo.id}
+                        className={`cursor-pointer group transition-colors ${
+                          isOverdue ? 'bg-destructive/[0.02] hover:bg-destructive/[0.05]' : 'hover:bg-muted/40'
+                        } ${selectedIds.has(wo.id) ? 'bg-primary/[0.04]' : ''}`}
+                        onClick={() => navigate(`/os/${wo.id}`)}
+                      >
+                        {canUpdate && (
+                          <TableCell className="px-3 w-10" onClick={e => e.stopPropagation()}>
+                            <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={() => toggleSelect(wo.id)} />
+                          </TableCell>
+                        )}
+
+                        {/* Code */}
+                        <TableCell className="px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {isOverdue && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0 animate-pulse" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs">SLA ultrapassado</TooltipContent>
+                              </Tooltip>
                             )}
-                            <DropdownMenuSeparator />
-                            {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
-                              <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
-                                {p.name}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : (
-                        <span className="text-xs text-muted-foreground" onClick={() => navigate(`/os/${wo.id}`)}>
-                          {getAssignedName(wo.assigned_to_id)}
-                        </span>
-                      )}
-                    </td>
+                            <span className="font-mono text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{wo.code}</span>
+                          </div>
+                        </TableCell>
 
-                    {/* Solicitante */}
-                    <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell">
-                      <span className="text-xs text-muted-foreground max-w-[90px] truncate block">{getRequesterName(wo)}</span>
-                    </td>
+                        {/* Title */}
+                        <TableCell className="px-3 max-w-[280px]">
+                          <p className="text-sm font-medium truncate leading-tight">{wo.title}</p>
+                          <div className="flex items-center gap-1.5 mt-1 md:hidden flex-wrap">
+                            <Badge variant="outline" className={`text-[10px] h-5 ${priorityColors[wo.priority]}`}>
+                              {priorityLabels[wo.priority]}
+                            </Badge>
+                            <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                              {statusLabels[wo.status]}
+                            </Badge>
+                            <SlaIndicator workOrder={wo} compact />
+                          </div>
+                        </TableCell>
 
-                    {/* SLA */}
-                    <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell">
-                      <SlaIndicator workOrder={wo} compact />
-                    </td>
+                        {/* Priority */}
+                        <TableCell className="px-3 whitespace-nowrap hidden md:table-cell">
+                          <Badge variant="outline" className={`text-[10px] h-5 font-semibold ${priorityColors[wo.priority]}`}>
+                            {priorityLabels[wo.priority]}
+                          </Badge>
+                        </TableCell>
 
-                    {/* Date */}
-                    <td className="px-3 py-2.5 whitespace-nowrap text-right hidden sm:table-cell">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    </td>
+                        {/* Status - inline editable */}
+                        <TableCell className="px-3 whitespace-nowrap hidden md:table-cell">
+                          {canUpdate ? (
+                            <div onClick={e => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="inline-flex">
+                                    <Badge variant="outline" className={`text-[10px] h-5 cursor-pointer hover:ring-1 hover:ring-ring/30 transition-shadow ${statusColors[wo.status]}`}>
+                                      {statusLabels[wo.status]}
+                                    </Badge>
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-44">
+                                  {Object.entries(statusLabels).filter(([k]) => k !== wo.status).map(([k, v]) => (
+                                    <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
+                                      <Badge variant="outline" className={`text-[10px] h-5 mr-2 ${statusColors[k]}`}>•</Badge>
+                                      {v}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[wo.status]}`}>
+                              {statusLabels[wo.status]}
+                            </Badge>
+                          )}
+                        </TableCell>
 
-                    {/* Actions */}
-                    <td className="px-2 py-2.5 w-10" onClick={e => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
-                            <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
-                          </DropdownMenuItem>
-                          {canUpdate && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {canAssign && (
-                                <>
-                                  <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
-                                    <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
+                        {/* Depto */}
+                        {memberships.length > 1 && (
+                          <TableCell className="px-3 whitespace-nowrap hidden lg:table-cell">
+                            <div className="flex items-center gap-1.5">
+                              <Building2 className="h-3 w-3 text-muted-foreground/50" />
+                              <span className="text-xs text-muted-foreground">{tenantMap[wo.tenant_id] || '—'}</span>
+                            </div>
+                          </TableCell>
+                        )}
+
+                        {/* Responsável */}
+                        <TableCell className="px-3 whitespace-nowrap hidden lg:table-cell" onClick={e => e.stopPropagation()}>
+                          {canAssign ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-all hover:bg-accent/50 ${wo.assigned_to_id ? 'text-foreground font-medium' : 'text-muted-foreground/60 italic'}`}>
+                                  <User2 className="h-3 w-3 shrink-0" />
+                                  <span className="max-w-[100px] truncate">{getAssignedName(wo.assigned_to_id)}</span>
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-52 max-h-64 overflow-y-auto">
+                                <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                                  <UserCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Para mim
+                                </DropdownMenuItem>
+                                {wo.assigned_to_id && (
+                                  <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: null })}>
+                                    <X className="h-3.5 w-3.5 mr-2 text-destructive" /> Remover
                                   </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {profiles.filter((p: any) => p.id !== user?.id && p.id !== wo.assigned_to_id).map((p: any) => (
+                                  <DropdownMenuItem key={p.id} onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: p.id })}>
+                                    {p.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <User2 className="h-3 w-3 text-muted-foreground/50" />
+                              <span className="text-xs text-muted-foreground">{getAssignedName(wo.assigned_to_id)}</span>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        {/* Solicitante */}
+                        <TableCell className="px-3 whitespace-nowrap hidden xl:table-cell">
+                          <span className="text-xs text-muted-foreground max-w-[100px] truncate block">{getRequesterName(wo)}</span>
+                        </TableCell>
+
+                        {/* Local */}
+                        <TableCell className="px-3 whitespace-nowrap hidden xl:table-cell">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 max-w-[120px]">
+                                <MapPin className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                <span className="text-xs text-muted-foreground truncate">{locationDisplay}</span>
+                              </div>
+                            </TooltipTrigger>
+                            {locationDisplay !== '—' && (
+                              <TooltipContent side="left" className="text-xs">{locationDisplay}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TableCell>
+
+                        {/* SLA */}
+                        <TableCell className="px-3 whitespace-nowrap hidden md:table-cell">
+                          <SlaIndicator workOrder={wo} compact />
+                        </TableCell>
+
+                        {/* Date */}
+                        <TableCell className="px-3 whitespace-nowrap text-right hidden sm:table-cell">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(wo.updated_at).toLocaleDateString('pt-BR')}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="text-xs">
+                              Criada: {new Date(wo.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              <br />
+                              Atualizada: {new Date(wo.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="px-2 w-10" onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => navigate(`/os/${wo.id}`)}>
+                                <Eye className="h-3.5 w-3.5 mr-2" /> Ver detalhes
+                              </DropdownMenuItem>
+                              {canUpdate && (
+                                <>
                                   <DropdownMenuSeparator />
+                                  {canAssign && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => assignMutation.mutate({ ids: [wo.id], assignedToId: user?.id || null })}>
+                                        <UserCheck className="h-3.5 w-3.5 mr-2" /> Atribuir para mim
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
+                                  )}
+                                  {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
+                                    <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
+                                      → {v}
+                                    </DropdownMenuItem>
+                                  ))}
                                 </>
                               )}
-                              {Object.entries(statusLabels).filter(([k]) => k !== wo.status).slice(0, 4).map(([k, v]) => (
-                                <DropdownMenuItem key={k} onClick={() => statusMutation.mutate({ id: wo.id, status: k })}>
-                                  → {v}
-                                </DropdownMenuItem>
-                              ))}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
+        </TooltipProvider>
       )}
 
       {/* Pagination */}
