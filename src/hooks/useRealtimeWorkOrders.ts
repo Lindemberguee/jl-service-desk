@@ -5,6 +5,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { statusLabels } from '@/lib/permissions';
 
+const RECENT_TOAST_WINDOW_MS = 4000;
+const recentToastKeys = new Map<string, number>();
+
+function shouldEmitToast(key: string) {
+  const now = Date.now();
+
+  for (const [cachedKey, timestamp] of recentToastKeys.entries()) {
+    if (now - timestamp > RECENT_TOAST_WINDOW_MS) {
+      recentToastKeys.delete(cachedKey);
+    }
+  }
+
+  if (recentToastKeys.has(key)) return false;
+
+  recentToastKeys.set(key, now);
+  return true;
+}
+
 export function useRealtimeWorkOrders() {
   const { currentTenantId, memberships, user } = useAuth();
   const qc = useQueryClient();
@@ -12,8 +30,10 @@ export function useRealtimeWorkOrders() {
   useEffect(() => {
     if (!currentTenantId) return;
 
-    // Subscribe to all tenants the user belongs to (important for solicitantes with multi-dept access)
-    const tenantIds = memberships.map(m => m.tenant_id);
+    // Subscribe once per unique tenant to avoid duplicate realtime events
+    const tenantIds = Array.from(new Set(memberships.map((m) => m.tenant_id).filter(Boolean)));
+    if (tenantIds.length === 0) return;
+
     const channels: ReturnType<typeof supabase.channel>[] = [];
 
     for (const tenantId of tenantIds) {
@@ -35,19 +55,25 @@ export function useRealtimeWorkOrders() {
 
             // Status change notification
             if (oldRow?.status && newRow?.status && oldRow.status !== newRow.status) {
-              toast({
-                title: `${code} — Status alterado`,
-                description: `${title}: ${statusLabels[oldRow.status] || oldRow.status} → ${statusLabels[newRow.status] || newRow.status}`,
-              });
+              const statusToastKey = `wo-status:${newRow?.id}:${newRow?.status}:${tenantId}`;
+              if (shouldEmitToast(statusToastKey)) {
+                toast({
+                  title: `${code} — Status alterado`,
+                  description: `${title}: ${statusLabels[oldRow.status] || oldRow.status} → ${statusLabels[newRow.status] || newRow.status}`,
+                });
+              }
             }
 
             // Assignment notification — only notify the assigned user
             if (oldRow?.assigned_to_id !== newRow?.assigned_to_id && newRow?.assigned_to_id === user?.id) {
-              toast({
-                title: `${code} — Atribuída a você`,
-                description: title,
-                variant: 'default',
-              });
+              const assignmentToastKey = `wo-assigned:${newRow?.id}:${newRow?.assigned_to_id}:${tenantId}`;
+              if (shouldEmitToast(assignmentToastKey)) {
+                toast({
+                  title: `${code} — Atribuída a você`,
+                  description: title,
+                  variant: 'default',
+                });
+              }
             }
 
             // Invalidate all relevant queries
@@ -68,17 +94,24 @@ export function useRealtimeWorkOrders() {
           (payload) => {
             const newRow = payload.new as any;
             const code = newRow?.code || '';
-            toast({
-              title: 'Nova OS criada',
-              description: `${code} — ${newRow?.title || ''}`,
-            });
+
+            const insertToastKey = `wo-created:${newRow?.id}:${tenantId}`;
+            if (shouldEmitToast(insertToastKey)) {
+              toast({
+                title: 'Nova OS criada',
+                description: `${code} — ${newRow?.title || ''}`,
+              });
+            }
 
             // If assigned to current user on creation
             if (newRow?.assigned_to_id === user?.id) {
-              toast({
-                title: `${code} — Atribuída a você`,
-                description: newRow?.title || '',
-              });
+              const assignedOnCreateKey = `wo-created-assigned:${newRow?.id}:${newRow?.assigned_to_id}:${tenantId}`;
+              if (shouldEmitToast(assignedOnCreateKey)) {
+                toast({
+                  title: `${code} — Atribuída a você`,
+                  description: newRow?.title || '',
+                });
+              }
             }
 
             qc.invalidateQueries({ queryKey: ['work_orders'] });
@@ -92,7 +125,7 @@ export function useRealtimeWorkOrders() {
     }
 
     return () => {
-      channels.forEach(ch => supabase.removeChannel(ch));
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [currentTenantId, memberships, qc, user]);
+  }, [currentTenantId, memberships, qc, user?.id]);
 }
