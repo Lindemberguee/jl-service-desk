@@ -690,7 +690,7 @@ function SlideRoadmap() {
     {
       period: 'Q1 2026',
       status: 'done',
-      items: ['25+ módulos core', 'Multi-tenant com RLS', 'KPIs & OKRs', 'Canvas colaborativo', 'Cofre digital'],
+      items: ['30+ módulos core', 'Multi-tenant com RLS', 'KPIs & OKRs', 'Canvas colaborativo', 'Cofre digital', 'Integrações Teams/E-mail'],
     },
     {
       period: 'Q2 2026',
