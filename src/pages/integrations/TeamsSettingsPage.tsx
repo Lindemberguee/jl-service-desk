@@ -84,7 +84,9 @@ export default function TeamsSettingsPage() {
       .maybeSingle();
 
     if (data) {
-      setSettings(data as unknown as TeamsSettings);
+      const parsed = data as unknown as TeamsSettings;
+      parsed.target_roles = { ...defaultTargetRoles, ...(parsed.target_roles || {}) };
+      setSettings(parsed);
     } else {
       setSettings(prev => ({ ...prev, tenant_id: currentTenantId! }));
     }
