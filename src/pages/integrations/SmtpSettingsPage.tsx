@@ -101,6 +101,15 @@ export default function SmtpSettingsPage() {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const defaultTargetRoles: Record<string, string[]> = {
+    os_created: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    os_status_changed: ['super_admin', 'admin', 'coordenador', 'tecnico', 'solicitante'],
+    stock_critical: ['super_admin', 'admin', 'coordenador', 'analista'],
+    new_user: ['super_admin', 'admin'],
+    maintenance: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    sla_warning: ['super_admin', 'admin', 'coordenador'],
+  };
+
   const [settings, setSettings] = useState<SmtpSettings>({
     tenant_id: currentTenantId || '',
     smtp_host: '',
@@ -117,7 +126,15 @@ export default function SmtpSettingsPage() {
     notify_new_user: false,
     notify_maintenance: false,
     notify_sla_warning: false,
+    target_roles: defaultTargetRoles,
   });
+
+  const handleRolesChange = (eventKey: string, roles: string[]) => {
+    setSettings(p => ({
+      ...p,
+      target_roles: { ...p.target_roles, [eventKey]: roles },
+    }));
+  };
 
   useEffect(() => {
     if (!currentTenantId) return;
