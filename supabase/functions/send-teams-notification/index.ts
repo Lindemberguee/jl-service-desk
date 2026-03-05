@@ -442,8 +442,8 @@ serve(async (req) => {
     let card: any;
     switch (type) {
       case 'test': card = buildTestCard(); break;
-      case 'os_created': card = buildOsCreatedCard(work_order_code || '', work_order_title || ''); break;
-      case 'os_status_changed': card = buildOsStatusChangedCard(work_order_code || '', work_order_title || '', status_label || ''); break;
+      case 'os_created': card = buildOsCreatedCard(work_order_code || '', work_order_title || '', work_order_description, attachments); break;
+      case 'os_status_changed': card = buildOsStatusChangedCard(work_order_code || '', work_order_title || '', status_label || '', work_order_description, attachments); break;
       case 'stock_critical': card = buildStockCriticalCard(item_name || '', current_level ?? 0, min_level ?? 0); break;
       case 'new_user': card = buildNewUserCard(user_name || '', user_email || '', role || ''); break;
       case 'maintenance': card = buildMaintenanceCard(asset_name || '', maintenance_title || '', scheduled_at || ''); break;
