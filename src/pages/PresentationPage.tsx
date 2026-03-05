@@ -4,7 +4,7 @@ import {
   ClipboardList, BarChart3, Package, Shield, Users, Wrench, Bell,
   Building2, FileText, Settings, Layers, UserCheck, Target, Workflow,
   StickyNote, AlarmClock, Boxes, History, MonitorSmartphone, Palette,
-  Network, Key, AlertTriangle, BookOpen, ListChecks, Lock, Eye,
+  Network, Key, AlertTriangle, BookOpen, ListChecks, Lock, Eye, Plug, Contact,
   Code2, Monitor, ChevronLeft, ChevronRight, Maximize, Minimize,
   Sparkles, Zap, CheckCircle2, Database, Globe, Cpu, Wifi, Timer,
   Gauge, ShieldCheck, Fingerprint, FolderLock, Activity, TrendingUp,
@@ -102,6 +102,10 @@ const modules: { icon: LucideIcon; title: string; gradient: string; desc: string
   { icon: Palette, title: 'Temas', gradient: 'from-fuchsia-500 to-pink-500', desc: 'Personalização visual' },
   { icon: Network, title: 'API REST', gradient: 'from-violet-500 to-indigo-500', desc: 'Documentada com chaves' },
   { icon: Settings, title: 'Admin', gradient: 'from-gray-500 to-slate-500', desc: 'Configurações globais' },
+  { icon: Plug, title: 'Integrações', gradient: 'from-sky-500 to-blue-500', desc: 'Teams, E-mail, SMTP' },
+  { icon: Activity, title: 'Métricas Notificações', gradient: 'from-orange-500 to-red-500', desc: 'Logs e analytics' },
+  { icon: Contact, title: 'Colaboradores', gradient: 'from-pink-500 to-rose-500', desc: 'Cadastro e vínculo' },
+  { icon: ClipboardList, title: 'Controle de Materiais', gradient: 'from-teal-500 to-emerald-500', desc: 'Entradas e saídas mensais' },
 ];
 
 const roles = [
@@ -166,7 +170,7 @@ function SlideModules() {
     <div className="flex flex-col items-center justify-center h-full px-8">
       <GlowOrb color="rgba(6,182,212,0.08)" x="60%" y="10%" size={500} />
       <GlowOrb color="rgba(139,92,246,0.06)" x="20%" y="70%" size={400} delay={2} />
-      <SlideTitle icon={Layers} iconColor="from-cyan-500 to-blue-500" title="" highlight="25+ Módulos" subtitle="Cada módulo é independente e pode ser ativado por plano de assinatura" />
+      <SlideTitle icon={Layers} iconColor="from-cyan-500 to-blue-500" title="" highlight="30+ Módulos" subtitle="Cada módulo é independente e pode ser ativado por plano de assinatura" />
       <motion.div
         className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-w-5xl"
         initial={{ opacity: 0 }}
@@ -523,7 +527,7 @@ function SlideFeatures() {
       title: 'Comunicação',
       icon: Wifi,
       color: 'text-violet-400',
-      items: ['Notificações real-time', 'WebSocket (push)', 'Alertas sonoros', 'Timeline de atividades'],
+      items: ['Notificações real-time', 'WebSocket (push)', 'Integração Teams/E-mail', 'Métricas de envios'],
     },
     {
       title: 'Produtividade',
@@ -585,7 +589,7 @@ function SlideDiferenciais() {
     { title: 'Real-time nativo', desc: 'WebSocket em todos os módulos — dashboard, notificações, cronômetro de OS e canvas atualizam instantaneamente. Concorrentes usam polling ou refresh manual.', icon: Wifi, color: 'text-cyan-400' },
     { title: 'Multi-tenant por design', desc: 'Isolamento via Row Level Security no PostgreSQL, não por filtro de aplicação. Impossível acessar dados de outro departamento, mesmo com SQL injection.', icon: FolderLock, color: 'text-indigo-400' },
     { title: 'SLA inteligente', desc: 'Cronômetro com pausa automática por status, cálculo de atraso em tempo real e indicadores visuais integrados à listagem e ao dashboard.', icon: Timer, color: 'text-amber-400' },
-    { title: 'Plataforma completa', desc: '25+ módulos integrados numa única plataforma — OS, estoque, ativos, manutenção, KPIs, OKRs, documentos, canvas, cofre e muito mais.', icon: Layers, color: 'text-violet-400' },
+    { title: 'Plataforma completa', desc: '30+ módulos integrados numa única plataforma — OS, estoque, ativos, manutenção, KPIs, OKRs, integrações Teams/E-mail, documentos, canvas, cofre e muito mais.', icon: Layers, color: 'text-violet-400' },
     { title: 'Auditoria total', desc: 'Cada ação é registrada com diff, IP, user-agent e timestamp. Retenção configurável e dashboard analítico para compliance.', icon: History, color: 'text-emerald-400' },
     { title: 'White-Label ready', desc: 'Branding por tenant, temas personalizáveis, logo e cores próprios. Pronto para licenciamento e revenda como produto próprio.', icon: Palette, color: 'text-pink-400' },
   ];
@@ -686,7 +690,7 @@ function SlideRoadmap() {
     {
       period: 'Q1 2026',
       status: 'done',
-      items: ['25+ módulos core', 'Multi-tenant com RLS', 'KPIs & OKRs', 'Canvas colaborativo', 'Cofre digital'],
+      items: ['30+ módulos core', 'Multi-tenant com RLS', 'KPIs & OKRs', 'Canvas colaborativo', 'Cofre digital', 'Integrações Teams/E-mail'],
     },
     {
       period: 'Q2 2026',

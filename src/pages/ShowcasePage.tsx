@@ -9,7 +9,7 @@ import {
   Building2, FileText, Settings, Layers, UserCheck,
   StickyNote, AlarmClock, Workflow, Target, Sparkles,
   Monitor, Boxes, History, MonitorSmartphone, Palette,
-  Network, Key, AlertTriangle, BookOpen, ListChecks,
+  Network, Key, AlertTriangle, BookOpen, ListChecks, Plug, Contact, Activity,
   Code2, ShoppingCart, Briefcase, ArrowUpRight, ChevronLeft as ChevronLeftIcon, MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
@@ -129,6 +129,10 @@ const modules: { icon: LucideIcon; title: string; gradient: string; desc: string
   { icon: ListChecks, title: 'Checklists', gradient: 'from-cyan-500 to-sky-500', desc: 'Templates reutilizáveis por categoria' },
   { icon: Palette, title: 'Temas', gradient: 'from-fuchsia-500 to-pink-500', desc: 'Personalização visual por usuário' },
   { icon: Network, title: 'API', gradient: 'from-violet-500 to-indigo-500', desc: 'REST documentada com chaves e logs' },
+  { icon: Plug, title: 'Integrações', gradient: 'from-sky-500 to-blue-500', desc: 'Teams, E-mail e SMTP configurável' },
+  { icon: Activity, title: 'Métricas', gradient: 'from-orange-500 to-red-500', desc: 'Logs de envios e analytics' },
+  { icon: Contact, title: 'Colaboradores', gradient: 'from-pink-500 to-rose-500', desc: 'Cadastro e vínculo a ativos' },
+  { icon: ClipboardList, title: 'Materiais', gradient: 'from-teal-500 to-emerald-500', desc: 'Controle mensal de entradas e saídas' },
 ];
 
 const screenshots = [
@@ -148,7 +152,7 @@ const plans = [
   },
   {
     name: 'Professional', price: 'R$ 799', period: '/mês', users: '20 usuários', popular: true,
-    features: ['Tudo do Starter +', 'KPIs & OKRs', 'Manutenção preventiva', 'Relatórios avançados', 'Documentos & Biblioteca', 'Base de Conhecimento', 'Checklists', 'API & Integrações', 'Painel do Técnico', 'Suporte prioritário'],
+    features: ['Tudo do Starter +', 'KPIs & OKRs', 'Manutenção preventiva', 'Relatórios avançados', 'Documentos & Biblioteca', 'Base de Conhecimento', 'Checklists', 'Integrações Teams/E-mail', 'API REST', 'Painel do Técnico', 'Suporte prioritário'],
   },
   {
     name: 'Enterprise', price: 'R$ 1.999', period: '/mês', users: 'Ilimitado', popular: false,
@@ -287,8 +291,8 @@ export default function ShowcasePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25 }}
           >
-            25+ módulos integrados para ordens de serviço, manutenção, estoque, ativos,
-            KPIs, auditoria e muito mais.
+            30+ módulos integrados para ordens de serviço, manutenção, estoque, ativos,
+            KPIs, integrações Teams/E-mail, auditoria e muito mais.
           </motion.p>
 
           <motion.div
@@ -317,7 +321,7 @@ export default function ShowcasePage() {
             transition={{ delay: 0.6 }}
           >
             {[
-              { value: 25, suffix: '+', label: 'Módulos' },
+              { value: 30, suffix: '+', label: 'Módulos' },
               { value: 7, suffix: '', label: 'Perfis de Acesso' },
               { value: 100, suffix: '%', label: 'Tempo Real' },
               { value: 99, suffix: '.9%', label: 'Uptime' },
@@ -348,7 +352,7 @@ export default function ShowcasePage() {
         <div className="max-w-7xl mx-auto px-6 w-full">
           <div className="text-center mb-10">
             <Badge className="mb-4 bg-blue-500/[0.08] text-blue-400 border-blue-500/20 rounded-full text-xs px-4 py-1.5">
-              <Layers className="h-3 w-3 mr-1.5" /> 25+ Módulos
+              <Layers className="h-3 w-3 mr-1.5" /> 30+ Módulos
             </Badge>
             <h2 className="gsap-heading text-3xl md:text-5xl font-bold tracking-tight mt-4">
               Tudo que sua operação{' '}
@@ -718,7 +722,7 @@ export default function ShowcasePage() {
             <h4 className="text-sm font-semibold text-white mb-5">O que está incluso no código-fonte</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                '25+ módulos frontend',
+                '30+ módulos frontend',
                 'Edge Functions backend',
                 'Multi-tenancy completo',
                 'RBAC com 7 perfis',
@@ -730,6 +734,8 @@ export default function ShowcasePage() {
                 'Painel Master Admin',
                 'Portal do Solicitante',
                 'Canvas colaborativo',
+                'Integrações Teams/E-mail',
+                'Métricas de notificações',
               ].map(item => (
                 <div key={item} className="flex items-start gap-2 text-[12px] text-slate-400">
                   <CheckCircle2 className="h-3.5 w-3.5 text-violet-400/60 shrink-0 mt-0.5" />
