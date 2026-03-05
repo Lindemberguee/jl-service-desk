@@ -397,7 +397,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { type, tenant_id, work_order_code, work_order_title, status_label, item_name, current_level, min_level,
+    const { type, tenant_id, work_order_code, work_order_title, work_order_description, status_label, item_name, current_level, min_level,
       user_name, user_email, role, asset_name, maintenance_title, scheduled_at, sla_type, pct_used } = body;
 
     if (!tenant_id) {
