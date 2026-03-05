@@ -81,6 +81,10 @@ const toolsItems: MenuItem[] = [
   { label: 'Lembretes', icon: Bell, path: '/ferramentas/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
 ];
 
+const integrationItems: MenuItem[] = [
+  { label: 'Integrações', icon: Plug, path: '/integracoes', permission: 'integrations:manage', moduleKey: 'os' },
+];
+
 const adminItems = [
   { label: 'Painel Consolidado', icon: Gauge, path: '/admin' },
   { label: 'Departamentos', icon: Building2, path: '/admin/departamentos' },
