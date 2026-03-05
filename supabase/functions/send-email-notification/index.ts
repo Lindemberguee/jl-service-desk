@@ -4,7 +4,7 @@ import nodemailer from "npm:nodemailer@6.9.9";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-trigger',
 };
 
 serve(async (req) => {
@@ -13,25 +13,34 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    }
+    const isInternalTrigger = req.headers.get('x-internal-trigger') === 'true';
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    // For frontend calls, validate user auth
+    if (!isInternalTrigger) {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+      }
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const token = authHeader.replace('Bearer ', '');
+      const { error: claimsError } = await supabase.auth.getClaims(token);
+      if (claimsError) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+      }
     }
 
     const body = await req.json();
     const { type, tenant_id, to_email, subject, html_body, work_order_code, work_order_title, status_label, item_name, current_level, min_level } = body;
+
+    if (!tenant_id) {
+      return new Response(JSON.stringify({ success: false, error: 'tenant_id is required' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -72,7 +81,7 @@ serve(async (req) => {
             <p style="color:#94a3b8;font-size:12px;margin-top:12px;">Host: ${smtp.smtp_host}:${smtp.smtp_port} | TLS: ${smtp.use_tls ? 'Sim' : 'Não'}</p>
           </div>
         </div>`;
-      recipientEmail = smtp.smtp_from_email;
+      recipientEmail = smtp.smtp_user;
     } else if (type === 'os_created') {
       emailSubject = `📋 Nova OS: ${work_order_code} — ${work_order_title}`;
       emailHtml = `
@@ -125,7 +134,6 @@ serve(async (req) => {
       },
     });
 
-    // Hostinger and many SMTP providers require the "from" address to match the authenticated user
     const fromEmail = smtp.smtp_from_email || smtp.smtp_user;
     const fromName = smtp.smtp_from_name || 'Sistema';
 
@@ -136,6 +144,8 @@ serve(async (req) => {
       subject: emailSubject,
       html: emailHtml,
     });
+
+    console.log(`Email sent: type=${type}, to=${recipientEmail}`);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
