@@ -11,7 +11,7 @@ import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
   Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target, Key, Trash2,
-  Lock,
+  Lock, Plug,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
@@ -179,6 +179,13 @@ const permissionGroups: PermissionGroup[] = [
     ],
   },
   {
+    label: 'Integrações',
+    icon: Plug,
+    permissions: [
+      { key: 'integrations:manage', label: 'Gerenciar', description: 'Configurar integrações de e-mail SMTP e notificações externas' },
+    ],
+  },
+  {
     label: 'API',
     icon: Key,
     permissions: [
@@ -254,7 +261,7 @@ export default function RolePermissionsMatrix() {
     : ['coordenador', 'tecnico', 'analista', 'solicitante', 'leitura'];
 
   // Permissions that only super_admin can manage
-  const superAdminOnlyPermissions: Permission[] = ['settings:manage', 'users:manage', 'api:manage'];
+  const superAdminOnlyPermissions: Permission[] = ['settings:manage', 'users:manage', 'api:manage', 'integrations:manage'];
 
   const canEditCell = (role: AppRole, perm: Permission): boolean => {
     if (!editableRoles.includes(role)) return false;

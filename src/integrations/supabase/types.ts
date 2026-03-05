@@ -2013,6 +2013,68 @@ export type Database = {
           },
         ]
       }
+      tenant_smtp_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          notify_os_created: boolean
+          notify_os_status_changed: boolean
+          notify_stock_critical: boolean
+          smtp_from_email: string
+          smtp_from_name: string
+          smtp_host: string
+          smtp_pass: string
+          smtp_port: number
+          smtp_user: string
+          tenant_id: string
+          updated_at: string
+          use_tls: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_os_created?: boolean
+          notify_os_status_changed?: boolean
+          notify_stock_critical?: boolean
+          smtp_from_email?: string
+          smtp_from_name?: string
+          smtp_host?: string
+          smtp_pass?: string
+          smtp_port?: number
+          smtp_user?: string
+          tenant_id: string
+          updated_at?: string
+          use_tls?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notify_os_created?: boolean
+          notify_os_status_changed?: boolean
+          notify_stock_critical?: boolean
+          smtp_from_email?: string
+          smtp_from_name?: string
+          smtp_host?: string
+          smtp_pass?: string
+          smtp_port?: number
+          smtp_user?: string
+          tenant_id?: string
+          updated_at?: string
+          use_tls?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_smtp_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_subscriptions: {
         Row: {
           created_at: string

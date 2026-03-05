@@ -18,7 +18,8 @@ export type Permission =
   | 'docs:read' | 'docs:manage'
   | 'vault:read' | 'vault:manage'
   | 'kb:read' | 'kb:manage'
-  | 'disposal:read' | 'disposal:manage';
+  | 'disposal:read' | 'disposal:manage'
+  | 'integrations:manage';
 
 // Hardcoded fallback defaults (DB takes priority when loaded)
 const rolePermissions: Record<AppRole, Permission[]> = {
@@ -35,6 +36,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'api:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
+    'integrations:manage',
   ],
   admin: [
     'dashboard:read', 'my_os:read',
@@ -48,6 +50,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
+    'integrations:manage',
   ],
   coordenador: [
     'dashboard:read', 'my_os:read',
