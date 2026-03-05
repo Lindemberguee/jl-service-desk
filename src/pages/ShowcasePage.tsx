@@ -734,6 +734,8 @@ export default function ShowcasePage() {
                 'Painel Master Admin',
                 'Portal do Solicitante',
                 'Canvas colaborativo',
+                'Integrações Teams/E-mail',
+                'Métricas de notificações',
               ].map(item => (
                 <div key={item} className="flex items-start gap-2 text-[12px] text-slate-400">
                   <CheckCircle2 className="h-3.5 w-3.5 text-violet-400/60 shrink-0 mt-0.5" />

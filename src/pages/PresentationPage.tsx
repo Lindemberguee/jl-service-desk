@@ -527,7 +527,7 @@ function SlideFeatures() {
       title: 'Comunicação',
       icon: Wifi,
       color: 'text-violet-400',
-      items: ['Notificações real-time', 'WebSocket (push)', 'Alertas sonoros', 'Timeline de atividades'],
+      items: ['Notificações real-time', 'WebSocket (push)', 'Integração Teams/E-mail', 'Métricas de envios'],
     },
     {
       title: 'Produtividade',
