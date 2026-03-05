@@ -38,6 +38,15 @@ export default function TeamsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const defaultTargetRoles: Record<string, string[]> = {
+    os_created: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    os_status_changed: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    stock_critical: ['super_admin', 'admin', 'coordenador', 'analista'],
+    new_user: ['super_admin', 'admin'],
+    maintenance: ['super_admin', 'admin', 'coordenador', 'tecnico'],
+    sla_warning: ['super_admin', 'admin', 'coordenador'],
+  };
+
   const [settings, setSettings] = useState<TeamsSettings>({
     tenant_id: currentTenantId || '',
     webhook_url: '',
@@ -51,7 +60,15 @@ export default function TeamsSettingsPage() {
     webhook_url_os: '',
     webhook_url_stock: '',
     webhook_url_maintenance: '',
+    target_roles: defaultTargetRoles,
   });
+
+  const handleRolesChange = (eventKey: string, roles: string[]) => {
+    setSettings(p => ({
+      ...p,
+      target_roles: { ...p.target_roles, [eventKey]: roles },
+    }));
+  };
 
   useEffect(() => {
     if (!currentTenantId) return;
