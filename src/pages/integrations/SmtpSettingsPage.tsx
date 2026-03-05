@@ -201,6 +201,7 @@ export default function SmtpSettingsPage() {
         notify_new_user: settings.notify_new_user,
         notify_maintenance: settings.notify_maintenance,
         notify_sla_warning: settings.notify_sla_warning,
+        target_roles: settings.target_roles,
       };
 
       if (settings.id) {
