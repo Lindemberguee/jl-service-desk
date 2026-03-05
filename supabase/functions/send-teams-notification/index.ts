@@ -3,104 +3,289 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-trigger',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-trigger, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-/* ── Adaptive Card builders ─────────────────────────────────────── */
+/* ── Color & Style Tokens ──────────────────────────────────────── */
+
+const COLORS = {
+  primary: '#6366F1',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  info: '#3B82F6',
+  muted: '#94A3B8',
+  bg: '#F8FAFC',
+  surface: '#FFFFFF',
+  border: '#E2E8F0',
+};
+
+const BRAND = {
+  name: 'OrdFy',
+  tagline: 'Sistema de Gestão de Manutenção',
+};
+
+/* ── Timestamp Helper ──────────────────────────────────────────── */
+
+function nowBRT(): string {
+  const d = new Date();
+  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ── Modern Adaptive Card Builders ─────────────────────────────── */
 
 function buildTestCard() {
-  return wrapCard([{
-    type: "Container", style: "good",
-    items: [{ type: "ColumnSet", columns: [
-      { type: "Column", width: "auto", items: [{ type: "TextBlock", text: "✅", size: "Large" }] },
-      { type: "Column", width: "stretch", items: [
-        { type: "TextBlock", text: "Conexão com Teams Validada!", weight: "Bolder", size: "Medium", color: "Good" },
-        { type: "TextBlock", text: "Seu webhook está configurado e funcionando.", spacing: "None", isSubtle: true, size: "Small", wrap: true }
-      ]}
-    ]}]
-  }]);
+  return wrapCard({
+    accentColor: COLORS.success,
+    icon: '✅',
+    title: 'Conexão com Teams Validada!',
+    subtitle: 'Seu webhook está configurado corretamente.',
+    sections: [
+      factSection([
+        { title: 'Status', value: '🟢 Conectado' },
+        { title: 'Horário', value: nowBRT() },
+        { title: 'Sistema', value: BRAND.name },
+      ]),
+    ],
+  });
 }
 
 function buildOsCreatedCard(code: string, title: string) {
-  return wrapCard([
-    headerBlock("📋", "Nova Ordem de Serviço", "Uma nova OS foi criada e atribuída"),
-    { type: "FactSet", facts: [{ title: "Código", value: code }, { title: "Título", value: title }], separator: true, spacing: "Medium" }
-  ]);
+  return wrapCard({
+    accentColor: COLORS.info,
+    icon: '📋',
+    title: 'Nova Ordem de Serviço',
+    subtitle: `${code} foi criada e atribuída a um técnico`,
+    sections: [
+      factSection([
+        { title: 'Código', value: code || '—' },
+        { title: 'Título', value: title || '—' },
+        { title: 'Status', value: '🔵 Aberta' },
+        { title: 'Registrado em', value: nowBRT() },
+      ]),
+    ],
+    actions: [{ type: 'Action.OpenUrl', title: '📂 Ver OS no Sistema', url: '#' }],
+  });
 }
 
 function buildOsStatusChangedCard(code: string, title: string, status: string) {
-  const statusColors: Record<string, string> = {
-    'Aberta': 'Good', 'Em Execução': 'Warning', 'Concluída': 'Good',
-    'Aprovada': 'Good', 'Encerrada': 'Default', 'Reaberta': 'Attention',
+  const statusIcons: Record<string, string> = {
+    'Aberta': '🔵', 'Em Triagem': '🟡', 'Em Execução': '🟠', 'Aguardando Peça': '⏳',
+    'Aguardando Solicitante': '⏳', 'Aguardando Terceiro': '⏳',
+    'Concluída': '🟢', 'Aprovada': '✅', 'Encerrada': '⚫', 'Reaberta': '🔴',
   };
-  return wrapCard([
-    headerBlock("🔄", "Atualização de Status", `OS ${code} — ${title}`),
-    { type: "Container", spacing: "Medium", items: [{ type: "TextBlock", text: `**Novo Status:** ${status}`, wrap: true, color: statusColors[status] || 'Default' }] }
-  ]);
+  const icon = statusIcons[status] || '🔄';
+
+  return wrapCard({
+    accentColor: COLORS.warning,
+    icon: '🔄',
+    title: 'Mudança de Status',
+    subtitle: `OS ${code} teve o status atualizado`,
+    sections: [
+      factSection([
+        { title: 'Código', value: code || '—' },
+        { title: 'Título', value: title || '—' },
+        { title: 'Novo Status', value: `${icon} ${status}` },
+        { title: 'Atualizado em', value: nowBRT() },
+      ]),
+    ],
+  });
 }
 
 function buildStockCriticalCard(name: string, current: number, min: number) {
-  return wrapCard([
-    { type: "Container", style: "attention", items: [{ type: "ColumnSet", columns: [
-      { type: "Column", width: "auto", items: [{ type: "TextBlock", text: "🚨", size: "Large" }] },
-      { type: "Column", width: "stretch", items: [
-        { type: "TextBlock", text: "Alerta de Estoque Crítico", weight: "Bolder", size: "Medium", color: "Attention" },
-        { type: "TextBlock", text: "Um item atingiu o nível mínimo", spacing: "None", isSubtle: true, size: "Small" }
-      ]}
-    ]}] },
-    { type: "FactSet", facts: [{ title: "Item", value: name }, { title: "Nível Atual", value: String(current) }, { title: "Nível Mínimo", value: String(min) }], separator: true, spacing: "Medium" }
-  ]);
+  const pct = min > 0 ? Math.round((current / min) * 100) : 0;
+  const urgency = pct <= 25 ? '🔴 URGENTE' : pct <= 50 ? '🟠 BAIXO' : '🟡 ATENÇÃO';
+
+  return wrapCard({
+    accentColor: COLORS.danger,
+    icon: '🚨',
+    title: 'Alerta de Estoque Crítico',
+    subtitle: `O item "${name}" atingiu o nível mínimo`,
+    sections: [
+      factSection([
+        { title: 'Item', value: name || '—' },
+        { title: 'Nível Atual', value: `${current} unidades` },
+        { title: 'Nível Mínimo', value: `${min} unidades` },
+        { title: 'Urgência', value: urgency },
+        { title: 'Detectado em', value: nowBRT() },
+      ]),
+      progressBar(pct),
+    ],
+  });
 }
 
 function buildNewUserCard(userName: string, userEmail: string, role: string) {
-  return wrapCard([
-    headerBlock("👤", "Novo Usuário Cadastrado", "Um novo membro foi adicionado ao departamento"),
-    { type: "FactSet", facts: [{ title: "Nome", value: userName }, { title: "E-mail", value: userEmail }, { title: "Perfil", value: role }], separator: true, spacing: "Medium" }
-  ]);
+  const roleLabels: Record<string, string> = {
+    super_admin: '👑 Super Admin', admin: '🛡️ Administrador', coordenador: '📊 Coordenador',
+    tecnico: '🔧 Técnico', analista: '📈 Analista', solicitante: '📝 Solicitante',
+  };
+
+  return wrapCard({
+    accentColor: COLORS.primary,
+    icon: '👤',
+    title: 'Novo Usuário Cadastrado',
+    subtitle: `${userName} foi adicionado ao departamento`,
+    sections: [
+      factSection([
+        { title: 'Nome', value: userName || '—' },
+        { title: 'E-mail', value: userEmail || '—' },
+        { title: 'Perfil', value: roleLabels[role] || role || '—' },
+        { title: 'Cadastrado em', value: nowBRT() },
+      ]),
+    ],
+  });
 }
 
 function buildMaintenanceCard(assetName: string, maintenanceTitle: string, scheduledAt: string) {
-  return wrapCard([
-    headerBlock("🔧", "Manutenção Preventiva Próxima", "Prepare-se para a manutenção programada"),
-    { type: "FactSet", facts: [{ title: "Ativo", value: assetName }, { title: "Manutenção", value: maintenanceTitle }, { title: "Data Programada", value: scheduledAt }], separator: true, spacing: "Medium" }
-  ]);
+  return wrapCard({
+    accentColor: '#0EA5E9',
+    icon: '🔧',
+    title: 'Manutenção Preventiva Programada',
+    subtitle: 'Uma manutenção está próxima e requer atenção',
+    sections: [
+      factSection([
+        { title: 'Ativo', value: assetName || '—' },
+        { title: 'Manutenção', value: maintenanceTitle || '—' },
+        { title: 'Data Programada', value: scheduledAt || '—' },
+        { title: 'Lembrete em', value: nowBRT() },
+      ]),
+    ],
+  });
 }
 
 function buildSlaWarningCard(code: string, title: string, slaType: string, pctUsed: number) {
-  return wrapCard([
-    { type: "Container", style: pctUsed >= 90 ? "attention" : "warning", items: [{ type: "ColumnSet", columns: [
-      { type: "Column", width: "auto", items: [{ type: "TextBlock", text: "⏰", size: "Large" }] },
-      { type: "Column", width: "stretch", items: [
-        { type: "TextBlock", text: "Alerta de SLA", weight: "Bolder", size: "Medium", color: pctUsed >= 90 ? "Attention" : "Warning" },
-        { type: "TextBlock", text: `OS ${code} — ${pctUsed}% do prazo consumido`, spacing: "None", isSubtle: true, size: "Small", wrap: true }
-      ]}
-    ]}] },
-    { type: "FactSet", facts: [{ title: "OS", value: `${code} — ${title}` }, { title: "Tipo SLA", value: slaType === 'response' ? 'Resposta' : 'Solução' }, { title: "Prazo Consumido", value: `${pctUsed}%` }], separator: true, spacing: "Medium" }
-  ]);
+  const severity = pctUsed >= 95 ? '🔴 CRÍTICO' : pctUsed >= 90 ? '🟠 ALTO' : '🟡 ATENÇÃO';
+  const accentColor = pctUsed >= 95 ? COLORS.danger : pctUsed >= 90 ? '#F97316' : COLORS.warning;
+
+  return wrapCard({
+    accentColor,
+    icon: '⏰',
+    title: 'Alerta de SLA',
+    subtitle: `OS ${code} está com ${pctUsed}% do prazo consumido`,
+    sections: [
+      factSection([
+        { title: 'OS', value: `${code} — ${title}` },
+        { title: 'Tipo SLA', value: slaType === 'response' ? '⚡ Resposta' : '🔧 Solução' },
+        { title: 'Prazo Consumido', value: `${pctUsed}%` },
+        { title: 'Severidade', value: severity },
+        { title: 'Verificado em', value: nowBRT() },
+      ]),
+      progressBar(pctUsed),
+    ],
+  });
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────── */
+/* ── Shared Card Components ────────────────────────────────────── */
 
-function headerBlock(icon: string, title: string, subtitle: string) {
+function factSection(facts: { title: string; value: string }[]) {
   return {
-    type: "Container", style: "emphasis",
-    items: [{ type: "ColumnSet", columns: [
-      { type: "Column", width: "auto", items: [{ type: "TextBlock", text: icon, size: "Large" }] },
-      { type: "Column", width: "stretch", items: [
-        { type: "TextBlock", text: title, weight: "Bolder", size: "Medium" },
-        { type: "TextBlock", text: subtitle, spacing: "None", isSubtle: true, size: "Small", wrap: true }
-      ]}
-    ]}]
+    type: 'FactSet',
+    facts: facts.map(f => ({ title: f.title, value: f.value })),
+    separator: true,
+    spacing: 'Medium',
   };
 }
 
-function wrapCard(body: any[]) {
+function progressBar(pct: number) {
+  const filled = Math.min(Math.max(Math.round(pct / 5), 0), 20);
+  const empty = 20 - filled;
+  const bar = '█'.repeat(filled) + '░'.repeat(empty);
+  const color = pct >= 90 ? 'Attention' : pct >= 70 ? 'Warning' : 'Good';
   return {
-    type: "message",
+    type: 'Container',
+    spacing: 'Small',
+    items: [{
+      type: 'TextBlock',
+      text: `${bar} ${pct}%`,
+      fontType: 'Monospace',
+      size: 'Small',
+      color,
+      wrap: false,
+    }],
+  };
+}
+
+function wrapCard(opts: {
+  accentColor: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  sections: any[];
+  actions?: any[];
+}) {
+  const body: any[] = [
+    // Header with colored accent strip
+    {
+      type: 'Container',
+      style: 'emphasis',
+      bleed: true,
+      items: [
+        {
+          type: 'ColumnSet',
+          columns: [
+            {
+              type: 'Column',
+              width: 'auto',
+              items: [{
+                type: 'TextBlock',
+                text: opts.icon,
+                size: 'ExtraLarge',
+                horizontalAlignment: 'Center',
+              }],
+              verticalContentAlignment: 'Center',
+            },
+            {
+              type: 'Column',
+              width: 'stretch',
+              items: [
+                { type: 'TextBlock', text: opts.title, weight: 'Bolder', size: 'Medium', wrap: true },
+                { type: 'TextBlock', text: opts.subtitle, spacing: 'None', isSubtle: true, size: 'Small', wrap: true },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    // Sections
+    ...opts.sections,
+    // Footer
+    {
+      type: 'Container',
+      separator: true,
+      spacing: 'Medium',
+      items: [{
+        type: 'ColumnSet',
+        columns: [
+          {
+            type: 'Column',
+            width: 'stretch',
+            items: [{
+              type: 'TextBlock',
+              text: `${BRAND.name} • ${BRAND.tagline}`,
+              isSubtle: true,
+              size: 'Small',
+              wrap: true,
+              horizontalAlignment: 'Left',
+            }],
+          },
+        ],
+      }],
+    },
+  ];
+
+  return {
+    type: 'message',
     attachments: [{
-      contentType: "application/vnd.microsoft.card.adaptive",
-      content: { $schema: "http://adaptivecards.io/schemas/adaptive-card.json", type: "AdaptiveCard", version: "1.4", body, msteams: { width: "Full" } }
-    }]
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type: 'AdaptiveCard',
+        version: '1.5',
+        body,
+        actions: opts.actions || [],
+        msteams: { width: 'Full' },
+      },
+    }],
   };
 }
 
@@ -117,6 +302,31 @@ function resolveWebhookUrl(settings: any, type: string): string {
     return settings.webhook_url_maintenance;
   }
   return settings.webhook_url;
+}
+
+/* ── Log helper ─────────────────────────────────────────────────── */
+
+async function logTeamsNotification(
+  adminClient: any,
+  tenantId: string,
+  type: string,
+  webhookUrl: string,
+  status: 'sent' | 'failed',
+  errorMessage?: string,
+  payload?: any,
+) {
+  try {
+    await adminClient.from('teams_notification_logs').insert({
+      tenant_id: tenantId,
+      notification_type: type,
+      webhook_url: webhookUrl ? webhookUrl.substring(0, 120) + '...' : null,
+      status,
+      error_message: errorMessage || null,
+      payload: payload ? { type, ...payload } : { type },
+    });
+  } catch (e) {
+    console.error('Failed to log teams notification:', e);
+  }
 }
 
 /* ── Main handler ───────────────────────────────────────────────── */
@@ -159,6 +369,7 @@ serve(async (req) => {
 
     const webhookUrl = resolveWebhookUrl(settings, type);
     if (!webhookUrl) {
+      await logTeamsNotification(adminClient, tenant_id, type, '', 'failed', 'Webhook URL não configurada', body);
       return new Response(JSON.stringify({ success: false, error: 'Webhook URL não configurada' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -171,7 +382,7 @@ serve(async (req) => {
       case 'new_user': card = buildNewUserCard(user_name || '', user_email || '', role || ''); break;
       case 'maintenance': card = buildMaintenanceCard(asset_name || '', maintenance_title || '', scheduled_at || ''); break;
       case 'sla_warning': card = buildSlaWarningCard(work_order_code || '', work_order_title || '', sla_type || 'solution', pct_used ?? 80); break;
-      default: card = wrapCard([{ type: "TextBlock", text: "Notificação do sistema", wrap: true }]);
+      default: card = wrapCard({ accentColor: COLORS.primary, icon: '📬', title: 'Notificação do Sistema', subtitle: 'Uma nova notificação foi gerada', sections: [] });
     }
 
     const response = await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(card) });
@@ -179,9 +390,11 @@ serve(async (req) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error(`Teams webhook error: ${response.status} - ${errText}`);
+      await logTeamsNotification(adminClient, tenant_id, type, webhookUrl, 'failed', `HTTP ${response.status}: ${errText.substring(0, 200)}`, body);
       return new Response(JSON.stringify({ success: false, error: `Webhook retornou ${response.status}` }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    await logTeamsNotification(adminClient, tenant_id, type, webhookUrl, 'sent', undefined, body);
     console.log(`Teams notification sent: type=${type}, tenant=${tenant_id}`);
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
