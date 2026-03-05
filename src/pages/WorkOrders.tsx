@@ -328,14 +328,14 @@ export default function WorkOrders() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Ordens de Serviço</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totalCount} registro(s)
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gerenciamento de Ordens de Serviço</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Módulo de Gestão de Chamados ({totalCount} registros)
             {selectedIds.size > 0 && ` • ${selectedIds.size} selecionada(s)`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowPrintGuide(true)}>
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowPrintGuide(true)}>
             <Printer className="h-3.5 w-3.5" />
             Guia
           </Button>
