@@ -110,6 +110,7 @@ export default function TeamsSettingsPage() {
         webhook_url_os: settings.webhook_url_os || null,
         webhook_url_stock: settings.webhook_url_stock || null,
         webhook_url_maintenance: settings.webhook_url_maintenance || null,
+        target_roles: settings.target_roles,
       };
 
       if (settings.id) {
