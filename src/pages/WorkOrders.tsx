@@ -339,12 +339,12 @@ export default function WorkOrders() {
             <Printer className="h-3.5 w-3.5" />
             Guia
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowExportDialog(true)}>
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs hidden sm:flex" onClick={() => setShowExportDialog(true)}>
             <Download className="h-3.5 w-3.5" />
             Excel
           </Button>
           {canCreate && (
-            <Button size="sm" onClick={() => navigate('/os/nova')} className="h-8 gap-1.5">
+            <Button size="sm" onClick={() => navigate('/os/nova')} className="h-9 gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Nova OS</span>
               <span className="sm:hidden">Nova</span>
@@ -358,10 +358,10 @@ export default function WorkOrders() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por código ou título..."
+            placeholder="Buscar por código, título ou solicitante..."
             value={search}
             onChange={e => { setSearch(e.target.value); resetPage(); }}
-            className="pl-9 h-9 text-sm border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] bg-card"
+            className="pl-9 h-10 text-sm border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] bg-card"
           />
         </div>
         <Button
