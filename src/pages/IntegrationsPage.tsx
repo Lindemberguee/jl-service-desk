@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Mail, MessageSquare, Webhook, ArrowRight, Plug,
+  Mail, MessageSquare, Webhook, ArrowRight, Plug, BarChart3,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
