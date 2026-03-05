@@ -29,6 +29,7 @@ interface TeamsSettings {
   webhook_url_os: string;
   webhook_url_stock: string;
   webhook_url_maintenance: string;
+  target_roles: Record<string, string[]>;
 }
 
 export default function TeamsSettingsPage() {
