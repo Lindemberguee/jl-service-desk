@@ -11,7 +11,7 @@ import {
   Shield, ClipboardList, Wrench, Package, Users,
   BarChart3, Settings, LayoutDashboard, MessageSquare, BookOpen,
   Check, X, Hammer, PenTool, Bell, CalendarDays, HardHat, Contact, Target, Key, Trash2,
-  Lock,
+  Lock, Plug,
 } from 'lucide-react';
 import type { AppRole, Permission } from '@/lib/permissions';
 import { roleLabels, roleDescriptions } from '@/lib/permissions';
