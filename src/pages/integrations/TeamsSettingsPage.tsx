@@ -23,6 +23,12 @@ interface TeamsSettings {
   notify_os_created: boolean;
   notify_os_status_changed: boolean;
   notify_stock_critical: boolean;
+  notify_new_user: boolean;
+  notify_maintenance: boolean;
+  notify_sla_warning: boolean;
+  webhook_url_os: string;
+  webhook_url_stock: string;
+  webhook_url_maintenance: string;
 }
 
 export default function TeamsSettingsPage() {
