@@ -2869,6 +2869,15 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      send_smtp_email_async: {
+        Args: {
+          _extra?: Json
+          _tenant_id: string
+          _to_email: string
+          _type: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
