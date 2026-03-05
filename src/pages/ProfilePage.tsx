@@ -354,6 +354,9 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Notification Preferences */}
+      <NotificationPreferencesCard />
     </div>
   );
 }
