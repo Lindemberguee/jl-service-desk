@@ -510,6 +510,7 @@ export default function TechWorkOrderDetail() {
                 <CardContent className="text-xs space-y-1.5 text-muted-foreground">
                   <p>Visibilidade: <span className="text-foreground font-medium">{wo.visibility === 'internal' ? 'Interna' : 'Cliente'}</span></p>
                   <p>Criada: {new Date(wo.created_at).toLocaleString('pt-BR')}</p>
+                  {(wo as any).deadline_at && <p className="font-medium text-foreground">📅 Prazo: {new Date((wo as any).deadline_at).toLocaleString('pt-BR')}</p>}
                   {wo.started_at && <p>Iniciada: {new Date(wo.started_at).toLocaleString('pt-BR')}</p>}
                   {wo.resolved_at && <p>Resolvida: {new Date(wo.resolved_at).toLocaleString('pt-BR')}</p>}
                   {wo.closed_at && <p>Encerrada: {new Date(wo.closed_at).toLocaleString('pt-BR')}</p>}
