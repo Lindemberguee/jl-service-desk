@@ -222,6 +222,7 @@ export default function WorkOrderCreate() {
         tags: tags.length > 0 ? tags : null,
         code: '',
         external_link: externalLink.trim() || null,
+        deadline_at: deadlineAt ? new Date(deadlineAt).toISOString() : null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
       await logAudit({
