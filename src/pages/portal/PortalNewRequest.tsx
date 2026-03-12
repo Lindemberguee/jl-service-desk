@@ -624,6 +624,18 @@ export default function PortalNewRequest() {
                   <p className="text-[10px] text-muted-foreground">Opcional. Link para referência externa (documento, sistema, etc.)</p>
                 </div>
 
+                {/* Deadline */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Algum prazo?</Label>
+                  <Input
+                    value={deadlineAt}
+                    onChange={e => setDeadlineAt(e.target.value)}
+                    type="datetime-local"
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Opcional. Informe uma data limite caso tenha urgência específica.</p>
+                </div>
+
                 {/* Attachments */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Anexos (até 5 — PNG, JPG, PDF, Word, Excel)</Label>
