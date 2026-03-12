@@ -1,0 +1,1 @@
+ALTER TABLE public.work_orders ADD COLUMN IF NOT EXISTS deadline_at timestamp with time zone DEFAULT NULL;

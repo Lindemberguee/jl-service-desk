@@ -2941,6 +2941,7 @@ export type Database = {
           closed_at: string | null
           code: string
           created_at: string
+          deadline_at: string | null
           deleted_at: string | null
           description: string | null
           external_link: string | null
@@ -2979,6 +2980,7 @@ export type Database = {
           closed_at?: string | null
           code: string
           created_at?: string
+          deadline_at?: string | null
           deleted_at?: string | null
           description?: string | null
           external_link?: string | null
@@ -3017,6 +3019,7 @@ export type Database = {
           closed_at?: string | null
           code?: string
           created_at?: string
+          deadline_at?: string | null
           deleted_at?: string | null
           description?: string | null
           external_link?: string | null
