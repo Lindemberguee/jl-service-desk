@@ -39,6 +39,7 @@ export default function PortalNewRequest() {
   const [assetId, setAssetId] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [deadlineAt, setDeadlineAt] = useState('');
+  const [deadlineAt, setDeadlineAt] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
