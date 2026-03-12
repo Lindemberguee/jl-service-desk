@@ -234,6 +234,7 @@ export default function PortalNewRequest() {
         visibility: 'customer',
         requester_user_id: user?.id || null,
         external_link: externalLink.trim() || null,
+        deadline_at: deadlineAt ? new Date(deadlineAt).toISOString() : null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
 
