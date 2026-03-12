@@ -415,6 +415,19 @@ export default function WorkOrderCreate() {
               />
               <p className="text-[11px] text-muted-foreground">Opcional. Adicione um link para referência externa (documento, sistema, etc.)</p>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="deadlineAt" className="text-xs font-medium flex items-center gap-1.5">
+                <Calendar className="h-3 w-3" /> Prazo Estimado
+              </Label>
+              <Input
+                id="deadlineAt"
+                value={deadlineAt}
+                onChange={e => setDeadlineAt(e.target.value)}
+                type="datetime-local"
+                className="h-9 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">Opcional. Data e hora limite desejada para a conclusão desta OS.</p>
+            </div>
           </CardContent>
         </Card>
 
