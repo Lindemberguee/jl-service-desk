@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, Mail, Phone, FileText, Settings2,
   MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link,
-  Paperclip, Upload, Trash2, Building2, ChevronDown
+  Paperclip, Upload, Trash2, Building2, ChevronDown, Calendar
 } from 'lucide-react';
 
 export default function WorkOrderCreate() {
@@ -41,6 +41,7 @@ export default function WorkOrderCreate() {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [externalLink, setExternalLink] = useState('');
+  const [deadlineAt, setDeadlineAt] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
@@ -221,6 +222,7 @@ export default function WorkOrderCreate() {
         tags: tags.length > 0 ? tags : null,
         code: '',
         external_link: externalLink.trim() || null,
+        deadline_at: deadlineAt ? new Date(deadlineAt).toISOString() : null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
       await logAudit({
@@ -412,6 +414,19 @@ export default function WorkOrderCreate() {
                 className="h-9 text-sm"
               />
               <p className="text-[11px] text-muted-foreground">Opcional. Adicione um link para referência externa (documento, sistema, etc.)</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="deadlineAt" className="text-xs font-medium flex items-center gap-1.5">
+                <Calendar className="h-3 w-3" /> Prazo Estimado
+              </Label>
+              <Input
+                id="deadlineAt"
+                value={deadlineAt}
+                onChange={e => setDeadlineAt(e.target.value)}
+                type="datetime-local"
+                className="h-9 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">Opcional. Data e hora limite desejada para a conclusão desta OS.</p>
             </div>
           </CardContent>
         </Card>

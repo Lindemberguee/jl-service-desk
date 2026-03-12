@@ -707,6 +707,7 @@ export default function WorkOrderDetail() {
                   <InfoRow label="ID" value={wo.id.slice(0, 8)} mono />
                   <InfoRow label="Visibilidade" value={wo.visibility === 'internal' ? 'Interna' : 'Cliente'} />
                   <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
+                  {(wo as any).deadline_at && <InfoRow label="📅 Prazo Estimado" value={new Date((wo as any).deadline_at).toLocaleString('pt-BR')} />}
                   {wo.started_at && <InfoRow label="Iniciada em" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
                   {wo.resolved_at && <InfoRow label="Resolvida em" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
                   {wo.closed_at && <InfoRow label="Encerrada em" value={new Date(wo.closed_at).toLocaleString('pt-BR')} />}

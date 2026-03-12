@@ -38,6 +38,7 @@ export default function PortalNewRequest() {
   const [files, setFiles] = useState<File[]>([]);
   const [assetId, setAssetId] = useState('');
   const [externalLink, setExternalLink] = useState('');
+  const [deadlineAt, setDeadlineAt] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -233,6 +234,7 @@ export default function PortalNewRequest() {
         visibility: 'customer',
         requester_user_id: user?.id || null,
         external_link: externalLink.trim() || null,
+        deadline_at: deadlineAt ? new Date(deadlineAt).toISOString() : null,
         requester_contact: Object.keys(requesterContact).length > 0 ? requesterContact : null,
       });
 
@@ -287,7 +289,7 @@ export default function PortalNewRequest() {
         <p className="text-xs text-muted-foreground">Você receberá atualizações sobre o andamento.</p>
         <div className="flex gap-2 justify-center pt-4">
           <Button variant="outline" onClick={() => navigate('/portal')}>Ver Minhas OS</Button>
-          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setAssetId(''); setFiles([]); setExternalLink(''); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
+          <Button onClick={() => { setStep('form'); setTitle(''); setDescription(''); setPriority('media'); setCategoryId(''); setUnitId(''); setLocationId(''); setAssetId(''); setFiles([]); setExternalLink(''); setDeadlineAt(''); setContactPhone(''); setContactEmail(profile?.email || ''); setPreferredTime(''); }}>
             Abrir Outra
           </Button>
         </div>
@@ -387,6 +389,12 @@ export default function PortalNewRequest() {
               <div>
                 <p className="text-[11px] uppercase font-medium text-muted-foreground">Link Externo</p>
                 <a href={externalLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{externalLink}</a>
+              </div>
+            )}
+            {deadlineAt && (
+              <div>
+                <p className="text-[11px] uppercase font-medium text-muted-foreground">Prazo Estimado</p>
+                <p className="text-sm">{new Date(deadlineAt).toLocaleString('pt-BR')}</p>
               </div>
             )}
           </CardContent>
@@ -619,6 +627,18 @@ export default function PortalNewRequest() {
                     className="h-9 text-sm"
                   />
                   <p className="text-[10px] text-muted-foreground">Opcional. Link para referência externa (documento, sistema, etc.)</p>
+                </div>
+
+                {/* Deadline */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Algum prazo?</Label>
+                  <Input
+                    value={deadlineAt}
+                    onChange={e => setDeadlineAt(e.target.value)}
+                    type="datetime-local"
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Opcional. Informe uma data limite caso tenha urgência específica.</p>
                 </div>
 
                 {/* Attachments */}
