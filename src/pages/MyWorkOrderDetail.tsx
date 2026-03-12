@@ -468,6 +468,7 @@ export default function MyWorkOrderDetail() {
             <CardContent className="space-y-2 text-xs">
               <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
               <InfoRow label="Atualizada" value={new Date(wo.updated_at).toLocaleString('pt-BR')} />
+              {(wo as any).deadline_at && <InfoRow label="📅 Prazo Estimado" value={new Date((wo as any).deadline_at).toLocaleString('pt-BR')} />}
               {wo.started_at && <InfoRow label="Iniciada" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
               {wo.resolved_at && <InfoRow label="Resolvida" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
               {wo.closed_at && <InfoRow label="Encerrada" value={new Date(wo.closed_at).toLocaleString('pt-BR')} />}
