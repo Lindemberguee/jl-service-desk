@@ -392,6 +392,12 @@ export default function PortalNewRequest() {
                 <a href={externalLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{externalLink}</a>
               </div>
             )}
+            {deadlineAt && (
+              <div>
+                <p className="text-[11px] uppercase font-medium text-muted-foreground">Prazo Estimado</p>
+                <p className="text-sm">{new Date(deadlineAt).toLocaleString('pt-BR')}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
