@@ -41,6 +41,7 @@ export default function WorkOrderCreate() {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [externalLink, setExternalLink] = useState('');
+  const [deadlineAt, setDeadlineAt] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
