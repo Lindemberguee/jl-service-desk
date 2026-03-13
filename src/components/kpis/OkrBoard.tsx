@@ -46,7 +46,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[minmax(200px,3fr)_minmax(140px,1.5fr)_120px_100px_40px]';
+const GRID = 'grid-cols-[minmax(200px,3fr)_120px_100px_40px]';
 
 /* ───────── Helpers ───────── */
 
@@ -387,7 +387,6 @@ export function OkrBoard() {
             <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[600px]">
               <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4", GRID)}>
                 <div className="p-2">Objetivo</div>
-                <div className="p-2">Indicador</div>
                 <div className="p-2 text-center">Status</div>
                 <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
@@ -424,10 +423,6 @@ export function OkrBoard() {
                       </div>
                     </div>
 
-                    {/* Indicador */}
-                    <div className="p-3 min-w-0">
-                      <p className="text-xs text-muted-foreground truncate">{obj.indicator || '—'}</p>
-                    </div>
 
                     {/* Status */}
                     <div className="p-3 text-center">
