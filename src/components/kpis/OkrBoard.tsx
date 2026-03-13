@@ -522,19 +522,79 @@ export function OkrBoard() {
 
         {/* Objective Dialog */}
         <Dialog open={objDialogOpen} onOpenChange={setObjDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
-              <div className="grid gap-2"><Label>Título</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
-              <div className="grid gap-2"><Label>Descrição</Label><Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} /></div>
+              <div className="grid gap-2"><Label>Objetivo / Resultado-chave</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
+
+              {/* Indicadores (multi-select from KPIs) */}
+              <div className="grid gap-2">
+                <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Indicadores</Label>
+                <div className="space-y-2">
+                  {kpis.filter(k => k.is_active).map(k => (
+                    <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editingObj.id ? false : objKpiIds.includes(k.id)}
+                        onCheckedChange={(checked) => {
+                          if (editingObj.id) return;
+                          setObjKpiIds(prev => checked ? [...prev, k.id] : prev.filter(id => id !== k.id));
+                        }}
+                        disabled={!!editingObj.id}
+                      />
+                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                    </label>
+                  ))}
+                  {kpis.filter(k => k.is_active).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado. Cadastre na aba Indicadores.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Atividades (dynamic list) - only for creation */}
+              {!editingObj.id && (
+                <div className="grid gap-2">
+                  <Label>Descrição das atividades</Label>
+                  {objActivities.map((act, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        value={act}
+                        onChange={e => {
+                          const updated = [...objActivities];
+                          updated[idx] = e.target.value;
+                          setObjActivities(updated);
+                        }}
+                        placeholder={`Atividade ${idx + 1}`}
+                      />
+                      {objActivities.length > 1 && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setObjActivities(prev => prev.filter((_, i) => i !== idx))}>
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" className="w-fit text-xs gap-1" onClick={() => setObjActivities(prev => [...prev, ''])}>
+                    <Plus className="h-3 w-3" /> Adicionar atividade
+                  </Button>
+                </div>
+              )}
+
+              {/* Edição: Descrição simples */}
+              {editingObj.id && (
+                <div className="grid gap-2"><Label>Descrição</Label><Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} /></div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Responsável</Label><Input value={editingObj.responsible_name || ''} onChange={e => setEditingObj(p => ({ ...p, responsible_name: e.target.value }))} /></div>
                 <div className="grid gap-2"><Label>Área</Label><Input value={editingObj.area || ''} onChange={e => setEditingObj(p => ({ ...p, area: e.target.value }))} /></div>
+                <div className="grid gap-2"><Label>Responsável</Label><Input value={editingObj.responsible_name || ''} onChange={e => setEditingObj(p => ({ ...p, responsible_name: e.target.value }))} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Indicador</Label><Input value={editingObj.indicator || ''} onChange={e => setEditingObj(p => ({ ...p, indicator: e.target.value }))} placeholder="% de satisfação" /></div>
-                <div className="grid gap-2"><Label>Meta</Label><Input value={editingObj.target_label || ''} onChange={e => setEditingObj(p => ({ ...p, target_label: e.target.value }))} placeholder="90%" /></div>
-              </div>
+
+              {/* Início e Final - only for creation (applies to activities) */}
+              {!editingObj.id && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2"><Label>Início</Label><Input type="date" value={objStartDate} onChange={e => setObjStartDate(e.target.value)} /></div>
+                  <div className="grid gap-2"><Label>Final</Label><Input type="date" value={objEndDate} onChange={e => setObjEndDate(e.target.value)} /></div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setObjDialogOpen(false)}>Cancelar</Button>
