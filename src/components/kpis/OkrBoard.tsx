@@ -475,13 +475,17 @@ export function OkrBoard() {
                         <p className="text-[11px] text-muted-foreground truncate mt-0.5">{obj.description}</p>
                       )}
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Progress value={obj.progress} className="h-1 flex-1 max-w-[120px]" />
-                        <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{Math.round(obj.progress)}%</span>
                         <Badge variant="outline" className="text-[10px] tabular-nums">{doneCount}/{krs.length}</Badge>
                       </div>
                     </div>
 
-
+                    {/* Progresso */}
+                    <div className="p-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-sm font-bold tabular-nums text-foreground">{Math.round(obj.progress)}%</span>
+                        <Progress value={obj.progress} className="h-1 w-14" />
+                      </div>
+                    </div>
                     {/* Status */}
                     <div className="p-3 text-center">
                       <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full font-semibold', st.cls)}>
