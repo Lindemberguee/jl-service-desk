@@ -310,7 +310,8 @@ export function OkrBoard() {
     if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
     try {
       if (krSaveTimer.current) clearTimeout(krSaveTimer.current);
-      if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr }); } else { await createKeyResult.mutateAsync(editingKr); }
+      const payload = { ...editingKr, kpi_ids: editingKrKpiIds, kpi_id: editingKrKpiIds[0] || null };
+      if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...payload } as any); } else { await createKeyResult.mutateAsync(payload as any); }
       setKrDialogOpen(false); toast.success('Resultado-chave salvo');
     } catch { toast.error('Erro'); }
   };
