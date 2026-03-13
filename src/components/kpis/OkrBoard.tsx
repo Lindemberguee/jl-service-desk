@@ -559,11 +559,10 @@ export function OkrBoard() {
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Objetivo / Resultado-chave</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
 
-              <div className="grid gap-2"><Label>Meta</Label><Input value={editingObj.target_label || ''} onChange={e => setEditingObj(p => ({ ...p, target_label: e.target.value }))} placeholder="Ex: 95% de satisfação, 100 ativos cadastrados..." /></div>
-
               {/* Indicadores (multi-select from KPIs) */}
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Indicadores</Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">A meta e unidade serão herdadas automaticamente do indicador vinculado.</p>
                 <div className="space-y-2">
                   {kpis.filter(k => k.is_active).map(k => (
                     <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -575,7 +574,8 @@ export function OkrBoard() {
                         }}
                         disabled={!!editingObj.id}
                       />
-                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                      <span>{k.name}</span>
+                      <span className="text-muted-foreground text-xs">({k.unit}) — Meta: {k.target_value}</span>
                     </label>
                   ))}
                   {kpis.filter(k => k.is_active).length === 0 && (
