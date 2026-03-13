@@ -401,7 +401,7 @@ export function OkrBoard() {
             <h3 className="text-lg font-semibold mt-5 text-foreground">Monte seu Plano de Ação</h3>
             <p className="text-sm text-muted-foreground mt-1.5 max-w-md">Crie objetivos e defina resultados-chave.</p>
             {canManage && cycleId && (
-              <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} className="mt-5 gap-1.5" size="sm">
+              <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjActivities(['']); setObjKpiIds([]); setObjStartDate(''); setObjEndDate(''); setObjDialogOpen(true); }} className="mt-5 gap-1.5" size="sm">
                 <Plus className="h-3.5 w-3.5" /> Criar primeiro objetivo
               </Button>
             )}
