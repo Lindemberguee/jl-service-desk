@@ -381,7 +381,7 @@ export function OkrBoard() {
             </div>
 
             {/* Body */}
-            <div className="divide-y divide-border/40">
+            <div className="divide-y divide-border/40 min-w-[800px]">
               {tableData.map(({ objective: obj, keyResults: krs }) => {
                 const isExpanded = expandedObjs.has(obj.id);
                 const allSel = krs.length > 0 && krs.every(kr => selectedKrs.has(kr.id));
