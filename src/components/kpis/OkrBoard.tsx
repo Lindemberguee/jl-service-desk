@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ActivityDetailDialog } from '@/components/kpis/ActivityDetailDialog';
 
 /* ───────── Constants ───────── */
 
