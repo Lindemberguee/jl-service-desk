@@ -45,7 +45,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[36px_minmax(0,1.8fr)_minmax(0,2.5fr)_minmax(0,1fr)_80px_60px_100px_100px_90px_90px_44px]';
+const GRID = 'grid-cols-[36px_minmax(180px,2.5fr)_minmax(120px,1.2fr)_70px_50px_90px_80px_70px_100px_40px]';
 
 /* ───────── Helpers ───────── */
 
@@ -362,26 +362,26 @@ export function OkrBoard() {
         {/* ═══ TABELA PRINCIPAL ═══ */}
         {tableData.length > 0 && (
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-[0_2px_12px_0_hsl(var(--foreground)/0.03)]">
+            <div className="overflow-x-auto">
 
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60">
+            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[800px]">
               <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2", GRID)}>
-                <div className="p-2.5" />
-                <div className="p-2.5">Objetivo</div>
-                <div className="p-2.5">Resultado-chave</div>
-                <div className="p-2.5">Indicador</div>
-                <div className="p-2.5 text-center">Meta</div>
-                <div className="p-2.5 text-center">%</div>
-                <div className="p-2.5">Responsável</div>
-                <div className="p-2.5">Equipe</div>
-                <div className="p-2.5 text-center">Prazo</div>
-                <div className="p-2.5 text-center">Status</div>
-                <div className="p-2.5" />
+                <div className="p-2 pl-3" />
+                <div className="p-2">Resultado-chave</div>
+                <div className="p-2">Indicador</div>
+                <div className="p-2 text-center">Meta</div>
+                <div className="p-2 text-center">%</div>
+                <div className="p-2">Responsável</div>
+                <div className="p-2">Equipe</div>
+                <div className="p-2 text-center">Prazo</div>
+                <div className="p-2 text-center">Status</div>
+                <div className="p-2" />
               </div>
             </div>
 
             {/* Body */}
-            <div className="divide-y divide-border/40">
+            <div className="divide-y divide-border/40 min-w-[800px]">
               {tableData.map(({ objective: obj, keyResults: krs }) => {
                 const isExpanded = expandedObjs.has(obj.id);
                 const allSel = krs.length > 0 && krs.every(kr => selectedKrs.has(kr.id));
@@ -453,8 +453,6 @@ export function OkrBoard() {
                                 {canManage && <Checkbox checked={selectedKrs.has(kr.id)} onCheckedChange={() => toggleSelectKr(kr.id)} />}
                               </div>
 
-                              {/* Objective spacer */}
-                              <div className="p-2.5" />
 
                               {/* Resultado-chave */}
                               <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'title', kr.title)}>
@@ -595,6 +593,7 @@ export function OkrBoard() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         )}
