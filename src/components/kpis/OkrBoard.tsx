@@ -362,21 +362,21 @@ export function OkrBoard() {
         {/* ═══ TABELA PRINCIPAL ═══ */}
         {tableData.length > 0 && (
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-[0_2px_12px_0_hsl(var(--foreground)/0.03)]">
+            <div className="overflow-x-auto">
 
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60">
+            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[800px]">
               <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2", GRID)}>
-                <div className="p-2.5" />
-                <div className="p-2.5">Objetivo</div>
-                <div className="p-2.5">Resultado-chave</div>
-                <div className="p-2.5">Indicador</div>
-                <div className="p-2.5 text-center">Meta</div>
-                <div className="p-2.5 text-center">%</div>
-                <div className="p-2.5">Responsável</div>
-                <div className="p-2.5">Equipe</div>
-                <div className="p-2.5 text-center">Prazo</div>
-                <div className="p-2.5 text-center">Status</div>
-                <div className="p-2.5" />
+                <div className="p-2 pl-3" />
+                <div className="p-2">Resultado-chave</div>
+                <div className="p-2">Indicador</div>
+                <div className="p-2 text-center">Meta</div>
+                <div className="p-2 text-center">%</div>
+                <div className="p-2">Responsável</div>
+                <div className="p-2">Equipe</div>
+                <div className="p-2 text-center">Prazo</div>
+                <div className="p-2 text-center">Status</div>
+                <div className="p-2" />
               </div>
             </div>
 
