@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Users, Target, Clock, CheckCircle2, Play, Pause, AlertTriangle,
-  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2,
-  ChevronDown, ChevronUp
+  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -46,64 +44,62 @@ export function ActivityDetailDialog({ objective, activities, open, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden gap-0 max-h-[85vh]">
+      <DialogContent className="max-w-2xl p-0 gap-0 flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="relative px-6 pt-6 pb-4">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-          <div className="relative space-y-3">
-            <DialogHeader className="text-left space-y-1">
-              <DialogTitle className="text-base font-semibold leading-snug">
-                {objective.title}
-              </DialogTitle>
-              {objective.description && (
-                <p className="text-xs text-muted-foreground">{objective.description}</p>
-              )}
-            </DialogHeader>
+        <div className="px-6 pt-6 pb-4 shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+          <DialogHeader className="text-left space-y-1.5">
+            <DialogTitle className="text-base font-semibold leading-snug pr-8">
+              {objective.title}
+            </DialogTitle>
+            {objective.description && (
+              <p className="text-xs text-muted-foreground leading-relaxed">{objective.description}</p>
+            )}
+          </DialogHeader>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {objective.indicator && (
-                <Badge variant="outline" className="text-[10px] gap-1">
-                  <BarChart3 className="h-3 w-3" />
-                  {objective.indicator}
-                </Badge>
-              )}
-              {objective.target_label && (
-                <Badge variant="outline" className="text-[10px] gap-1">
-                  <Target className="h-3 w-3" />
-                  Meta: {objective.target_label}
-                </Badge>
-              )}
-              <div className="flex items-center gap-2 ml-auto">
-                <Progress value={objective.progress} className="h-1.5 w-20" />
-                <span className="text-xs font-bold tabular-nums">{Math.round(objective.progress)}%</span>
-              </div>
+          <div className="flex items-center gap-3 flex-wrap mt-3">
+            {objective.indicator && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <BarChart3 className="h-3 w-3" />
+                {objective.indicator}
+              </Badge>
+            )}
+            {objective.target_label && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <Target className="h-3 w-3" />
+                Meta: {objective.target_label}
+              </Badge>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <Progress value={objective.progress} className="h-1.5 w-24" />
+              <span className="text-xs font-bold tabular-nums">{Math.round(objective.progress)}%</span>
             </div>
           </div>
         </div>
 
         <Separator />
 
-        {/* Activities */}
-        <ScrollArea className="max-h-[60vh]">
-          <div className="px-6 py-4 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Atividades ({activities.length})
-            </p>
+        {/* Activities list - scrollable */}
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Atividades ({activities.length})
+          </p>
 
-            {activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma atividade cadastrada</p>
-            ) : (
-              activities.map(activity => (
+          {activities.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma atividade cadastrada</p>
+          ) : (
+            <div className="space-y-3">
+              {activities.map(activity => (
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
                   onUpdateLinks={onUpdateLinks}
                   canManage={canManage}
                 />
-              ))
-            )}
-          </div>
-        </ScrollArea>
+              ))}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -116,7 +112,6 @@ function ActivityCard({ activity, onUpdateLinks, canManage }: {
   onUpdateLinks?: (id: string, links: ActivityLink[]) => void;
   canManage?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(true);
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -162,116 +157,100 @@ function ActivityCard({ activity, onUpdateLinks, canManage }: {
   };
 
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/10 overflow-hidden">
-      {/* Card Header */}
-      <div
-        className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{activity.title}</p>
-          {activity.description && !expanded && (
-            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{activity.description}</p>
-          )}
-        </div>
-        <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold shrink-0', status.bgClass)}>
-          <StatusIcon className="h-3 w-3" />
-          {status.label}
-        </Badge>
-        {daysInfo && (
-          <Badge variant="outline" className={cn(
-            'text-[10px] gap-1 shrink-0',
-            daysInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-emerald-500/40 text-emerald-500'
-          )}>
-            <Timer className="h-3 w-3" />
-            {daysInfo.text}
+    <div className="rounded-lg border border-border/60 bg-card overflow-hidden">
+      {/* Title + Status row */}
+      <div className="px-4 py-3 space-y-2">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium leading-snug">{activity.title}</p>
+            {activity.description && (
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{activity.description}</p>
+            )}
+          </div>
+          <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold shrink-0 mt-0.5', status.bgClass)}>
+            <StatusIcon className="h-3 w-3" />
+            {status.label}
           </Badge>
-        )}
-        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+        </div>
+
+        {/* Progress */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Progresso</span>
+            <span className="font-bold">{Math.round(progressPct)}%</span>
+          </div>
+          <Progress value={progressPct} className="h-2" />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Inicial: {activity.start_value} {activity.unit}</span>
+            <span>Atual: {activity.current_value} {activity.unit}</span>
+            <span>Meta: {activity.target_value} {activity.unit}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Expanded Content */}
-      {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border/40">
-          {/* Description */}
-          {activity.description && (
-            <p className="text-xs text-muted-foreground pt-3 leading-relaxed">{activity.description}</p>
+      <Separator />
+
+      {/* Info section */}
+      <div className="px-4 py-3 space-y-3">
+        {/* Responsável + Equipe + Área */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <InfoItem icon={Users} label="Responsável" value={activity.responsible_name || '—'} />
+          <InfoItem icon={Building2} label="Equipe de Apoio" value={activity.support_team || '—'} />
+          <InfoItem icon={MapPin} label="Área" value={activity.area || '—'} />
+        </div>
+
+        {/* Dates */}
+        <div className="grid grid-cols-3 gap-2">
+          <DateItem label="Início" date={activity.start_date} />
+          <DateItem label="Prazo Final" date={activity.end_date} urgent={daysInfo?.urgent} />
+          <DateItem label="Entrega" date={activity.delivery_date} />
+        </div>
+
+        {/* Links */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+              <LinkIcon className="h-3 w-3" />
+              Links
+            </p>
+            {canManage && (
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-1 px-1.5" onClick={() => setShowAddLink(!showAddLink)}>
+                <Plus className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+
+          {showAddLink && (
+            <div className="flex items-end gap-2 p-2.5 rounded-lg border border-dashed bg-muted/30">
+              <div className="flex-1 space-y-1">
+                <Input placeholder="Título (opcional)" value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} className="h-6 text-[11px]" />
+                <Input placeholder="https://..." value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} className="h-6 text-[11px]" onKeyDown={e => e.key === 'Enter' && handleAddLink()} />
+              </div>
+              <Button size="sm" className="h-6 text-[10px]" onClick={handleAddLink}>Salvar</Button>
+            </div>
           )}
 
-          {/* Progress */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">Progresso</span>
-              <span className="font-bold">{Math.round(progressPct)}%</span>
-            </div>
-            <Progress value={progressPct} className="h-2" />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>Inicial: {activity.start_value} {activity.unit}</span>
-              <span>Atual: {activity.current_value} {activity.unit}</span>
-              <span>Meta: {activity.target_value} {activity.unit}</span>
-            </div>
-          </div>
-
-          {/* Info Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <InfoItem icon={Users} label="Responsável" value={activity.responsible_name || '—'} />
-            <InfoItem icon={Building2} label="Equipe de Apoio" value={activity.support_team || '—'} />
-            <InfoItem icon={MapPin} label="Área" value={activity.area || '—'} />
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-3 gap-2">
-            <DateItem label="Início" date={activity.start_date} />
-            <DateItem label="Prazo Final" date={activity.end_date} urgent={daysInfo?.urgent} />
-            <DateItem label="Entrega" date={activity.delivery_date} />
-          </div>
-
-          {/* Links */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                <LinkIcon className="h-3 w-3" />
-                Links
-              </p>
-              {canManage && (
-                <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-1 px-1.5" onClick={() => setShowAddLink(!showAddLink)}>
-                  <Plus className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-
-            {showAddLink && (
-              <div className="flex items-end gap-2 p-2.5 rounded-lg border border-dashed bg-muted/30">
-                <div className="flex-1 space-y-1">
-                  <Input placeholder="Título (opcional)" value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} className="h-6 text-[11px]" />
-                  <Input placeholder="https://..." value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} className="h-6 text-[11px]" onKeyDown={e => e.key === 'Enter' && handleAddLink()} />
+          {links.length > 0 ? (
+            <div className="space-y-1">
+              {links.map((link, i) => (
+                <div key={i} className="group flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors">
+                  <ExternalLink className="h-3 w-3 text-primary shrink-0" />
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate flex-1">
+                    {link.label}
+                  </a>
+                  {canManage && (
+                    <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => handleRemoveLink(i)}>
+                      <X className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
                 </div>
-                <Button size="sm" className="h-6 text-[10px]" onClick={handleAddLink}>Salvar</Button>
-              </div>
-            )}
-
-            {links.length > 0 ? (
-              <div className="space-y-1">
-                {links.map((link, i) => (
-                  <div key={i} className="group flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors">
-                    <ExternalLink className="h-3 w-3 text-primary shrink-0" />
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate flex-1">
-                      {link.label}
-                    </a>
-                    {canManage && (
-                      <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => handleRemoveLink(i)}>
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : !showAddLink && (
-              <p className="text-[10px] text-muted-foreground/60 text-center py-1">Nenhum link</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : !showAddLink && (
+            <p className="text-[10px] text-muted-foreground/60 text-center py-1">Nenhum link</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
