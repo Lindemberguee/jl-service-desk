@@ -750,9 +750,10 @@ export function OkrBoard() {
                                 {isActivityExpanded && (
                                   <div className="px-4 pb-4 pt-1 ml-7 space-y-3 border-t border-border/30 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                                     {/* Description */}
-                                    {activity.description && (
-                                      <p className="text-xs text-muted-foreground leading-relaxed">{activity.description}</p>
-                                    )}
+                                    <div className="space-y-0.5">
+                                      <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Descrição da Atividade</p>
+                                      <p className="text-xs leading-relaxed">{activity.description || '—'}</p>
+                                    </div>
 
                                     {/* Meta / Progress detail */}
                                     <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
