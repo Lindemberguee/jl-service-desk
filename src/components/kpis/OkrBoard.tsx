@@ -662,15 +662,22 @@ export function OkrBoard() {
               </div>
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
-                <Select value={editingKr.kpi_id || '__none__'} onValueChange={v => setEditingKr(p => ({ ...p, kpi_id: v === '__none__' ? null : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nenhum (manual)</SelectItem>
-                    {kpis.filter(k => k.is_active).map(k => (
-                      <SelectItem key={k.id} value={k.id}>{k.name} ({k.unit})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {kpis.filter(k => k.is_active).map(k => (
+                    <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editingKr.kpi_id === k.id}
+                        onCheckedChange={(checked) => {
+                          setEditingKr(p => ({ ...p, kpi_id: checked ? k.id : null }));
+                        }}
+                      />
+                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                    </label>
+                  ))}
+                  {kpis.filter(k => k.is_active).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado.</p>
+                  )}
+                </div>
               </div>
             </div>
             <DialogFooter>
