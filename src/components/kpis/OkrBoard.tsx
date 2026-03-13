@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ActivityDetailDialog } from '@/components/kpis/ActivityDetailDialog';
 
 /* ───────── Constants ───────── */
 
@@ -94,6 +95,23 @@ export function OkrBoard() {
   const [selectedKrs, setSelectedKrs] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ krId: string; field: string } | null>(null);
   const [editCellValue, setEditCellValue] = useState('');
+  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
+  const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const openDetail = (kr: OkrKeyResult, obj: OkrObjective) => {
+    setDetailActivity(kr);
+    setDetailObjective(obj);
+    setDetailOpen(true);
+  };
+
+  const handleUpdateLinks = async (activityId: string, links: Array<{ label: string; url: string }>) => {
+    try {
+      await updateKeyResult.mutateAsync({ id: activityId, links } as any);
+      setDetailActivity(prev => prev ? { ...prev, links } : null);
+      toast.success('Links atualizados');
+    } catch { toast.error('Erro ao atualizar links'); }
+  };
 
   /* ── Derived ── */
   const activeCycle = selectedCycleId
@@ -442,20 +460,21 @@ export function OkrBoard() {
                           return (
                             <div
                               key={kr.id}
+                              onClick={() => openDetail(kr, obj)}
                               className={cn(
-                                "grid items-center px-2 border-t border-border/20 hover:bg-accent/30 transition-colors group/kr",
+                                "grid items-center px-2 border-t border-border/20 hover:bg-accent/30 transition-colors group/kr cursor-pointer",
                                 GRID,
                                 selectedKrs.has(kr.id) && "bg-accent/20"
                               )}
                             >
                               {/* Checkbox */}
-                              <div className="p-2.5 flex justify-center">
+                              <div className="p-2.5 flex justify-center" onClick={e => e.stopPropagation()}>
                                 {canManage && <Checkbox checked={selectedKrs.has(kr.id)} onCheckedChange={() => toggleSelectKr(kr.id)} />}
                               </div>
 
 
                               {/* Resultado-chave + Descrição */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'title', kr.title)}>
+                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'title', kr.title); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'title' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
                                 ) : (
@@ -469,7 +488,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Indicador */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'description', kr.description || '')}>
+                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'description', kr.description || ''); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'description' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
                                 ) : (
@@ -488,7 +507,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Responsável */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'responsible_name', kr.responsible_name || '')}>
+                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'responsible_name', kr.responsible_name || ''); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'responsible_name' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
                                 ) : (
@@ -497,7 +516,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Equipe de apoio */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'support_team', kr.support_team || '')}>
+                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'support_team', kr.support_team || ''); }} onClick={e => e.stopPropagation()}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'support_team' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" placeholder="Ex: Infra, Suporte" />
                                 ) : team.length > 0 ? (
@@ -529,7 +548,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Prazo */}
-                              <div className="p-2.5 text-center">
+                              <div className="p-2.5 text-center" onClick={e => e.stopPropagation()}>
                                 {kr.end_date ? (
                                   <span className={cn("text-[11px] tabular-nums font-medium", deadlineColor(kr.end_date))}>
                                     {format(parseISO(kr.end_date), 'dd MMM', { locale: ptBR })}
@@ -561,7 +580,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Ações */}
-                              <div className="p-2.5 flex justify-end">
+                              <div className="p-2.5 flex justify-end" onClick={e => e.stopPropagation()}>
                                 {canManage && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -695,6 +714,15 @@ export function OkrBoard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Activity Detail Dialog */}
+        <ActivityDetailDialog
+          activity={detailActivity}
+          objective={detailObjective}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdateLinks={handleUpdateLinks}
+          canManage={!!canManage}
+        />
       </div>
     </TooltipProvider>
   );
