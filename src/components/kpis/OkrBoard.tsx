@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
-import { ActivityDetailDialog } from '@/components/kpis/ActivityDetailDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,15 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import {
-  Plus, Target, Calendar, Pencil, Trash2, TrendingUp, AlertTriangle,
-  CheckCircle2, Clock, Play, Pause, Users, LayoutList, BarChart3,
-  ChevronDown, ChevronRight, Eye, Timer, ExternalLink
+  Plus, Target, Calendar, Pencil, Trash2, BarChart3,
+  ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Clock, Play, Pause, Timer
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format, parseISO, differenceInDays, endOfMonth, eachMonthOfInterval, getMonth, getYear } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /* ───────── Constants ───────── */
@@ -45,86 +42,6 @@ const ACTIVITY_STATUSES: Record<string, { label: string; color: string; icon: Re
   cancelado: { label: 'Cancelado', color: 'text-muted-foreground', icon: Trash2, bg: 'bg-muted text-muted-foreground border-border' },
 };
 
-const OBJ_STATUSES: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  on_track: { label: 'No caminho', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: TrendingUp },
-  at_risk: { label: 'Em risco', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', icon: AlertTriangle },
-  behind: { label: 'Atrasado', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertTriangle },
-  completed: { label: 'Concluído', color: 'bg-primary/10 text-primary border-primary/20', icon: CheckCircle2 },
-  cancelled: { label: 'Cancelado', color: 'bg-muted text-muted-foreground', icon: Target },
-};
-
-const PRIORITIES: Record<string, { label: string; color: string }> = {
-  baixa: { label: 'Baixa', color: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
-  media: { label: 'Média', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-  alta: { label: 'Alta', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-  critica: { label: 'Crítica', color: 'bg-destructive/10 text-destructive border-destructive/20' },
-};
-
-const CAT_COLORS: Record<string, string> = {
-  Operacional: 'hsl(var(--primary))',
-  'Estratégico': 'hsl(var(--chart-2))',
-  Financeiro: 'hsl(var(--chart-3))',
-  Qualidade: 'hsl(var(--chart-4))',
-  'Inovação': 'hsl(var(--chart-5))',
-};
-
-/* ───────── Helpers ───────── */
-
-interface KrGroup {
-  krTitle: string;
-  indicator: string;
-  meta: string;
-  activities: OkrKeyResult[];
-}
-
-function groupByKr(activities: OkrKeyResult[], obj: OkrObjective): KrGroup[] {
-  const map = new Map<string, KrGroup>();
-  for (const a of activities) {
-    const key = a.title;
-    if (!map.has(key)) {
-      // Use the first activity's unit/target as the KR-level indicator & meta
-      // The "indicator" text comes from the objective level or the activity's unit description
-      map.set(key, {
-        krTitle: a.title,
-        indicator: a.unit ? `${a.unit}` : obj.indicator || '',
-        meta: `${a.target_value}${a.unit ? ` ${a.unit}` : ''}`,
-        activities: [],
-      });
-    }
-    map.get(key)!.activities.push(a);
-  }
-  return Array.from(map.values());
-}
-
-function deadlineInfo(a: OkrKeyResult) {
-  if (!a.end_date) return null;
-  const end = parseISO(a.end_date);
-  const today = new Date();
-  const days = differenceInDays(end, today);
-  if (['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)) return null;
-  if (days < 0) return { text: `${Math.abs(days)}d atrasado`, urgent: true };
-  if (days <= 7) return { text: `${days}d restantes`, urgent: days <= 3 };
-  return null;
-}
-
-function fmtDate(d: string | null) {
-  if (!d) return '—';
-  return format(parseISO(d), 'dd/MM/yy');
-}
-
-function matchesMonthFilter(kr: OkrKeyResult, filterMonth: string) {
-  if (filterMonth === 'all') return true;
-  const [y, m] = filterMonth.split('-').map(Number);
-  const monthStart = new Date(y, m - 1, 1);
-  const monthEnd = endOfMonth(monthStart);
-  const start = kr.start_date ? parseISO(kr.start_date) : null;
-  const end = kr.end_date ? parseISO(kr.end_date) : null;
-  if (start && end) return start <= monthEnd && end >= monthStart;
-  if (start) return start <= monthEnd && start >= monthStart;
-  if (end) return end >= monthStart && end <= monthEnd;
-  return true;
-}
-
 /* ───────── Component ───────── */
 
 export function OkrBoard() {
@@ -141,28 +58,12 @@ export function OkrBoard() {
 
   /* ── State ── */
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'plan' | 'board'>('plan');
-  const [expandedObjectives, setExpandedObjectives] = useState<Set<string> | null>(null);
-  const [expandedKrs, setExpandedKrs] = useState<Set<string>>(new Set());
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterArea, setFilterArea] = useState('all');
-  const [filterResponsible, setFilterResponsible] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
-
-  // Dialogs
   const [cycleDialogOpen, setCycleDialogOpen] = useState(false);
   const [objDialogOpen, setObjDialogOpen] = useState(false);
-  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
-  const [checkinDialogOpen, setCheckinDialogOpen] = useState(false);
+  const [krDialogOpen, setKrDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Partial<OkrCycle>>({});
   const [editingObj, setEditingObj] = useState<Partial<OkrObjective>>({});
-  const [editingActivity, setEditingActivity] = useState<Partial<OkrKeyResult>>({});
-  const [checkinKrId, setCheckinKrId] = useState<string | null>(null);
-  const [checkinValue, setCheckinValue] = useState('');
-  const [checkinNotes, setCheckinNotes] = useState('');
-  const [checkinConfidence, setCheckinConfidence] = useState('70');
-  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editingKr, setEditingKr] = useState<Partial<OkrKeyResult>>({});
 
   /* ── Derived ── */
   const activeCycle = selectedCycleId
@@ -171,61 +72,22 @@ export function OkrBoard() {
   const cycleId = activeCycle?.id;
   const cycleObjectives = cycleId ? objectives.filter(o => o.cycle_id === cycleId) : [];
 
-  const allAreas = useMemo(() => {
-    const s = new Set<string>();
-    cycleObjectives.forEach(o => { if (o.area) s.add(o.area); });
-    keyResults.forEach(kr => { if (kr.area) s.add(kr.area); });
-    return Array.from(s).sort();
-  }, [cycleObjectives, keyResults]);
-
-  const allResponsibles = useMemo(() => {
-    const s = new Set<string>();
-    keyResults.forEach(kr => { if (kr.responsible_name) s.add(kr.responsible_name); });
-    return Array.from(s).sort();
-  }, [keyResults]);
-
-  // Auto-expand all objectives on first load
-  if (expandedObjectives === null && cycleObjectives.length > 0) {
-    setExpandedObjectives(new Set(cycleObjectives.map(o => o.id)));
-  }
-  const expanded = expandedObjectives ?? new Set<string>();
-
-  const toggleObj = (id: string) => {
-    setExpandedObjectives(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleKr = (key: string) => {
-    setExpandedKrs(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  };
-
-  /* ── Stats ── */
-  const allActivities = cycleObjectives.flatMap(o => keyResults.filter(kr => kr.objective_id === o.id));
-  const stats = useMemo(() => {
-    const total = allActivities.length;
-    const finalizados = allActivities.filter(a => ['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)).length;
-    const atrasados = allActivities.filter(a => a.activity_status === 'atrasado').length;
-    const emAndamento = allActivities.filter(a => ['em_andamento', 'no_prazo'].includes(a.activity_status)).length;
-    const aIniciar = allActivities.filter(a => a.activity_status === 'a_iniciar').length;
-    const pct = cycleObjectives.length > 0
-      ? Math.round(cycleObjectives.reduce((s, o) => s + (o.progress || 0), 0) / cycleObjectives.length)
-      : 0;
-    return { total, finalizados, atrasados, emAndamento, aIniciar, pct };
-  }, [allActivities, cycleObjectives]);
-
   const daysRemaining = activeCycle ? Math.max(0, differenceInDays(parseISO(activeCycle.ends_at), new Date())) : 0;
   const totalDays = activeCycle ? differenceInDays(parseISO(activeCycle.ends_at), parseISO(activeCycle.starts_at)) : 1;
   const elapsedPct = totalDays > 0 ? Math.min(((totalDays - daysRemaining) / totalDays) * 100, 100) : 0;
 
+  /* ── Build table data: each objective with its KRs ── */
+  const tableData = useMemo(() => {
+    return cycleObjectives.map(obj => {
+      const krs = keyResults.filter(kr => kr.objective_id === obj.id);
+      return { objective: obj, keyResults: krs };
+    });
+  }, [cycleObjectives, keyResults]);
+
   /* ── Auto-detect overdue ── */
   const autoRan = useRef(false);
+  const allActivities = useMemo(() => cycleObjectives.flatMap(o => keyResults.filter(kr => kr.objective_id === o.id)), [cycleObjectives, keyResults]);
+
   useEffect(() => {
     if (isLoading || allActivities.length === 0 || autoRan.current) return;
     autoRan.current = true;
@@ -240,6 +102,16 @@ export function OkrBoard() {
       })
       .forEach(a => updateKeyResult.mutateAsync({ id: a.id, activity_status: 'atrasado' }).catch(() => {}));
   }, [isLoading, allActivities]);
+
+  /* ── Stats ── */
+  const stats = useMemo(() => {
+    const total = allActivities.length;
+    const finalizados = allActivities.filter(a => ['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)).length;
+    const pct = cycleObjectives.length > 0
+      ? Math.round(cycleObjectives.reduce((s, o) => s + (o.progress || 0), 0) / cycleObjectives.length)
+      : 0;
+    return { total, finalizados, pct };
+  }, [allActivities, cycleObjectives]);
 
   /* ── Handlers ── */
   const handleSaveCycle = async () => {
@@ -271,773 +143,430 @@ export function OkrBoard() {
     } catch { toast.error('Erro ao salvar objetivo'); }
   };
 
-  const handleSaveActivity = async () => {
-    if (!editingActivity.title?.trim()) return toast.error('Descrição obrigatória');
+  const handleSaveKr = async () => {
+    if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
     try {
-      if (editingActivity.id) {
-        await updateKeyResult.mutateAsync({ id: editingActivity.id, ...editingActivity });
-        toast.success('Atividade atualizada');
+      if (editingKr.id) {
+        await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr });
+        toast.success('Resultado-chave atualizado');
       } else {
-        await createKeyResult.mutateAsync(editingActivity);
-        toast.success('Atividade criada');
+        await createKeyResult.mutateAsync(editingKr);
+        toast.success('Resultado-chave criado');
       }
-      setActivityDialogOpen(false);
-    } catch { toast.error('Erro ao salvar atividade'); }
+      setKrDialogOpen(false);
+    } catch { toast.error('Erro ao salvar resultado-chave'); }
   };
 
-  const handleCheckin = async () => {
-    if (!checkinKrId || !checkinValue) return;
+  const handleQuickStatusChange = async (krId: string, newStatus: string) => {
     try {
-      await addCheckin.mutateAsync({
-        key_result_id: checkinKrId,
-        value: parseFloat(checkinValue),
-        confidence_level: parseFloat(checkinConfidence),
-        notes: checkinNotes || null,
-        recorded_by: user?.id,
-      });
-      await updateKeyResult.mutateAsync({
-        id: checkinKrId,
-        current_value: parseFloat(checkinValue),
-        confidence_level: parseFloat(checkinConfidence),
-      });
-      toast.success('Check-in registrado');
-      setCheckinDialogOpen(false);
-      setCheckinValue('');
-      setCheckinNotes('');
-    } catch { toast.error('Erro ao registrar check-in'); }
-  };
-
-  const handleQuickStatusChange = async (activityId: string, newStatus: string) => {
-    try {
-      const activity = keyResults.find(kr => kr.id === activityId);
+      const kr = keyResults.find(k => k.id === krId);
       let finalStatus = newStatus;
-      if (newStatus === 'finalizado' && activity?.end_date) {
-        const end = parseISO(activity.end_date);
+      if (newStatus === 'finalizado' && kr?.end_date) {
+        const end = parseISO(kr.end_date);
         end.setHours(0, 0, 0, 0);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (today > end) finalStatus = 'finalizado_com_atraso';
       }
-      const updates: any = { id: activityId, activity_status: finalStatus };
-      if (['finalizado', 'finalizado_com_atraso'].includes(finalStatus) && activity) {
-        updates.current_value = activity.target_value;
+      const updates: any = { id: krId, activity_status: finalStatus };
+      if (['finalizado', 'finalizado_com_atraso'].includes(finalStatus) && kr) {
+        updates.current_value = kr.target_value;
         updates.delivery_date = new Date().toISOString().split('T')[0];
       }
       await updateKeyResult.mutateAsync(updates);
-      if (activity) {
-        const objKrs = keyResults.filter(kr => kr.objective_id === activity.objective_id);
-        const totalProgress = objKrs.reduce((sum, kr) => {
-          const cv = kr.id === activityId && ['finalizado', 'finalizado_com_atraso'].includes(finalStatus)
-            ? kr.target_value : kr.current_value;
-          const range = kr.target_value - kr.start_value;
+      if (kr) {
+        const objKrs = keyResults.filter(k => k.objective_id === kr.objective_id);
+        const totalProgress = objKrs.reduce((sum, k) => {
+          const cv = k.id === krId && ['finalizado', 'finalizado_com_atraso'].includes(finalStatus) ? k.target_value : k.current_value;
+          const range = k.target_value - k.start_value;
           if (range === 0) return sum;
-          return sum + Math.max(0, Math.min(((cv - kr.start_value) / range) * 100, 100));
+          return sum + Math.max(0, Math.min(((cv - k.start_value) / range) * 100, 100));
         }, 0);
         const avg = objKrs.length > 0 ? Math.round(totalProgress / objKrs.length) : 0;
-        await updateObjective.mutateAsync({ id: activity.objective_id, progress: avg });
+        await updateObjective.mutateAsync({ id: kr.objective_id, progress: avg });
       }
       toast.success('Status atualizado');
     } catch { toast.error('Erro ao atualizar status'); }
   };
 
-  /* ── Filter activities ── */
-  const filterActivities = (activities: OkrKeyResult[]) =>
-    activities
-      .filter(kr => filterStatus === 'all' || kr.activity_status === filterStatus)
-      .filter(kr => filterArea === 'all' || kr.area === filterArea)
-      .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible)
-      .filter(kr => matchesMonthFilter(kr, filterMonth));
-
   /* ═══════════════════════ RENDER ═══════════════════════ */
 
   return (
-    <TooltipProvider>
-      <div className="space-y-5">
+    <div className="space-y-5">
 
-        {/* ── Cycle Selector ── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {cycles.map(c => (
-              <Button key={c.id} variant={c.id === activeCycle?.id ? 'default' : 'outline'} size="sm" onClick={() => setSelectedCycleId(c.id)} className="gap-1.5 h-8 text-xs">
-                <Calendar className="h-3 w-3" />
-                {c.name}
-              </Button>
-            ))}
-            {canManage && (
-              <Button variant="outline" size="sm" onClick={() => { setEditingCycle({ type: 'quarterly', status: 'active' }); setCycleDialogOpen(true); }} className="gap-1.5 h-8 text-xs border-dashed">
-                <Plus className="h-3 w-3" /> Ciclo
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant={viewMode === 'plan' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('plan')} className="gap-1 h-8 text-xs">
-              <LayoutList className="h-3.5 w-3.5" /> Plano
+      {/* ── Cycle Selector ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {cycles.map(c => (
+            <Button key={c.id} variant={c.id === activeCycle?.id ? 'default' : 'outline'} size="sm" onClick={() => setSelectedCycleId(c.id)} className="gap-1.5 h-8 text-xs">
+              <Calendar className="h-3 w-3" />
+              {c.name}
             </Button>
-            <Button variant={viewMode === 'board' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('board')} className="gap-1 h-8 text-xs">
-              <BarChart3 className="h-3.5 w-3.5" /> Board
-            </Button>
-          </div>
-        </div>
-
-        {/* ── Stats Strip ── */}
-        {activeCycle && (
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-            {/* Timeline */}
-            <div className="sm:col-span-2 rounded-lg border bg-card p-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium flex items-center gap-1.5">
-                  {canManage && (
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingCycle(activeCycle); setCycleDialogOpen(true); }}>
-                      <Pencil className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                  {activeCycle.name}
-                </span>
-                <span className="text-muted-foreground tabular-nums"><strong className="text-foreground">{daysRemaining}</strong> dias restantes</span>
-              </div>
-              <Progress value={elapsedPct} className="h-1.5" />
-              <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
-                <span>{format(parseISO(activeCycle.starts_at), 'dd MMM yy', { locale: ptBR })}</span>
-                <span>{Math.round(elapsedPct)}%</span>
-                <span>{format(parseISO(activeCycle.ends_at), 'dd MMM yy', { locale: ptBR })}</span>
-              </div>
-            </div>
-            {/* Progress */}
-            <StatCard value={`${stats.pct}%`} label="Progresso" color={stats.pct >= 70 ? 'text-emerald-500' : stats.pct >= 40 ? 'text-amber-500' : 'text-muted-foreground'} />
-            <StatCard value={stats.finalizados} label="Concluídos" color="text-emerald-500" />
-            <StatCard value={stats.emAndamento} label="Em andamento" color="text-amber-500" />
-            <StatCard value={`${stats.atrasados}`} label="Atrasados" color="text-destructive" />
-          </div>
-        )}
-
-        {/* ── Month Filter ── */}
-        {activeCycle && (() => {
-          const months = eachMonthOfInterval({ start: parseISO(activeCycle.starts_at), end: parseISO(activeCycle.ends_at) });
-          const labels = months.map(m => ({
-            key: `${getYear(m)}-${String(getMonth(m) + 1).padStart(2, '0')}`,
-            label: format(m, 'MMM', { locale: ptBR }).replace('.', ''),
-            year: getYear(m),
-          }));
-          const multi = new Set(labels.map(l => l.year)).size > 1;
-          return (
-            <div className="flex items-center gap-1 flex-wrap">
-              <Pill active={filterMonth === 'all'} onClick={() => setFilterMonth('all')}>Todos</Pill>
-              {labels.map(m => (
-                <Pill key={m.key} active={filterMonth === m.key} onClick={() => setFilterMonth(filterMonth === m.key ? 'all' : m.key)}>
-                  {m.label}{multi ? ` ${String(m.year).slice(2)}` : ''}
-                </Pill>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* ── Filters + New Objective ── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                {Object.entries(ACTIVITY_STATUSES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {allAreas.length > 0 && (
-              <Select value={filterArea} onValueChange={setFilterArea}>
-                <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Área" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas áreas</SelectItem>
-                  {allAreas.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            {allResponsibles.length > 0 && (
-              <Select value={filterResponsible} onValueChange={setFilterResponsible}>
-                <SelectTrigger className="h-8 w-[160px] text-xs"><Users className="h-3 w-3 mr-1" /><SelectValue placeholder="Responsável" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {allResponsibles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          {canManage && cycleId && (
-            <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} className="gap-1.5 h-8 text-xs" size="sm">
-              <Plus className="h-3.5 w-3.5" /> Novo Objetivo
+          ))}
+          {canManage && (
+            <Button variant="outline" size="sm" onClick={() => { setEditingCycle({ type: 'annual', status: 'active' }); setCycleDialogOpen(true); }} className="gap-1.5 h-8 text-xs border-dashed">
+              <Plus className="h-3 w-3" /> Ciclo
             </Button>
           )}
         </div>
+      </div>
 
-        {/* ── Empty ── */}
-        {cycleObjectives.length === 0 && !isLoading && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <Target className="h-12 w-12 text-muted-foreground/30" />
-              <h3 className="text-lg font-semibold mt-4">Monte seu Plano de Ação</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-md">Crie objetivos, defina resultados-chave e atividades com responsáveis e prazos.</p>
-            </CardContent>
-          </Card>
-        )}
+      {/* ── Timeline + Stats ── */}
+      {activeCycle && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="sm:col-span-2 rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium flex items-center gap-1.5">
+                {canManage && (
+                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingCycle(activeCycle); setCycleDialogOpen(true); }}>
+                    <Pencil className="h-2.5 w-2.5" />
+                  </Button>
+                )}
+                {activeCycle.name}
+              </span>
+              <span className="text-muted-foreground tabular-nums"><strong className="text-foreground">{daysRemaining}</strong> dias restantes</span>
+            </div>
+            <Progress value={elapsedPct} className="h-1.5" />
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+              <span>{format(parseISO(activeCycle.starts_at), 'dd MMM yy', { locale: ptBR })}</span>
+              <span>{Math.round(elapsedPct)}%</span>
+              <span>{format(parseISO(activeCycle.ends_at), 'dd MMM yy', { locale: ptBR })}</span>
+            </div>
+          </div>
+          <StatCard value={`${stats.pct}%`} label="Progresso Geral" color={stats.pct >= 70 ? 'text-emerald-500' : stats.pct >= 40 ? 'text-amber-500' : 'text-muted-foreground'} />
+          <StatCard value={`${stats.finalizados}/${stats.total}`} label="Resultados Concluídos" color="text-emerald-500" />
+        </div>
+      )}
 
-        {/* ══════════ PLAN VIEW ══════════ */}
-        {viewMode === 'plan' && cycleObjectives.map(obj => {
-          const allObjActivities = keyResults.filter(kr => kr.objective_id === obj.id);
-          const filtered = filterActivities(allObjActivities);
-          const groups = groupByKr(filtered, obj);
-          const totalKrs = allObjActivities.length;
-          const completedKrs = allObjActivities.filter(a => ['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)).length;
-          const objPct = Math.round(obj.progress);
-          const Status = OBJ_STATUSES[obj.status] || OBJ_STATUSES.on_track;
-          const isExp = expanded.has(obj.id);
-          const catColor = CAT_COLORS[obj.category] || 'hsl(var(--primary))';
+      {/* ── New Objective button ── */}
+      {canManage && cycleId && (
+        <div className="flex justify-end">
+          <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} className="gap-1.5 h-8 text-xs" size="sm">
+            <Plus className="h-3.5 w-3.5" /> Novo Objetivo
+          </Button>
+        </div>
+      )}
 
-          return (
-            <div key={obj.id} className="rounded-xl overflow-hidden shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] bg-card" style={{ borderLeft: `3px solid ${catColor}` }}>
-              {/* ── Objective Header ── */}
-              <div className={cn("flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-muted/20")} onClick={() => toggleObj(obj.id)}>
-                <span className="text-muted-foreground shrink-0">
-                  {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-sm">{obj.title}</h3>
-                    <Badge variant="outline" className={cn('text-[9px] gap-1 h-5', Status.color)}>
-                      <Status.icon className="h-2.5 w-2.5" /> {Status.label}
-                    </Badge>
-                    <Badge variant="outline" className={cn('text-[9px] h-5', PRIORITIES[obj.priority]?.color)}>
-                      {PRIORITIES[obj.priority]?.label}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                    {obj.responsible_name && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{obj.responsible_name}</span>}
-                    {obj.area && <span>📍 {obj.area}</span>}
-                    {obj.indicator && <span>📊 {obj.indicator}</span>}
-                    {obj.target_label && <span>🎯 {obj.target_label}</span>}
-                    <span>{completedKrs}/{totalKrs} atividades</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={cn("text-lg font-bold tabular-nums", objPct >= 100 ? 'text-primary' : objPct >= 70 ? 'text-emerald-500' : 'text-foreground')}>{objPct}%</span>
-                  <div className="w-20 hidden sm:block"><Progress value={objPct} className="h-1.5" /></div>
-                </div>
-              </div>
+      {/* ── Empty ── */}
+      {cycleObjectives.length === 0 && !isLoading && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Target className="h-12 w-12 text-muted-foreground/30" />
+            <h3 className="text-lg font-semibold mt-4">Monte seu Plano de Ação</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">Crie objetivos e defina resultados-chave com indicadores e metas.</p>
+          </CardContent>
+        </Card>
+      )}
 
-              {/* ── KR Groups ── */}
-              {isExp && (
-                <div className="border-t border-border/40">
-                  {groups.length > 0 ? groups.map((group, gi) => {
-                    const krKey = `${obj.id}-${group.krTitle}`;
-                    const krExp = !expandedKrs.has(krKey); // Default: expanded (toggle to collapse)
-                    const groupCompleted = group.activities.filter(a => ['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)).length;
-                    const groupTotal = group.activities.length;
-                    // Average progress of activities in this KR group
-                    const groupPct = groupTotal > 0
-                      ? Math.round(group.activities.reduce((s, a) => {
-                          const range = a.target_value - a.start_value;
-                          if (range === 0) return s;
-                          return s + Math.max(0, Math.min(((a.current_value - a.start_value) / range) * 100, 100));
-                        }, 0) / groupTotal)
-                      : 0;
+      {/* ══════════ MAIN TABLE — Spreadsheet style ══════════ */}
+      {tableData.length > 0 && (
+        <div className="rounded-xl overflow-hidden border bg-card shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)]">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
+            <div className="col-span-3 px-4 py-3">Objetivo</div>
+            <div className="col-span-4 px-4 py-3">Resultados-Chave</div>
+            <div className="col-span-3 px-4 py-3">Indicadores</div>
+            <div className="col-span-1 px-4 py-3 text-center">Meta</div>
+            <div className="col-span-1 px-4 py-3 text-center">Status</div>
+          </div>
 
-                    return (
-                      <div key={gi} className={cn(gi > 0 && 'border-t border-border/30')}>
-                        {/* KR Header — shows INDICADOR, STATUS, META like the spreadsheet */}
-                        <div
-                          className="flex items-start gap-3 px-4 py-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => toggleKr(krKey)}
-                        >
-                          <span className="text-muted-foreground shrink-0 mt-0.5">
-                            {krExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                          </span>
-                          <Target className="h-3.5 w-3.5 text-primary/60 shrink-0 mt-0.5" />
-                          <div className="flex-1 min-w-0 space-y-1.5">
-                            <p className="text-xs font-semibold leading-snug">{group.krTitle}</p>
-                            <div className="flex items-center gap-4 flex-wrap">
-                              <KrField label="INDICADOR" value={group.indicator} />
-                              <KrField label="STATUS" value={(() => {
-                                const done = groupCompleted;
-                                const total = groupTotal;
-                                if (done === total && total > 0) return 'Concluído';
-                                const hasLate = group.activities.some(a => a.activity_status === 'atrasado');
-                                if (hasLate) return 'Atrasado';
-                                return `${done}/${total} concluídas`;
-                              })()} />
-                              <KrField label="META" value={group.meta} highlight />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                            <span className="text-xs font-bold tabular-nums">{groupPct}%</span>
-                            <div className="w-16 hidden sm:block"><Progress value={groupPct} className="h-1" /></div>
-                          </div>
-                        </div>
+          {/* Table Body */}
+          {tableData.map(({ objective: obj, keyResults: krs }, objIdx) => {
+            const rowCount = Math.max(krs.length, 1);
 
-                        {/* Activities Table */}
-                        {krExp && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b border-border/30 text-[10px] text-muted-foreground uppercase tracking-wider">
-                                  <th className="text-left px-4 py-2 font-medium">Descrição da Atividade</th>
-                                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Responsável</th>
-                                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap hidden lg:table-cell">Eq. Apoio</th>
-                                  <th className="text-center px-3 py-2 font-medium whitespace-nowrap hidden md:table-cell">Início</th>
-                                  <th className="text-center px-3 py-2 font-medium whitespace-nowrap">Final</th>
-                                  <th className="text-center px-3 py-2 font-medium whitespace-nowrap hidden md:table-cell">Entrega</th>
-                                  <th className="text-center px-3 py-2 font-medium">Status</th>
-                                  <th className="text-center px-3 py-2 font-medium whitespace-nowrap hidden sm:table-cell">Link</th>
-                                  {canManage && <th className="px-3 py-2 w-20" />}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {group.activities.map(activity => {
-                                  const st = ACTIVITY_STATUSES[activity.activity_status] || ACTIVITY_STATUSES.a_iniciar;
-                                  const StIcon = st.icon;
-                                  const dl = deadlineInfo(activity);
-                                  const links: Array<{ label: string; url: string }> = Array.isArray(activity.links) ? activity.links : [];
-
-                                  return (
-                                    <tr
-                                      key={activity.id}
-                                      className="group border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors"
-                                    >
-                                      {/* Descrição */}
-                                      <td className="px-4 py-2.5 max-w-[300px]">
-                                        <p className="font-medium leading-snug truncate" title={activity.description || activity.title}>
-                                          {activity.description || '—'}
-                                        </p>
-                                      </td>
-                                      {/* Responsável */}
-                                      <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                                        {activity.responsible_name || '—'}
-                                      </td>
-                                      {/* Eq Apoio */}
-                                      <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground hidden lg:table-cell">
-                                        {activity.support_team || '—'}
-                                      </td>
-                                      {/* Início */}
-                                      <td className="px-3 py-2.5 text-center tabular-nums text-muted-foreground whitespace-nowrap hidden md:table-cell">
-                                        {fmtDate(activity.start_date)}
-                                      </td>
-                                      {/* Final */}
-                                      <td className={cn("px-3 py-2.5 text-center tabular-nums whitespace-nowrap", dl?.urgent && 'text-destructive font-medium')}>
-                                        {fmtDate(activity.end_date)}
-                                        {dl && <span className="block text-[9px] mt-0.5">{dl.text}</span>}
-                                      </td>
-                                      {/* Entrega */}
-                                      <td className="px-3 py-2.5 text-center tabular-nums text-muted-foreground whitespace-nowrap hidden md:table-cell">
-                                        {fmtDate(activity.delivery_date)}
-                                      </td>
-                                      {/* Status */}
-                                      <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
-                                        {canManage ? (
-                                          <Select value={activity.activity_status} onValueChange={v => handleQuickStatusChange(activity.id, v)}>
-                                            <SelectTrigger className={cn("h-6 text-[10px] font-semibold border gap-1 px-2 w-auto mx-auto", st.bg)}>
-                                              <StIcon className="h-3 w-3" />
-                                              <span className="hidden sm:inline">{st.label}</span>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {Object.entries(ACTIVITY_STATUSES).map(([k, v]) => (
-                                                <SelectItem key={k} value={k}>
-                                                  <div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div>
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        ) : (
-                                          <Badge variant="outline" className={cn('text-[10px] gap-1', st.bg)}>
-                                            <StIcon className="h-3 w-3" />{st.label}
-                                          </Badge>
-                                        )}
-                                      </td>
-                                      {/* Links */}
-                                      <td className="px-3 py-2.5 text-center hidden sm:table-cell">
-                                        {links.length > 0 ? (
-                                          <div className="flex items-center justify-center gap-1">
-                                            {links.map((link, i) => (
-                                              <Tooltip key={i}>
-                                                <TooltipTrigger asChild>
-                                                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                                                    <ExternalLink className="h-3.5 w-3.5" />
-                                                  </a>
-                                                </TooltipTrigger>
-                                                <TooltipContent>{link.label}</TooltipContent>
-                                              </Tooltip>
-                                            ))}
-                                          </div>
-                                        ) : <span className="text-muted-foreground/40">—</span>}
-                                      </td>
-                                      {/* Actions */}
-                                      {canManage && (
-                                        <td className="px-3 py-2.5">
-                                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                                  setCheckinKrId(activity.id);
-                                                  setCheckinValue(activity.current_value.toString());
-                                                  setCheckinConfidence((activity.confidence_level ?? 70).toString());
-                                                  setCheckinDialogOpen(true);
-                                                }}>
-                                                  <TrendingUp className="h-3 w-3" />
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Check-in</TooltipContent>
-                                            </Tooltip>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingActivity(activity); setActivityDialogOpen(true); }}>
-                                                  <Pencil className="h-3 w-3" />
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Editar</TooltipContent>
-                                            </Tooltip>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
-                                                  <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Excluir</TooltipContent>
-                                            </Tooltip>
-                                          </div>
-                                        </td>
-                                      )}
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+            return (
+              <div key={obj.id} className={cn("border-t border-border", objIdx % 2 === 0 ? 'bg-card' : 'bg-muted/20')}>
+                <div className="grid grid-cols-12">
+                  {/* OBJETIVO cell — spans all KR rows */}
+                  <div className="col-span-3 px-4 py-4 border-r border-border/40 flex flex-col justify-center" style={{ gridRow: `span ${rowCount}` }}>
+                    <p className="text-sm font-semibold leading-snug text-foreground">{obj.title}</p>
+                    {obj.description && (
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{obj.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Progress value={obj.progress} className="h-1.5 flex-1" />
+                      <span className="text-[11px] font-bold tabular-nums text-foreground">{Math.round(obj.progress)}%</span>
+                    </div>
+                    {canManage && (
+                      <div className="flex items-center gap-1 mt-2">
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5" onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}>
+                          <Pencil className="h-2.5 w-2.5" /> Editar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-1.5 text-destructive" onClick={() => { if (confirm('Excluir objetivo?')) deleteObjective.mutateAsync(obj.id); }}>
+                          <Trash2 className="h-2.5 w-2.5" />
+                        </Button>
                       </div>
-                    );
-                  }) : (
-                    <p className="text-center py-8 text-sm text-muted-foreground">
-                      Nenhuma atividade{filterStatus !== 'all' || filterArea !== 'all' || filterResponsible !== 'all' ? ' com os filtros selecionados' : ''}
-                    </p>
-                  )}
-
-                  {/* Objective Footer */}
-                  {canManage && (
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border/30 bg-muted/10">
-                      <Button variant="outline" size="sm" className="gap-1.5 h-7 text-[11px] border-dashed" onClick={() => {
-                        setEditingActivity({
-                          objective_id: obj.id,
-                          start_value: 0, target_value: 100, current_value: 0,
-                          confidence_level: 70, unit: '%', status: 'on_track',
-                          activity_status: 'a_iniciar', area: obj.area || '', responsible_name: '',
-                        });
-                        setActivityDialogOpen(true);
-                      }}>
-                        <Plus className="h-3 w-3" /> Atividade
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-[11px]" onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}>
-                        <Pencil className="h-3 w-3" /> Editar
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-[11px] text-destructive" onClick={() => deleteObjective.mutateAsync(obj.id)}>
-                        <Trash2 className="h-3 w-3" /> Excluir
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* ══════════ BOARD VIEW ══════════ */}
-        {viewMode === 'board' && (() => {
-          const filtered = filterActivities(allActivities);
-          const columns = [
-            { key: 'a_iniciar', label: 'A Iniciar', match: (s: string) => s === 'a_iniciar' },
-            { key: 'em_andamento', label: 'Em Andamento', match: (s: string) => ['em_andamento', 'no_prazo'].includes(s) },
-            { key: 'atrasado', label: 'Atrasado', match: (s: string) => s === 'atrasado' },
-            { key: 'finalizado', label: 'Finalizados', match: (s: string) => ['finalizado', 'finalizado_com_atraso'].includes(s) },
-          ];
-          return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {columns.map(col => {
-                const items = filtered.filter(a => col.match(a.activity_status));
-                const st = ACTIVITY_STATUSES[col.key];
-                return (
-                  <div key={col.key} className="space-y-2">
-                    <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold", st.bg)}>
-                      <st.icon className="h-3.5 w-3.5" />
-                      {col.label}
-                      <Badge variant="secondary" className="ml-auto h-5 text-[10px]">{items.length}</Badge>
-                    </div>
-                    {items.map(activity => {
-                      const parentObj = objectives.find(o => o.id === activity.objective_id);
-                      return (
-                        <Card key={activity.id} className={cn("hover:shadow-md transition-shadow cursor-pointer", col.key === 'finalizado' && 'opacity-70 hover:opacity-100')} onClick={() => {
-                          if (canManage) { setEditingActivity(activity); setActivityDialogOpen(true); }
-                        }}>
-                          <CardContent className="p-3 space-y-1.5">
-                            <p className={cn("text-xs font-medium leading-tight", col.key === 'finalizado' && 'line-through')}>{activity.description || activity.title}</p>
-                            {parentObj && <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Target className="h-2.5 w-2.5" />{parentObj.title}</p>}
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                              {activity.responsible_name && <span className="flex items-center gap-1"><Users className="h-2.5 w-2.5" />{activity.responsible_name}</span>}
-                              {activity.end_date && <span className="tabular-nums">{fmtDate(activity.end_date)}</span>}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                    )}
                   </div>
-                );
-              })}
+
+                  {/* KR rows */}
+                  <div className="col-span-9">
+                    {krs.length > 0 ? krs.map((kr, krIdx) => {
+                      const linkedKpi = kr.kpi_id ? kpis.find(k => k.id === kr.kpi_id) : null;
+                      const indicatorText = linkedKpi?.name || kr.description || kr.unit || '—';
+                      const metaText = `${kr.target_value}${kr.unit ? (kr.unit === '%' ? '%' : ` ${kr.unit}`) : ''}`;
+                      const st = ACTIVITY_STATUSES[kr.activity_status] || ACTIVITY_STATUSES.a_iniciar;
+                      const StIcon = st.icon;
+                      const pct = kr.target_value - kr.start_value > 0
+                        ? Math.round(((kr.current_value - kr.start_value) / (kr.target_value - kr.start_value)) * 100)
+                        : 0;
+
+                      return (
+                        <div
+                          key={kr.id}
+                          className={cn(
+                            "grid grid-cols-9 items-center",
+                            krIdx > 0 && "border-t border-border/30",
+                            "hover:bg-muted/30 transition-colors group"
+                          )}
+                        >
+                          {/* RESULTADO-CHAVE */}
+                          <div className="col-span-4 px-4 py-3 border-r border-border/30">
+                            <p className="text-xs leading-snug">{kr.title}</p>
+                            {kr.responsible_name && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">👤 {kr.responsible_name}</p>
+                            )}
+                          </div>
+
+                          {/* INDICADORES */}
+                          <div className="col-span-3 px-4 py-3 border-r border-border/30">
+                            <p className="text-xs text-muted-foreground leading-snug">{indicatorText}</p>
+                          </div>
+
+                          {/* META */}
+                          <div className="col-span-1 px-4 py-3 text-center border-r border-border/30">
+                            <span className="text-xs font-bold tabular-nums">{metaText}</span>
+                          </div>
+
+                          {/* STATUS */}
+                          <div className="col-span-1 px-3 py-3 text-center">
+                            {canManage ? (
+                              <Select value={kr.activity_status} onValueChange={v => handleQuickStatusChange(kr.id, v)}>
+                                <SelectTrigger className={cn("h-6 text-[10px] font-semibold border gap-0.5 px-1.5 w-auto mx-auto", st.bg)}>
+                                  <StIcon className="h-3 w-3" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(ACTIVITY_STATUSES).map(([k, v]) => (
+                                    <SelectItem key={k} value={k}>
+                                      <div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className={cn('text-[10px] gap-1', st.bg)}>
+                                <StIcon className="h-3 w-3" />
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Edit/Delete on hover */}
+                          {canManage && (
+                            <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5" style={{ position: 'relative', gridColumn: 'auto', display: 'none' }}>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }) : (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                        Nenhum resultado-chave cadastrado
+                      </div>
+                    )}
+
+                    {/* Add KR button */}
+                    {canManage && (
+                      <div className="border-t border-border/30 px-4 py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] gap-1 px-2 border-dashed border"
+                          onClick={() => {
+                            setEditingKr({
+                              objective_id: obj.id,
+                              start_value: 0, target_value: 100, current_value: 0,
+                              confidence_level: 70, unit: '%', status: 'on_track',
+                              activity_status: 'a_iniciar',
+                            });
+                            setKrDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-2.5 w-2.5" /> Resultado-Chave
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ══════════ DIALOGS ══════════ */}
+
+      {/* Cycle Dialog */}
+      <Dialog open={cycleDialogOpen} onOpenChange={setCycleDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingCycle.id ? 'Editar Ciclo' : 'Novo Ciclo OKR'}</DialogTitle></DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Nome</Label>
+              <Input value={editingCycle.name || ''} onChange={e => setEditingCycle(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Plano de Ação 2026" />
             </div>
-          );
-        })()}
-
-        {/* ══════════ DIALOGS ══════════ */}
-
-        {/* Cycle */}
-        <Dialog open={cycleDialogOpen} onOpenChange={setCycleDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>{editingCycle.id ? 'Editar Ciclo' : 'Novo Ciclo OKR'}</DialogTitle></DialogHeader>
-            <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Nome</Label>
-                <Input value={editingCycle.name || ''} onChange={e => setEditingCycle(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Plano de Ação 2026" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Tipo</Label>
-                  <Select value={editingCycle.type || 'quarterly'} onValueChange={v => setEditingCycle(p => ({ ...p, type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{cycleTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select value={editingCycle.status || 'active'} onValueChange={v => setEditingCycle(p => ({ ...p, status: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Rascunho</SelectItem>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="completed">Concluído</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Início</Label>
-                  <Input type="date" value={editingCycle.starts_at || ''} onChange={e => setEditingCycle(p => ({ ...p, starts_at: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Fim</Label>
-                  <Input type="date" value={editingCycle.ends_at || ''} onChange={e => setEditingCycle(p => ({ ...p, ends_at: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCycleDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveCycle}>{editingCycle.id ? 'Salvar' : 'Criar'}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Objective */}
-        <Dialog open={objDialogOpen} onOpenChange={setObjDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle></DialogHeader>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label>Título do Objetivo</Label>
-                <Input value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Aumentar a infraestrutura tecnológica" />
+                <Label>Tipo</Label>
+                <Select value={editingCycle.type || 'annual'} onValueChange={v => setEditingCycle(p => ({ ...p, type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{cycleTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Descrição</Label>
-                <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Indicador</Label>
-                  <Input value={editingObj.indicator || ''} onChange={e => setEditingObj(p => ({ ...p, indicator: e.target.value }))} placeholder="Ex: % dos ativos de TI com controle" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Meta</Label>
-                  <Input value={editingObj.target_label || ''} onChange={e => setEditingObj(p => ({ ...p, target_label: e.target.value }))} placeholder="Ex: 100%" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Responsável</Label>
-                  <Input value={editingObj.responsible_name || ''} onChange={e => setEditingObj(p => ({ ...p, responsible_name: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Área</Label>
-                  <Input value={editingObj.area || ''} onChange={e => setEditingObj(p => ({ ...p, area: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="grid gap-2">
-                  <Label>Categoria</Label>
-                  <Select value={editingObj.category || 'Operacional'} onValueChange={v => setEditingObj(p => ({ ...p, category: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.keys(CAT_COLORS).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Prioridade</Label>
-                  <Select value={editingObj.priority || 'media'} onValueChange={v => setEditingObj(p => ({ ...p, priority: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(PRIORITIES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select value={editingObj.status || 'on_track'} onValueChange={v => setEditingObj(p => ({ ...p, status: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(OBJ_STATUSES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setObjDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveObjective}>{editingObj.id ? 'Salvar' : 'Criar'}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Activity */}
-        <Dialog open={activityDialogOpen} onOpenChange={setActivityDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editingActivity.id ? 'Editar Atividade' : 'Nova Atividade'}</DialogTitle></DialogHeader>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label>Resultado-Chave (título agrupador)</Label>
-                <Input value={editingActivity.title || ''} onChange={e => setEditingActivity(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Gestão da infraestrutura de TI" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Descrição da Atividade</Label>
-                <Textarea value={editingActivity.description || ''} onChange={e => setEditingActivity(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Ex: Correlacionar ativo ao colaborador/setor" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Responsável</Label>
-                  <Input value={editingActivity.responsible_name || ''} onChange={e => setEditingActivity(p => ({ ...p, responsible_name: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Equipe de Apoio</Label>
-                  <Input value={editingActivity.support_team || ''} onChange={e => setEditingActivity(p => ({ ...p, support_team: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Área</Label>
-                  <Input value={editingActivity.area || ''} onChange={e => setEditingActivity(p => ({ ...p, area: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select value={editingActivity.activity_status || 'a_iniciar'} onValueChange={v => setEditingActivity(p => ({ ...p, activity_status: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ACTIVITY_STATUSES).map(([k, v]) => (
-                        <SelectItem key={k} value={k}><div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div></SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="grid gap-2">
-                  <Label>Início</Label>
-                  <Input type="date" value={editingActivity.start_date || ''} onChange={e => setEditingActivity(p => ({ ...p, start_date: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Final</Label>
-                  <Input type="date" value={editingActivity.end_date || ''} onChange={e => setEditingActivity(p => ({ ...p, end_date: e.target.value }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Entrega</Label>
-                  <Input type="date" value={editingActivity.delivery_date || ''} onChange={e => setEditingActivity(p => ({ ...p, delivery_date: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="grid gap-2">
-                  <Label>Valor Inicial</Label>
-                  <Input type="number" value={editingActivity.start_value ?? 0} onChange={e => setEditingActivity(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Meta</Label>
-                  <Input type="number" value={editingActivity.target_value ?? 100} onChange={e => setEditingActivity(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Unidade</Label>
-                  <Input value={editingActivity.unit || '%'} onChange={e => setEditingActivity(p => ({ ...p, unit: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
-                <Select value={editingActivity.kpi_id || '__none__'} onValueChange={v => setEditingActivity(p => ({ ...p, kpi_id: v === '__none__' ? null : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <Label>Status</Label>
+                <Select value={editingCycle.status || 'active'} onValueChange={v => setEditingCycle(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Nenhum (manual)</SelectItem>
-                    {kpis.filter(k => k.is_active).map(k => (
-                      <SelectItem key={k.id} value={k.id}>
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: k.color }} />
-                          {k.name} ({k.unit})
-                        </span>
-                      </SelectItem>
+                    <SelectItem value="draft">Rascunho</SelectItem>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Início</Label>
+                <Input type="date" value={editingCycle.starts_at || ''} onChange={e => setEditingCycle(p => ({ ...p, starts_at: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Fim</Label>
+                <Input type="date" value={editingCycle.ends_at || ''} onChange={e => setEditingCycle(p => ({ ...p, ends_at: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCycleDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCycle}>{editingCycle.id ? 'Salvar' : 'Criar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Objective Dialog */}
+      <Dialog open={objDialogOpen} onOpenChange={setObjDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle></DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Título do Objetivo</Label>
+              <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico e a infraestrutura digital..." />
+            </div>
+            <div className="grid gap-2">
+              <Label>Descrição (opcional)</Label>
+              <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Responsável</Label>
+                <Input value={editingObj.responsible_name || ''} onChange={e => setEditingObj(p => ({ ...p, responsible_name: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Área</Label>
+                <Input value={editingObj.area || ''} onChange={e => setEditingObj(p => ({ ...p, area: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setObjDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveObjective}>{editingObj.id ? 'Salvar' : 'Criar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resultado-Chave Dialog */}
+      <Dialog open={krDialogOpen} onOpenChange={setKrDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editingKr.id ? 'Editar Resultado-Chave' : 'Novo Resultado-Chave'}</DialogTitle></DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Resultado-Chave</Label>
+              <Textarea value={editingKr.title || ''} onChange={e => setEditingKr(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento e manutenção..." />
+            </div>
+            <div className="grid gap-2">
+              <Label>Indicador</Label>
+              <Input value={editingKr.description || ''} onChange={e => setEditingKr(p => ({ ...p, description: e.target.value }))} placeholder="Ex: % dos ativos de T.I. com controle patrimonial" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-2">
+                <Label>Meta (valor)</Label>
+                <Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Unidade</Label>
+                <Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} placeholder="%, un, horas" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Valor Inicial</Label>
+                <Input type="number" value={editingKr.start_value ?? 0} onChange={e => setEditingKr(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Responsável</Label>
+                <Input value={editingKr.responsible_name || ''} onChange={e => setEditingKr(p => ({ ...p, responsible_name: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select value={editingKr.activity_status || 'a_iniciar'} onValueChange={v => setEditingKr(p => ({ ...p, activity_status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ACTIVITY_STATUSES).map(([k, v]) => (
+                      <SelectItem key={k} value={k}><div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div></SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setActivityDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveActivity}>{editingActivity.id ? 'Salvar' : 'Criar'}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Check-in */}
-        <Dialog open={checkinDialogOpen} onOpenChange={setCheckinDialogOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader><DialogTitle>Check-in de Progresso</DialogTitle></DialogHeader>
-            <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Valor Atual</Label>
-                <Input type="number" value={checkinValue} onChange={e => setCheckinValue(e.target.value)} autoFocus />
+                <Label>Início</Label>
+                <Input type="date" value={editingKr.start_date || ''} onChange={e => setEditingKr(p => ({ ...p, start_date: e.target.value }))} />
               </div>
               <div className="grid gap-2">
-                <Label>Confiança (%)</Label>
-                <Input type="number" min={0} max={100} value={checkinConfidence} onChange={e => setCheckinConfidence(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Observação</Label>
-                <Textarea value={checkinNotes} onChange={e => setCheckinNotes(e.target.value)} rows={2} />
+                <Label>Final</Label>
+                <Input type="date" value={editingKr.end_date || ''} onChange={e => setEditingKr(p => ({ ...p, end_date: e.target.value }))} />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCheckinDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCheckin}>Registrar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Activity Detail Dialog */}
-        <ActivityDetailDialog
-          activity={detailActivity}
-          objective={detailActivity ? objectives.find(o => o.id === detailActivity.objective_id) || null : null}
-          open={detailDialogOpen}
-          onOpenChange={setDetailDialogOpen}
-          canManage={!!canManage}
-          onUpdateLinks={async (activityId, links) => {
-            try {
-              await updateKeyResult.mutateAsync({ id: activityId, links } as any);
-              setDetailActivity(prev => prev ? { ...prev, links } as any : null);
-              toast.success('Links atualizados');
-            } catch { toast.error('Erro ao salvar links'); }
-          }}
-        />
-      </div>
-    </TooltipProvider>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
+              <Select value={editingKr.kpi_id || '__none__'} onValueChange={v => setEditingKr(p => ({ ...p, kpi_id: v === '__none__' ? null : v }))}>
+                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nenhum (manual)</SelectItem>
+                  {kpis.filter(k => k.is_active).map(k => (
+                    <SelectItem key={k.id} value={k.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: k.color }} />
+                        {k.name} ({k.unit})
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            {editingKr.id && (
+              <Button variant="destructive" size="sm" className="mr-auto" onClick={() => { deleteKeyResult.mutateAsync(editingKr.id!); setKrDialogOpen(false); }}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setKrDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveKr}>{editingKr.id ? 'Salvar' : 'Criar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -1049,31 +578,5 @@ function StatCard({ value, label, color }: { value: string | number; label: stri
       <p className={cn("text-2xl font-bold tabular-nums", color)}>{value}</p>
       <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
     </div>
-  );
-}
-
-function KrField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-semibold">{label}</span>
-      <span className={cn("text-[11px] tabular-nums", highlight ? 'font-bold text-foreground' : 'text-muted-foreground')}>{value || '—'}</span>
-    </div>
-  );
-}
-
-function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all border capitalize",
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/40"
-      )}
-    >
-      {children}
-    </button>
   );
 }
