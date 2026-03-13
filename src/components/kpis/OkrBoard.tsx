@@ -276,9 +276,36 @@ export function OkrBoard() {
     } catch { toast.error('Erro'); }
   };
 
+  /* ── Real-time saving for KR edits ── */
+  const krSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedKr = useRef<string>('');
+
+  const debouncedSaveKr = useCallback((kr: Partial<OkrKeyResult> & { id: string }) => {
+    if (krSaveTimer.current) clearTimeout(krSaveTimer.current);
+    const serialized = JSON.stringify(kr);
+    if (serialized === lastSavedKr.current) return;
+    krSaveTimer.current = setTimeout(async () => {
+      try {
+        lastSavedKr.current = serialized;
+        await updateKeyResult.mutateAsync(kr);
+      } catch { /* silent */ }
+    }, 800);
+  }, [updateKeyResult]);
+
+  // Trigger auto-save when editingKr changes (only for existing KRs)
+  useEffect(() => {
+    if (!editingKr.id || !krDialogOpen) return;
+    const { id, ...rest } = editingKr;
+    debouncedSaveKr({ id, ...rest } as any);
+  }, [editingKr, krDialogOpen]);
+
+  // Cleanup timer
+  useEffect(() => () => { if (krSaveTimer.current) clearTimeout(krSaveTimer.current); }, []);
+
   const handleSaveKr = async () => {
     if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
     try {
+      if (krSaveTimer.current) clearTimeout(krSaveTimer.current);
       if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr }); } else { await createKeyResult.mutateAsync(editingKr); }
       setKrDialogOpen(false); toast.success('Resultado-chave salvo');
     } catch { toast.error('Erro'); }
