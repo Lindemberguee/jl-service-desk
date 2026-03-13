@@ -82,10 +82,12 @@ function groupByKr(activities: OkrKeyResult[], obj: OkrObjective): KrGroup[] {
   for (const a of activities) {
     const key = a.title;
     if (!map.has(key)) {
+      // Use the first activity's unit/target as the KR-level indicator & meta
+      // The "indicator" text comes from the objective level or the activity's unit description
       map.set(key, {
         krTitle: a.title,
-        indicator: obj.indicator || a.unit || '',
-        meta: `${a.target_value} ${a.unit}`,
+        indicator: a.unit ? `${a.unit}` : obj.indicator || '',
+        meta: `${a.target_value}${a.unit ? ` ${a.unit}` : ''}`,
         activities: [],
       });
     }
