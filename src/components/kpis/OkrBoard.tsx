@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,7 +46,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[minmax(200px,3fr)_120px_100px_40px]';
+const GRID = 'grid-cols-[minmax(200px,3fr)_80px_120px_100px_40px]';
 
 /* ───────── Helpers ───────── */
 
@@ -276,9 +276,36 @@ export function OkrBoard() {
     } catch { toast.error('Erro'); }
   };
 
+  /* ── Real-time saving for KR edits ── */
+  const krSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedKr = useRef<string>('');
+
+  const debouncedSaveKr = useCallback((kr: Partial<OkrKeyResult> & { id: string }) => {
+    if (krSaveTimer.current) clearTimeout(krSaveTimer.current);
+    const serialized = JSON.stringify(kr);
+    if (serialized === lastSavedKr.current) return;
+    krSaveTimer.current = setTimeout(async () => {
+      try {
+        lastSavedKr.current = serialized;
+        await updateKeyResult.mutateAsync(kr);
+      } catch { /* silent */ }
+    }, 800);
+  }, [updateKeyResult]);
+
+  // Trigger auto-save when editingKr changes (only for existing KRs)
+  useEffect(() => {
+    if (!editingKr.id || !krDialogOpen) return;
+    const { id, ...rest } = editingKr;
+    debouncedSaveKr({ id, ...rest } as any);
+  }, [editingKr, krDialogOpen]);
+
+  // Cleanup timer
+  useEffect(() => () => { if (krSaveTimer.current) clearTimeout(krSaveTimer.current); }, []);
+
   const handleSaveKr = async () => {
     if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
     try {
+      if (krSaveTimer.current) clearTimeout(krSaveTimer.current);
       if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr }); } else { await createKeyResult.mutateAsync(editingKr); }
       setKrDialogOpen(false); toast.success('Resultado-chave salvo');
     } catch { toast.error('Erro'); }
@@ -417,6 +444,7 @@ export function OkrBoard() {
             <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[600px]">
               <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4", GRID)}>
                 <div className="p-2">Objetivo</div>
+                <div className="p-2 text-center">Progresso</div>
                 <div className="p-2 text-center">Status</div>
                 <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
@@ -447,13 +475,17 @@ export function OkrBoard() {
                         <p className="text-[11px] text-muted-foreground truncate mt-0.5">{obj.description}</p>
                       )}
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Progress value={obj.progress} className="h-1 flex-1 max-w-[120px]" />
-                        <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{Math.round(obj.progress)}%</span>
                         <Badge variant="outline" className="text-[10px] tabular-nums">{doneCount}/{krs.length}</Badge>
                       </div>
                     </div>
 
-
+                    {/* Progresso */}
+                    <div className="p-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-sm font-bold tabular-nums text-foreground">{Math.round(obj.progress)}%</span>
+                        <Progress value={obj.progress} className="h-1 w-14" />
+                      </div>
+                    </div>
                     {/* Status */}
                     <div className="p-3 text-center">
                       <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full font-semibold', st.cls)}>
@@ -630,15 +662,22 @@ export function OkrBoard() {
               </div>
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
-                <Select value={editingKr.kpi_id || '__none__'} onValueChange={v => setEditingKr(p => ({ ...p, kpi_id: v === '__none__' ? null : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nenhum (manual)</SelectItem>
-                    {kpis.filter(k => k.is_active).map(k => (
-                      <SelectItem key={k.id} value={k.id}>{k.name} ({k.unit})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {kpis.filter(k => k.is_active).map(k => (
+                    <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editingKr.kpi_id === k.id}
+                        onCheckedChange={(checked) => {
+                          setEditingKr(p => ({ ...p, kpi_id: checked ? k.id : null }));
+                        }}
+                      />
+                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                    </label>
+                  ))}
+                  {kpis.filter(k => k.is_active).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado.</p>
+                  )}
+                </div>
               </div>
             </div>
             <DialogFooter>
