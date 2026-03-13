@@ -95,6 +95,23 @@ export function OkrBoard() {
   const [selectedKrs, setSelectedKrs] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ krId: string; field: string } | null>(null);
   const [editCellValue, setEditCellValue] = useState('');
+  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
+  const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const openDetail = (kr: OkrKeyResult, obj: OkrObjective) => {
+    setDetailActivity(kr);
+    setDetailObjective(obj);
+    setDetailOpen(true);
+  };
+
+  const handleUpdateLinks = async (activityId: string, links: Array<{ label: string; url: string }>) => {
+    try {
+      await updateKeyResult.mutateAsync({ id: activityId, links } as any);
+      setDetailActivity(prev => prev ? { ...prev, links } : null);
+      toast.success('Links atualizados');
+    } catch { toast.error('Erro ao atualizar links'); }
+  };
 
   /* ── Derived ── */
   const activeCycle = selectedCycleId
