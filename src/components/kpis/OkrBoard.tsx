@@ -453,8 +453,6 @@ export function OkrBoard() {
                                 {canManage && <Checkbox checked={selectedKrs.has(kr.id)} onCheckedChange={() => toggleSelectKr(kr.id)} />}
                               </div>
 
-                              {/* Objective spacer */}
-                              <div className="p-2.5" />
 
                               {/* Resultado-chave */}
                               <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'title', kr.title)}>
