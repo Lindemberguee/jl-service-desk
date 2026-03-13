@@ -714,6 +714,15 @@ export function OkrBoard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Activity Detail Dialog */}
+        <ActivityDetailDialog
+          activity={detailActivity}
+          objective={detailObjective}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdateLinks={handleUpdateLinks}
+          canManage={!!canManage}
+        />
       </div>
     </TooltipProvider>
   );
