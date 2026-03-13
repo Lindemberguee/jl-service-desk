@@ -82,6 +82,7 @@ export function OkrBoard() {
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'plan' | 'board'>('plan');
   const [expandedObjectives, setExpandedObjectives] = useState<Set<string> | null>(null);
+  const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArea, setFilterArea] = useState<string>('all');
   const [filterResponsible, setFilterResponsible] = useState<string>('all');
@@ -134,6 +135,14 @@ export function OkrBoard() {
 
   const toggleObjective = (id: string) => {
     setExpandedObjectives(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleActivity = (id: string) => {
+    setExpandedActivities(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -616,12 +625,12 @@ export function OkrBoard() {
                           : 0;
                         const linkedKpi = activity.kpi_id ? kpis.find(k => k.id === activity.kpi_id) : null;
                         const actLinks: Array<{ label: string; url: string }> = Array.isArray(activity.links) ? activity.links : [];
+                        const isActivityExpanded = expandedActivities.has(activity.id);
 
                         return (
                           <div
                             key={activity.id}
-                            className="group hover:bg-muted/20 transition-colors cursor-pointer"
-                            onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
+                            className="group hover:bg-muted/20 transition-colors"
                           >
                             <div className="flex items-stretch">
                               {/* Left accent bar */}
@@ -634,179 +643,203 @@ export function OkrBoard() {
                                     : 'bg-border/30 group-hover:bg-primary/30'
                               )} />
 
-                              <div className="flex-1 px-5 py-4 min-w-0 space-y-3">
-                                {/* Row 1: Title + Status + Progress */}
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium leading-snug">{activity.title}</p>
-                                    {activity.description && (
-                                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{activity.description}</p>
-                                    )}
-                                  </div>
+                              <div className="flex-1 min-w-0">
+                                {/* Compact Row — always visible */}
+                                <div
+                                  className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                                  onClick={() => toggleActivity(activity.id)}
+                                >
+                                  <button className="shrink-0 text-muted-foreground">
+                                    {isActivityExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                  </button>
 
-                                  {/* Status + Meta compact */}
-                                  <div className="flex items-center gap-3 shrink-0">
-                                    <div onClick={e => e.stopPropagation()}>
-                                      {canManage ? (
-                                        <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
-                                          <SelectTrigger className={cn("h-7 text-[10px] font-semibold border gap-1 px-2.5 w-auto", actStatus.bgClass)}>
-                                            <ActIcon className="h-3 w-3" />
-                                            <span>{actStatus.label}</span>
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {Object.entries(activityStatuses).map(([k, v]) => (
-                                              <SelectItem key={k} value={k}>
-                                                <div className="flex items-center gap-2">
-                                                  <v.icon className={cn("h-3 w-3", v.color)} />
-                                                  {v.label}
-                                                </div>
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <Badge variant="outline" className={cn('text-[10px] gap-1 h-7', actStatus.bgClass)}>
-                                          <ActIcon className="h-3 w-3" />
-                                          {actStatus.label}
-                                        </Badge>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium leading-snug truncate">{activity.title}</p>
+                                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                                      {activity.responsible_name && (
+                                        <span className="flex items-center gap-1 truncate">
+                                          <Users className="h-3 w-3 shrink-0" />
+                                          {activity.responsible_name}
+                                        </span>
+                                      )}
+                                      {activity.end_date && (
+                                        <span className={cn("flex items-center gap-1 tabular-nums whitespace-nowrap", deadlineInfo?.urgent && 'text-destructive font-medium')}>
+                                          <Calendar className="h-3 w-3 shrink-0" />
+                                          {format(parseISO(activity.end_date), 'dd/MM/yy')}
+                                          {deadlineInfo && <span className="text-[9px]">({deadlineInfo.text})</span>}
+                                        </span>
                                       )}
                                     </div>
-
-                                    {/* Meta / Progress */}
-                                    <div className="text-right min-w-[70px]">
-                                      <p className="text-sm font-bold tabular-nums">
-                                        {activity.target_value}{activity.unit === '%' ? '%' : ` ${activity.unit}`}
-                                      </p>
-                                      <Progress value={krPct} className="h-1 mt-1" />
-                                      <p className="text-[9px] text-muted-foreground mt-0.5 tabular-nums">
-                                        {activity.current_value}/{activity.target_value} ({Math.round(krPct)}%)
-                                      </p>
-                                    </div>
                                   </div>
-                                </div>
 
-                                {/* Row 2: Structured metadata grid */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2 text-[11px]">
-                                  {/* Indicador */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Indicador</p>
-                                    {linkedKpi ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: linkedKpi.color }} />
-                                        <span className="truncate">{linkedKpi.name}</span>
-                                      </span>
+                                  {/* Status badge */}
+                                  <div onClick={e => e.stopPropagation()} className="shrink-0">
+                                    {canManage ? (
+                                      <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
+                                        <SelectTrigger className={cn("h-7 text-[10px] font-semibold border gap-1 px-2.5 w-auto", actStatus.bgClass)}>
+                                          <ActIcon className="h-3 w-3" />
+                                          <span className="hidden sm:inline">{actStatus.label}</span>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Object.entries(activityStatuses).map(([k, v]) => (
+                                            <SelectItem key={k} value={k}>
+                                              <div className="flex items-center gap-2">
+                                                <v.icon className={cn("h-3 w-3", v.color)} />
+                                                {v.label}
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
                                     ) : (
-                                      <span className="text-muted-foreground">{obj.indicator || `${activity.unit}`}</span>
+                                      <Badge variant="outline" className={cn('text-[10px] gap-1 h-7', actStatus.bgClass)}>
+                                        <ActIcon className="h-3 w-3" />
+                                        {actStatus.label}
+                                      </Badge>
                                     )}
                                   </div>
 
-                                  {/* Responsável */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Responsável</p>
-                                    <span className={activity.responsible_name ? '' : 'text-muted-foreground'}>
-                                      {activity.responsible_name || '—'}
-                                    </span>
+                                  {/* Progress compact */}
+                                  <div className="text-right shrink-0 w-20 hidden sm:block">
+                                    <p className="text-xs font-bold tabular-nums">
+                                      {Math.round(krPct)}%
+                                    </p>
+                                    <Progress value={krPct} className="h-1 mt-1" />
                                   </div>
 
-                                  {/* Área */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Área</p>
-                                    <span className={activity.area ? '' : 'text-muted-foreground'}>
-                                      {activity.area || '—'}
-                                    </span>
-                                  </div>
-
-                                  {/* Equipe de Apoio */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Eq. Apoio</p>
-                                    <span className={activity.support_team ? '' : 'text-muted-foreground'}>
-                                      {activity.support_team || '—'}
-                                    </span>
-                                  </div>
-
-                                  {/* Datas: Início → Final */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Período</p>
-                                    <span className={cn(
-                                      "tabular-nums whitespace-nowrap",
-                                      deadlineInfo?.urgent ? 'text-destructive font-medium' : ''
-                                    )}>
-                                      {activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yy') : '—'}
-                                      {' → '}
-                                      {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yy') : '—'}
-                                    </span>
-                                    {deadlineInfo && (
-                                      <p className={cn("text-[9px] mt-0.5", deadlineInfo.urgent ? 'text-destructive' : 'text-muted-foreground')}>
-                                        {deadlineInfo.text}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* Data de Entrega */}
-                                  <div>
-                                    <p className="text-muted-foreground/70 text-[9px] uppercase tracking-wider font-medium mb-0.5">Entrega</p>
-                                    <span className={cn("tabular-nums", activity.delivery_date ? 'font-medium' : 'text-muted-foreground')}>
-                                      {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yy') : '—'}
-                                    </span>
-                                  </div>
+                                  {/* Quick actions on hover */}
+                                  {canManage && (
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                                            setCheckinKrId(activity.id);
+                                            setCheckinValue(activity.current_value.toString());
+                                            setCheckinConfidence((activity.confidence_level ?? 70).toString());
+                                            setCheckinDialogOpen(true);
+                                          }}>
+                                            <TrendingUp className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Check-in</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                                            setEditingActivity(activity);
+                                            setActivityDialogOpen(true);
+                                          }}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Editar</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Excluir</TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {/* Row 3: Links (if any) */}
-                                {actLinks.length > 0 && (
-                                  <div className="flex items-center gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
-                                    {actLinks.map((link, i) => (
-                                      <a
-                                        key={i}
-                                        href={link.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline bg-primary/5 rounded-md px-2 py-0.5 transition-colors hover:bg-primary/10"
-                                      >
-                                        <Eye className="h-3 w-3" />
-                                        {link.label}
-                                      </a>
-                                    ))}
+                                {/* Expanded Detail — shown on click */}
+                                {isActivityExpanded && (
+                                  <div className="px-4 pb-4 pt-1 ml-7 space-y-3 border-t border-border/30 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                                    {/* Description */}
+                                    {activity.description && (
+                                      <p className="text-xs text-muted-foreground leading-relaxed">{activity.description}</p>
+                                    )}
+
+                                    {/* Meta / Progress detail */}
+                                    <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1">Progresso da Meta</p>
+                                        <Progress value={krPct} className="h-2" />
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <p className="text-lg font-bold tabular-nums">{activity.current_value}<span className="text-xs text-muted-foreground">/{activity.target_value}</span></p>
+                                        <p className="text-[10px] text-muted-foreground">{activity.unit} • {Math.round(krPct)}%</p>
+                                      </div>
+                                    </div>
+
+                                    {/* Metadata grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Indicador</p>
+                                        {linkedKpi ? (
+                                          <span className="inline-flex items-center gap-1.5">
+                                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: linkedKpi.color || 'hsl(var(--primary))' }} />
+                                            {linkedKpi.name}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">{obj.indicator || activity.unit}</span>
+                                        )}
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Responsável</p>
+                                        <span>{activity.responsible_name || '—'}</span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Área</p>
+                                        <span>{activity.area || '—'}</span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Equipe de Apoio</p>
+                                        <span>{activity.support_team || '—'}</span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Início</p>
+                                        <span className="tabular-nums">{activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}</span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Final</p>
+                                        <span className={cn("tabular-nums", deadlineInfo?.urgent && 'text-destructive font-medium')}>
+                                          {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Data de Entrega</p>
+                                        <span className={cn("tabular-nums", activity.delivery_date ? 'font-medium' : 'text-muted-foreground')}>
+                                          {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-0.5">
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Meta</p>
+                                        <span className="font-semibold">{activity.target_value} {activity.unit}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Links */}
+                                    {actLinks.length > 0 && (
+                                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                                        {actLinks.map((link, i) => (
+                                          <a
+                                            key={i}
+                                            href={link.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline bg-primary/5 rounded-md px-2.5 py-1 transition-colors hover:bg-primary/10"
+                                          >
+                                            <Eye className="h-3 w-3" />
+                                            {link.label}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
-
-                              {/* Hover actions */}
-                              {canManage && (
-                                <div className="flex flex-col items-center justify-center gap-0.5 pr-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 border-l border-border/20" onClick={e => e.stopPropagation()}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                                        setCheckinKrId(activity.id);
-                                        setCheckinValue(activity.current_value.toString());
-                                        setCheckinConfidence((activity.confidence_level ?? 70).toString());
-                                        setCheckinDialogOpen(true);
-                                      }}>
-                                        <TrendingUp className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Check-in</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                                        setEditingActivity(activity);
-                                        setActivityDialogOpen(true);
-                                      }}>
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Editar</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Excluir</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
