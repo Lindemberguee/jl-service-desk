@@ -449,7 +449,6 @@ export function OkrBoard() {
                 <div className="p-2">Objetivo</div>
                 <div className="p-2 text-center">Progresso</div>
                 <div className="p-2 text-center">Status</div>
-                <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
               </div>
             </div>
