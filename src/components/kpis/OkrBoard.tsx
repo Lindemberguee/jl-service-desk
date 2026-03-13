@@ -444,6 +444,7 @@ export function OkrBoard() {
             <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[600px]">
               <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4", GRID)}>
                 <div className="p-2">Objetivo</div>
+                <div className="p-2 text-center">Progresso</div>
                 <div className="p-2 text-center">Status</div>
                 <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
