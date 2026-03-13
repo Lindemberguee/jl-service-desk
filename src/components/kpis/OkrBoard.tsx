@@ -95,13 +95,14 @@ export function OkrBoard() {
   const [selectedKrs, setSelectedKrs] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ krId: string; field: string } | null>(null);
   const [editCellValue, setEditCellValue] = useState('');
-  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
   const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
+  const [detailActivities, setDetailActivities] = useState<OkrKeyResult[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const openDetail = (kr: OkrKeyResult, obj: OkrObjective) => {
-    setDetailActivity(kr);
+  const openDetail = (obj: OkrObjective) => {
+    const krs = keyResults.filter(kr => kr.objective_id === obj.id);
     setDetailObjective(obj);
+    setDetailActivities(krs);
     setDetailOpen(true);
   };
 
