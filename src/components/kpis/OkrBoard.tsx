@@ -540,24 +540,32 @@ export function OkrBoard() {
 
                     return (
                       <div key={gi} className={cn(gi > 0 && 'border-t border-border/30')}>
-                        {/* KR Header */}
+                        {/* KR Header — shows INDICADOR, STATUS, META like the spreadsheet */}
                         <div
-                          className="flex items-center gap-3 px-4 py-2.5 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="flex items-start gap-3 px-4 py-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
                           onClick={() => toggleKr(krKey)}
                         >
-                          <span className="text-muted-foreground shrink-0">
+                          <span className="text-muted-foreground shrink-0 mt-0.5">
                             {krExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                           </span>
-                          <Target className="h-3.5 w-3.5 text-primary/60 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium leading-snug truncate">{group.krTitle}</p>
-                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5">
-                              {group.indicator && <span>📊 {group.indicator}</span>}
-                              <span>{groupCompleted}/{groupTotal} concluídas</span>
+                          <Target className="h-3.5 w-3.5 text-primary/60 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            <p className="text-xs font-semibold leading-snug">{group.krTitle}</p>
+                            <div className="flex items-center gap-4 flex-wrap">
+                              <KrField label="INDICADOR" value={group.indicator} />
+                              <KrField label="STATUS" value={(() => {
+                                const done = groupCompleted;
+                                const total = groupTotal;
+                                if (done === total && total > 0) return 'Concluído';
+                                const hasLate = group.activities.some(a => a.activity_status === 'atrasado');
+                                if (hasLate) return 'Atrasado';
+                                return `${done}/${total} concluídas`;
+                              })()} />
+                              <KrField label="META" value={group.meta} highlight />
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs font-semibold tabular-nums">{groupPct}%</span>
+                          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                            <span className="text-xs font-bold tabular-nums">{groupPct}%</span>
                             <div className="w-16 hidden sm:block"><Progress value={groupPct} className="h-1" /></div>
                           </div>
                         </div>
