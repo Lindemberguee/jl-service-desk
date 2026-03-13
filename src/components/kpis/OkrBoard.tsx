@@ -594,6 +594,7 @@ export function OkrBoard() {
                 );
               })}
             </div>
+            </div>
           </div>
         )}
 
