@@ -468,7 +468,7 @@ export function OkrBoard() {
                               )}
                             >
                               {/* Checkbox */}
-                              <div className="p-2.5 flex justify-center">
+                              <div className="p-2.5 flex justify-center" onClick={e => e.stopPropagation()}>
                                 {canManage && <Checkbox checked={selectedKrs.has(kr.id)} onCheckedChange={() => toggleSelectKr(kr.id)} />}
                               </div>
 
