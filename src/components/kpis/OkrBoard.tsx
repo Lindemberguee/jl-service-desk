@@ -46,7 +46,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[minmax(200px,3fr)_80px_120px_100px_40px]';
+const GRID = 'grid-cols-[minmax(200px,3fr)_80px_120px_40px]';
 
 /* ───────── Helpers ───────── */
 
@@ -253,21 +253,24 @@ export function OkrBoard() {
         // Create activities (key results) from the inline list
         const validActivities = objActivities.filter(a => a.trim());
         for (const actTitle of validActivities) {
+          // If KPIs are selected, use the first KPI's target/unit for this activity
+          const linkedKpiId = objKpiIds.length > 0 ? objKpiIds[0] : null;
+          const linkedKpi = linkedKpiId ? kpis.find(k => k.id === linkedKpiId) : null;
           await createKeyResult.mutateAsync({
             objective_id: created.id,
             title: actTitle,
             start_value: 0,
-            target_value: 100,
+            target_value: linkedKpi ? linkedKpi.target_value : 100,
             current_value: 0,
             confidence_level: 70,
-            unit: '%',
+            unit: linkedKpi ? linkedKpi.unit : '%',
             status: 'on_track',
             activity_status: 'a_iniciar',
             responsible_name: editingObj.responsible_name || '',
             area: editingObj.area || '',
             start_date: objStartDate || null,
             end_date: objEndDate || null,
-            kpi_id: objKpiIds.length === 1 ? objKpiIds[0] : null,
+            kpi_id: linkedKpiId,
           } as any);
         }
         toast.success('Objetivo criado');
@@ -446,7 +449,6 @@ export function OkrBoard() {
                 <div className="p-2">Objetivo</div>
                 <div className="p-2 text-center">Progresso</div>
                 <div className="p-2 text-center">Status</div>
-                <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
               </div>
             </div>
@@ -494,10 +496,8 @@ export function OkrBoard() {
                       </Badge>
                     </div>
 
-                    {/* Meta */}
-                    <div className="p-3 text-center">
-                      <span className="text-xs font-bold tabular-nums text-foreground">{obj.target_label || '—'}</span>
-                    </div>
+
+
 
                     {/* Ações */}
                     <div className="p-3 flex justify-end" onClick={e => e.stopPropagation()}>
@@ -559,11 +559,10 @@ export function OkrBoard() {
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Objetivo / Resultado-chave</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
 
-              <div className="grid gap-2"><Label>Meta</Label><Input value={editingObj.target_label || ''} onChange={e => setEditingObj(p => ({ ...p, target_label: e.target.value }))} placeholder="Ex: 95% de satisfação, 100 ativos cadastrados..." /></div>
-
               {/* Indicadores (multi-select from KPIs) */}
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Indicadores</Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">A meta e unidade serão herdadas automaticamente do indicador vinculado.</p>
                 <div className="space-y-2">
                   {kpis.filter(k => k.is_active).map(k => (
                     <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -575,7 +574,8 @@ export function OkrBoard() {
                         }}
                         disabled={!!editingObj.id}
                       />
-                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                      <span>{k.name}</span>
+                      <span className="text-muted-foreground text-xs">({k.unit}) — Meta: {k.target_value}</span>
                     </label>
                   ))}
                   {kpis.filter(k => k.is_active).length === 0 && (
@@ -643,11 +643,50 @@ export function OkrBoard() {
             <DialogHeader><DialogTitle>{editingKr.id ? 'Editar Resultado-Chave' : 'Novo Resultado-Chave'}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Resultado-Chave</Label><Textarea value={editingKr.title || ''} onChange={e => setEditingKr(p => ({ ...p, title: e.target.value }))} rows={2} /></div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="grid gap-2"><Label>Meta</Label><Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} /></div>
-                <div className="grid gap-2"><Label>Unidade</Label><Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} /></div>
-                <div className="grid gap-2"><Label>Valor Inicial</Label><Input type="number" value={editingKr.start_value ?? 0} onChange={e => setEditingKr(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} /></div>
+              
+              {/* KPI link first - drives meta/unit */}
+              <div className="grid gap-2">
+                <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {kpis.filter(k => k.is_active).map(k => (
+                    <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editingKr.kpi_id === k.id}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            // Auto-populate target/unit from KPI
+                            setEditingKr(p => ({ ...p, kpi_id: k.id, target_value: k.target_value, unit: k.unit }));
+                          } else {
+                            setEditingKr(p => ({ ...p, kpi_id: null }));
+                          }
+                        }}
+                      />
+                      <span>{k.name}</span>
+                      <span className="text-muted-foreground text-xs">({k.unit}) — Meta: {k.target_value}</span>
+                    </label>
+                  ))}
+                  {kpis.filter(k => k.is_active).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado.</p>
+                  )}
+                </div>
               </div>
+
+              {/* Meta/Unit/Start - show KPI info when linked */}
+              {(() => {
+                const linkedKpi = editingKr.kpi_id ? kpis.find(k => k.id === editingKr.kpi_id) : null;
+                return linkedKpi ? (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Dados herdados do indicador:</p>
+                    <p>Meta: <span className="font-bold text-foreground">{linkedKpi.target_value} {linkedKpi.unit}</span> · Direção: {linkedKpi.direction === 'higher_is_better' ? 'Maior é melhor' : linkedKpi.direction === 'lower_is_better' ? 'Menor é melhor' : 'Meta ideal'}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="grid gap-2"><Label>Meta</Label><Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} /></div>
+                    <div className="grid gap-2"><Label>Unidade</Label><Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} /></div>
+                    <div className="grid gap-2"><Label>Valor Inicial</Label><Input type="number" value={editingKr.start_value ?? 0} onChange={e => setEditingKr(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} /></div>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>Responsável</Label><Input value={editingKr.responsible_name || ''} onChange={e => setEditingKr(p => ({ ...p, responsible_name: e.target.value }))} /></div>
                 <div className="grid gap-2"><Label>Equipe de apoio</Label><Input value={editingKr.support_team || ''} onChange={e => setEditingKr(p => ({ ...p, support_team: e.target.value }))} placeholder="Infra, Suporte" /></div>
@@ -659,25 +698,6 @@ export function OkrBoard() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>Início</Label><Input type="date" value={editingKr.start_date || ''} onChange={e => setEditingKr(p => ({ ...p, start_date: e.target.value }))} /></div>
                 <div className="grid gap-2"><Label>Prazo</Label><Input type="date" value={editingKr.end_date || ''} onChange={e => setEditingKr(p => ({ ...p, end_date: e.target.value }))} /></div>
-              </div>
-              <div className="grid gap-2">
-                <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {kpis.filter(k => k.is_active).map(k => (
-                    <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={editingKr.kpi_id === k.id}
-                        onCheckedChange={(checked) => {
-                          setEditingKr(p => ({ ...p, kpi_id: checked ? k.id : null }));
-                        }}
-                      />
-                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
-                    </label>
-                  ))}
-                  {kpis.filter(k => k.is_active).length === 0 && (
-                    <p className="text-xs text-muted-foreground">Nenhum indicador cadastrado.</p>
-                  )}
-                </div>
               </div>
             </div>
             <DialogFooter>

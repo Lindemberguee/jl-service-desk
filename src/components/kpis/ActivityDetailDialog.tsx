@@ -67,12 +67,6 @@ export function ActivityDetailDialog({ objective, activities, kpis = [], open, o
                 {objective.indicator}
               </Badge>
             )}
-            {objective.target_label && (
-              <Badge variant="outline" className="text-[10px] gap-1">
-                <Target className="h-3 w-3" />
-                Meta: {objective.target_label}
-              </Badge>
-            )}
             <div className="flex items-center gap-2 ml-auto">
               <Progress value={objective.progress} className="h-1.5 w-24" />
               <span className="text-xs font-bold tabular-nums">{Math.round(objective.progress)}%</span>
