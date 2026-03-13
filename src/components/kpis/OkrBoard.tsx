@@ -46,7 +46,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[36px_minmax(180px,2.5fr)_minmax(120px,1.2fr)_70px_50px_90px_80px_70px_100px_40px]';
+const GRID = 'grid-cols-[minmax(200px,3fr)_minmax(140px,1.5fr)_120px_100px_40px]';
 
 /* ───────── Helpers ───────── */
 
