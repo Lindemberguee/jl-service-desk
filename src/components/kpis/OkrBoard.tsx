@@ -518,7 +518,7 @@ export function OkrBoard() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" />Editar</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setEditingKr({ objective_id: obj.id, start_value: 0, target_value: 100, current_value: 0, confidence_level: 70, unit: '%', status: 'on_track', activity_status: 'a_iniciar' }); setKrDialogOpen(true); }}>
+                            <DropdownMenuItem onClick={() => { setEditingKr({ objective_id: obj.id, start_value: 0, target_value: 100, current_value: 0, confidence_level: 70, unit: '%', status: 'on_track', activity_status: 'a_iniciar' }); setEditingKrKpiIds([]); setKrDialogOpen(true); }}>
                               <Plus className="h-3.5 w-3.5 mr-2" />Adicionar atividade
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
