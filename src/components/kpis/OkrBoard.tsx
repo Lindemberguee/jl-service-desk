@@ -725,6 +725,7 @@ export function OkrBoard() {
           onUpdateLinks={handleUpdateLinks}
           onEditActivity={(activity) => {
             setEditingKr(activity);
+            setEditingKrKpiIds((activity as any).kpi_ids || (activity.kpi_id ? [activity.kpi_id] : []));
             setKrDialogOpen(true);
           }}
           canManage={!!canManage}
