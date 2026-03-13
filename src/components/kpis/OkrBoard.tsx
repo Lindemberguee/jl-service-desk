@@ -659,13 +659,17 @@ export function OkrBoard() {
                   {kpis.filter(k => k.is_active).map(k => (
                     <label key={k.id} className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
-                        checked={editingKr.kpi_id === k.id}
+                        checked={editingKrKpiIds.includes(k.id)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            // Auto-populate target/unit from KPI
-                            setEditingKr(p => ({ ...p, kpi_id: k.id, target_value: k.target_value, unit: k.unit }));
+                            const newIds = [...editingKrKpiIds, k.id];
+                            setEditingKrKpiIds(newIds);
+                            setEditingKr(p => ({ ...p, kpi_id: newIds[0], target_value: k.target_value, unit: k.unit }));
                           } else {
-                            setEditingKr(p => ({ ...p, kpi_id: null }));
+                            const newIds = editingKrKpiIds.filter(id => id !== k.id);
+                            setEditingKrKpiIds(newIds);
+                            const firstKpi = newIds.length > 0 ? kpis.find(kk => kk.id === newIds[0]) : null;
+                            setEditingKr(p => ({ ...p, kpi_id: newIds[0] || null, target_value: firstKpi?.target_value ?? p.target_value, unit: firstKpi?.unit ?? p.unit }));
                           }
                         }}
                       />
@@ -681,11 +685,13 @@ export function OkrBoard() {
 
               {/* Meta/Unit/Start - show KPI info when linked */}
               {(() => {
-                const linkedKpi = editingKr.kpi_id ? kpis.find(k => k.id === editingKr.kpi_id) : null;
-                return linkedKpi ? (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">Dados herdados do indicador:</p>
-                    <p>Meta: <span className="font-bold text-foreground">{linkedKpi.target_value} {linkedKpi.unit}</span> · Direção: {linkedKpi.direction === 'higher_is_better' ? 'Maior é melhor' : linkedKpi.direction === 'lower_is_better' ? 'Menor é melhor' : 'Meta ideal'}</p>
+                const linkedKpis = editingKrKpiIds.map(id => kpis.find(k => k.id === id)).filter(Boolean);
+                return linkedKpis.length > 0 ? (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground mb-1">Dados herdados do{linkedKpis.length > 1 ? 's' : ''} indicador{linkedKpis.length > 1 ? 'es' : ''}:</p>
+                    {linkedKpis.map(k => (
+                      <p key={k!.id}>Meta: <span className="font-bold text-foreground">{k!.target_value} {k!.unit}</span> · Direção: {k!.direction === 'higher_is_better' ? 'Maior é melhor' : k!.direction === 'lower_is_better' ? 'Menor é melhor' : 'Meta ideal'}</p>
+                    ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-3">
