@@ -687,6 +687,18 @@ export function OkrBoard() {
                   </div>
                 );
               })()}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Responsável</Label><Input value={editingKr.responsible_name || ''} onChange={e => setEditingKr(p => ({ ...p, responsible_name: e.target.value }))} /></div>
+                <div className="grid gap-2"><Label>Equipe de apoio</Label><Input value={editingKr.support_team || ''} onChange={e => setEditingKr(p => ({ ...p, support_team: e.target.value }))} placeholder="Infra, Suporte" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Status</Label><Select value={editingKr.activity_status || 'a_iniciar'} onValueChange={v => setEditingKr(p => ({ ...p, activity_status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUSES).map(([k, v]) => <SelectItem key={k} value={k}><div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div></SelectItem>)}</SelectContent></Select></div>
+                <div className="grid gap-2"><Label>Área</Label><Input value={editingKr.area || ''} onChange={e => setEditingKr(p => ({ ...p, area: e.target.value }))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Início</Label><Input type="date" value={editingKr.start_date || ''} onChange={e => setEditingKr(p => ({ ...p, start_date: e.target.value }))} /></div>
+                <div className="grid gap-2"><Label>Prazo</Label><Input type="date" value={editingKr.end_date || ''} onChange={e => setEditingKr(p => ({ ...p, end_date: e.target.value }))} /></div>
+              </div>
             </div>
             <DialogFooter>
               {editingKr.id && <Button variant="destructive" size="sm" className="mr-auto" onClick={() => { deleteKeyResult.mutateAsync(editingKr.id!); setKrDialogOpen(false); }}><Trash2 className="h-3.5 w-3.5 mr-1" />Excluir</Button>}
