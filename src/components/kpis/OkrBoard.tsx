@@ -519,7 +519,7 @@ export function OkrBoard() {
             <DialogHeader><DialogTitle>{editingKr.id ? 'Editar Resultado-Chave' : 'Novo Resultado-Chave'}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Resultado-Chave</Label><Textarea value={editingKr.title || ''} onChange={e => setEditingKr(p => ({ ...p, title: e.target.value }))} rows={2} /></div>
-              <div className="grid gap-2"><Label>Indicador</Label><Input value={editingKr.description || ''} onChange={e => setEditingKr(p => ({ ...p, description: e.target.value }))} placeholder="% dos ativos com controle" /></div>
+              <div className="grid gap-2"><Label>Descrição</Label><Input value={editingKr.description || ''} onChange={e => setEditingKr(p => ({ ...p, description: e.target.value }))} placeholder="Descrição da atividade" /></div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="grid gap-2"><Label>Meta</Label><Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} /></div>
                 <div className="grid gap-2"><Label>Unidade</Label><Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} /></div>
