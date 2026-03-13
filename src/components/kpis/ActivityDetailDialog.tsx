@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OkrKeyResult, OkrObjective } from '@/hooks/useOkrs';
+import type { Kpi } from '@/hooks/useKpis';
 
 interface ActivityLink {
   label: string;
