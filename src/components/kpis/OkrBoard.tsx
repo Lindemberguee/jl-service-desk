@@ -253,21 +253,24 @@ export function OkrBoard() {
         // Create activities (key results) from the inline list
         const validActivities = objActivities.filter(a => a.trim());
         for (const actTitle of validActivities) {
+          // If KPIs are selected, use the first KPI's target/unit for this activity
+          const linkedKpiId = objKpiIds.length > 0 ? objKpiIds[0] : null;
+          const linkedKpi = linkedKpiId ? kpis.find(k => k.id === linkedKpiId) : null;
           await createKeyResult.mutateAsync({
             objective_id: created.id,
             title: actTitle,
             start_value: 0,
-            target_value: 100,
+            target_value: linkedKpi ? linkedKpi.target_value : 100,
             current_value: 0,
             confidence_level: 70,
-            unit: '%',
+            unit: linkedKpi ? linkedKpi.unit : '%',
             status: 'on_track',
             activity_status: 'a_iniciar',
             responsible_name: editingObj.responsible_name || '',
             area: editingObj.area || '',
             start_date: objStartDate || null,
             end_date: objEndDate || null,
-            kpi_id: objKpiIds.length === 1 ? objKpiIds[0] : null,
+            kpi_id: linkedKpiId,
           } as any);
         }
         toast.success('Objetivo criado');
