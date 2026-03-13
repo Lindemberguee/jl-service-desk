@@ -654,10 +654,20 @@ export function OkrBoard() {
                                   </button>
 
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium leading-snug truncate">{activity.title}</p>
+                                    {/* Primary: Activity description (the task) */}
+                                    <p className="text-sm font-medium leading-snug truncate">
+                                      {activity.description || activity.title}
+                                    </p>
+                                    {/* Secondary: KR title as context when description exists */}
                                     <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                                      {activity.description && (
+                                        <span className="flex items-center gap-1 truncate max-w-[300px]" title={activity.title}>
+                                          <Target className="h-3 w-3 shrink-0 text-primary/60" />
+                                          <span className="truncate">{activity.title}</span>
+                                        </span>
+                                      )}
                                       {activity.responsible_name && (
-                                        <span className="flex items-center gap-1 truncate">
+                                        <span className="flex items-center gap-1 truncate whitespace-nowrap">
                                           <Users className="h-3 w-3 shrink-0" />
                                           {activity.responsible_name}
                                         </span>
@@ -748,18 +758,24 @@ export function OkrBoard() {
 
                                 {/* Expanded Detail — shown on click */}
                                 {isActivityExpanded && (
-                                  <div className="px-4 pb-4 pt-1 ml-7 space-y-3 border-t border-border/30 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-                                    {/* Description */}
-                                    <div className="space-y-0.5">
-                                      <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Descrição da Atividade</p>
-                                      <p className="text-xs leading-relaxed">{activity.description || '—'}</p>
+                                  <div className="px-4 pb-4 pt-2 ml-7 space-y-4 border-t border-border/30 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                                    {/* Resultado-Chave header */}
+                                    <div className="rounded-lg bg-muted/20 border border-border/40 p-3 space-y-1">
+                                      <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Resultado-Chave</p>
+                                      <p className="text-sm font-medium leading-snug">{activity.title}</p>
+                                      {activity.description && activity.description !== activity.title && (
+                                        <div className="pt-1.5 mt-1.5 border-t border-border/30">
+                                          <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Descrição da Atividade</p>
+                                          <p className="text-xs leading-relaxed mt-0.5">{activity.description}</p>
+                                        </div>
+                                      )}
                                     </div>
 
-                                    {/* Meta / Progress detail */}
+                                    {/* Progress bar */}
                                     <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
                                       <div className="flex-1 min-w-0">
                                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1">Progresso da Meta</p>
-                                        <Progress value={krPct} className="h-2" />
+                                        <Progress value={krPct} className="h-2.5" />
                                       </div>
                                       <div className="text-right shrink-0">
                                         <p className="text-lg font-bold tabular-nums">{activity.current_value}<span className="text-xs text-muted-foreground">/{activity.target_value}</span></p>
@@ -767,56 +783,56 @@ export function OkrBoard() {
                                       </div>
                                     </div>
 
-                                    {/* Metadata grid */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                                    {/* Metadata grid — matching spreadsheet columns */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-xs">
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Indicador</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Indicador</p>
                                         {linkedKpi ? (
                                           <span className="inline-flex items-center gap-1.5">
                                             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: linkedKpi.color || 'hsl(var(--primary))' }} />
                                             {linkedKpi.name}
                                           </span>
                                         ) : (
-                                          <span className="text-muted-foreground">{obj.indicator || activity.unit}</span>
+                                          <span>{obj.indicator || activity.unit || '—'}</span>
                                         )}
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Responsável</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Responsável</p>
                                         <span>{activity.responsible_name || '—'}</span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Área</p>
-                                        <span>{activity.area || '—'}</span>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Área</p>
+                                        <span>{activity.area || obj.area || '—'}</span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Equipe de Apoio</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Equipe de Apoio</p>
                                         <span>{activity.support_team || '—'}</span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Início</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Início</p>
                                         <span className="tabular-nums">{activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}</span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Final</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Final</p>
                                         <span className={cn("tabular-nums", deadlineInfo?.urgent && 'text-destructive font-medium')}>
                                           {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
                                         </span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Data de Entrega</p>
-                                        <span className={cn("tabular-nums", activity.delivery_date ? 'font-medium' : 'text-muted-foreground')}>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Data de Entrega</p>
+                                        <span className={cn("tabular-nums", activity.delivery_date ? 'font-medium' : '')}>
                                           {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
                                         </span>
                                       </div>
 
                                       <div className="space-y-0.5">
-                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Meta</p>
+                                        <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-semibold">Meta</p>
                                         <span className="font-semibold">{activity.target_value} {activity.unit}</span>
                                       </div>
                                     </div>
