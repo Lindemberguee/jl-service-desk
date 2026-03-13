@@ -34,9 +34,11 @@ const activityStatuses: Record<string, { label: string; color: string; icon: Rea
 interface Props {
   objective: OkrObjective | null;
   activities: OkrKeyResult[];
+  kpis?: Kpi[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateLinks?: (activityId: string, links: ActivityLink[]) => void;
+  onEditActivity?: (activity: OkrKeyResult) => void;
   canManage?: boolean;
 }
 
