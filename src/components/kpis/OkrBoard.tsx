@@ -93,6 +93,7 @@ export function OkrBoard() {
   const [objStartDate, setObjStartDate] = useState('');
   const [objEndDate, setObjEndDate] = useState('');
   const [editingKr, setEditingKr] = useState<Partial<OkrKeyResult>>({});
+  const [editingKrKpiIds, setEditingKrKpiIds] = useState<string[]>([]);
   const [expandedObjs, setExpandedObjs] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
