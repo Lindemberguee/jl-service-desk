@@ -526,7 +526,7 @@ export function OkrBoard() {
                 <div className="border-t border-border/40">
                   {groups.length > 0 ? groups.map((group, gi) => {
                     const krKey = `${obj.id}-${group.krTitle}`;
-                    const krExp = expandedKrs.has(krKey);
+                    const krExp = !expandedKrs.has(krKey); // Default: expanded (toggle to collapse)
                     const groupCompleted = group.activities.filter(a => ['finalizado', 'finalizado_com_atraso'].includes(a.activity_status)).length;
                     const groupTotal = group.activities.length;
                     // Average progress of activities in this KR group
