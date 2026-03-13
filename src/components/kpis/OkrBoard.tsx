@@ -141,6 +141,14 @@ export function OkrBoard() {
     });
   };
 
+  const toggleActivity = (id: string) => {
+    setExpandedActivities(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   // Stats
   const allActivities = cycleObjectives.flatMap(o => keyResults.filter(kr => kr.objective_id === o.id));
   const stats = useMemo(() => {
