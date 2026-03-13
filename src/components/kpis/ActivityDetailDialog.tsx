@@ -42,7 +42,7 @@ interface Props {
   canManage?: boolean;
 }
 
-export function ActivityDetailDialog({ objective, activities, open, onOpenChange, onUpdateLinks, canManage }: Props) {
+export function ActivityDetailDialog({ objective, activities, kpis = [], open, onOpenChange, onUpdateLinks, onEditActivity, canManage }: Props) {
   if (!objective) return null;
 
   return (
@@ -96,7 +96,9 @@ export function ActivityDetailDialog({ objective, activities, open, onOpenChange
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
+                  kpis={kpis}
                   onUpdateLinks={onUpdateLinks}
+                  onEditActivity={onEditActivity}
                   canManage={canManage}
                 />
               ))}
