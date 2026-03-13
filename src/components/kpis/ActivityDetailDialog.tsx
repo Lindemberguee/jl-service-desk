@@ -174,11 +174,24 @@ function ActivityCard({ activity, kpis = [], onUpdateLinks, onEditActivity, canM
             {activity.description && (
               <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{activity.description}</p>
             )}
+            {linkedKpi && (
+              <p className="text-[11px] text-primary mt-1 flex items-center gap-1">
+                <BarChart3 className="h-3 w-3" />
+                {linkedKpi.name} ({linkedKpi.unit})
+              </p>
+            )}
           </div>
-          <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold shrink-0 mt-0.5', status.bgClass)}>
-            <StatusIcon className="h-3 w-3" />
-            {status.label}
-          </Badge>
+          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+            {canManage && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditActivity?.(activity)}>
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            )}
+            <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold', status.bgClass)}>
+              <StatusIcon className="h-3 w-3" />
+              {status.label}
+            </Badge>
+          </div>
         </div>
 
         {/* Progress */}
