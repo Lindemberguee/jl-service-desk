@@ -507,7 +507,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Responsável */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'responsible_name', kr.responsible_name || '')}>
+                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'responsible_name', kr.responsible_name || ''); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'responsible_name' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
                                 ) : (
