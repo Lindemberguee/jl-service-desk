@@ -387,7 +387,7 @@ export function OkrBoard() {
               </div>
             )}
             {canManage && cycleId && (
-              <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} className="h-9 text-xs gap-1.5" size="sm">
+              <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjActivities(['']); setObjKpiIds([]); setObjStartDate(''); setObjEndDate(''); setObjDialogOpen(true); }} className="h-9 text-xs gap-1.5" size="sm">
                 <Plus className="h-3.5 w-3.5" /> Novo Objetivo
               </Button>
             )}
