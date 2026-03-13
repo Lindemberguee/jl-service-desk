@@ -580,7 +580,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Ações */}
-                              <div className="p-2.5 flex justify-end">
+                              <div className="p-2.5 flex justify-end" onClick={e => e.stopPropagation()}>
                                 {canManage && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
