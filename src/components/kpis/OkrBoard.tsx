@@ -1052,6 +1052,15 @@ function StatCard({ value, label, color }: { value: string | number; label: stri
   );
 }
 
+function KrField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-semibold">{label}</span>
+      <span className={cn("text-[11px] tabular-nums", highlight ? 'font-bold text-foreground' : 'text-muted-foreground')}>{value || '—'}</span>
+    </div>
+  );
+}
+
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
