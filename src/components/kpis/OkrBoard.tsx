@@ -454,12 +454,17 @@ export function OkrBoard() {
                               </div>
 
 
-                              {/* Resultado-chave */}
+                              {/* Resultado-chave + Descrição */}
                               <div className="p-2.5 cursor-text min-w-0" onDoubleClick={() => startInlineEdit(kr.id, 'title', kr.title)}>
                                 {editingCell?.krId === kr.id && editingCell.field === 'title' ? (
                                   <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
                                 ) : (
-                                  <p className="text-xs leading-relaxed text-foreground truncate">{kr.title}</p>
+                                  <div className="min-w-0">
+                                    <p className="text-xs leading-relaxed text-foreground truncate">{kr.title}</p>
+                                    {kr.description && (
+                                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{kr.description}</p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
 
