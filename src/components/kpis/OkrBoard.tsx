@@ -548,7 +548,7 @@ export function OkrBoard() {
                               </div>
 
                               {/* Prazo */}
-                              <div className="p-2.5 text-center">
+                              <div className="p-2.5 text-center" onClick={e => e.stopPropagation()}>
                                 {kr.end_date ? (
                                   <span className={cn("text-[11px] tabular-nums font-medium", deadlineColor(kr.end_date))}>
                                     {format(parseISO(kr.end_date), 'dd MMM', { locale: ptBR })}
