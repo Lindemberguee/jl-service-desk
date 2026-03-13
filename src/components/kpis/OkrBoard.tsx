@@ -643,23 +643,8 @@ export function OkrBoard() {
             <DialogHeader><DialogTitle>{editingKr.id ? 'Editar Resultado-Chave' : 'Novo Resultado-Chave'}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Resultado-Chave</Label><Textarea value={editingKr.title || ''} onChange={e => setEditingKr(p => ({ ...p, title: e.target.value }))} rows={2} /></div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="grid gap-2"><Label>Meta</Label><Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} /></div>
-                <div className="grid gap-2"><Label>Unidade</Label><Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} /></div>
-                <div className="grid gap-2"><Label>Valor Inicial</Label><Input type="number" value={editingKr.start_value ?? 0} onChange={e => setEditingKr(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Responsável</Label><Input value={editingKr.responsible_name || ''} onChange={e => setEditingKr(p => ({ ...p, responsible_name: e.target.value }))} /></div>
-                <div className="grid gap-2"><Label>Equipe de apoio</Label><Input value={editingKr.support_team || ''} onChange={e => setEditingKr(p => ({ ...p, support_team: e.target.value }))} placeholder="Infra, Suporte" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Status</Label><Select value={editingKr.activity_status || 'a_iniciar'} onValueChange={v => setEditingKr(p => ({ ...p, activity_status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUSES).map(([k, v]) => <SelectItem key={k} value={k}><div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div></SelectItem>)}</SelectContent></Select></div>
-                <div className="grid gap-2"><Label>Área</Label><Input value={editingKr.area || ''} onChange={e => setEditingKr(p => ({ ...p, area: e.target.value }))} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Início</Label><Input type="date" value={editingKr.start_date || ''} onChange={e => setEditingKr(p => ({ ...p, start_date: e.target.value }))} /></div>
-                <div className="grid gap-2"><Label>Prazo</Label><Input type="date" value={editingKr.end_date || ''} onChange={e => setEditingKr(p => ({ ...p, end_date: e.target.value }))} /></div>
-              </div>
+              
+              {/* KPI link first - drives meta/unit */}
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Vincular a KPI</Label>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -668,10 +653,16 @@ export function OkrBoard() {
                       <Checkbox
                         checked={editingKr.kpi_id === k.id}
                         onCheckedChange={(checked) => {
-                          setEditingKr(p => ({ ...p, kpi_id: checked ? k.id : null }));
+                          if (checked) {
+                            // Auto-populate target/unit from KPI
+                            setEditingKr(p => ({ ...p, kpi_id: k.id, target_value: k.target_value, unit: k.unit }));
+                          } else {
+                            setEditingKr(p => ({ ...p, kpi_id: null }));
+                          }
                         }}
                       />
-                      {k.name} <span className="text-muted-foreground">({k.unit})</span>
+                      <span>{k.name}</span>
+                      <span className="text-muted-foreground text-xs">({k.unit}) — Meta: {k.target_value}</span>
                     </label>
                   ))}
                   {kpis.filter(k => k.is_active).length === 0 && (
@@ -679,6 +670,23 @@ export function OkrBoard() {
                   )}
                 </div>
               </div>
+
+              {/* Meta/Unit/Start - show KPI info when linked */}
+              {(() => {
+                const linkedKpi = editingKr.kpi_id ? kpis.find(k => k.id === editingKr.kpi_id) : null;
+                return linkedKpi ? (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Dados herdados do indicador:</p>
+                    <p>Meta: <span className="font-bold text-foreground">{linkedKpi.target_value} {linkedKpi.unit}</span> · Direção: {linkedKpi.direction === 'higher_is_better' ? 'Maior é melhor' : linkedKpi.direction === 'lower_is_better' ? 'Menor é melhor' : 'Meta ideal'}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="grid gap-2"><Label>Meta</Label><Input type="number" value={editingKr.target_value ?? 100} onChange={e => setEditingKr(p => ({ ...p, target_value: parseFloat(e.target.value) || 0 }))} /></div>
+                    <div className="grid gap-2"><Label>Unidade</Label><Input value={editingKr.unit || '%'} onChange={e => setEditingKr(p => ({ ...p, unit: e.target.value }))} /></div>
+                    <div className="grid gap-2"><Label>Valor Inicial</Label><Input type="number" value={editingKr.start_value ?? 0} onChange={e => setEditingKr(p => ({ ...p, start_value: parseFloat(e.target.value) || 0 }))} /></div>
+                  </div>
+                );
+              })()}
             </div>
             <DialogFooter>
               {editingKr.id && <Button variant="destructive" size="sm" className="mr-auto" onClick={() => { deleteKeyResult.mutateAsync(editingKr.id!); setKrDialogOpen(false); }}><Trash2 className="h-3.5 w-3.5 mr-1" />Excluir</Button>}
