@@ -527,6 +527,8 @@ export function OkrBoard() {
             <div className="grid gap-4">
               <div className="grid gap-2"><Label>Objetivo / Resultado-chave</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
 
+              <div className="grid gap-2"><Label>Meta</Label><Input value={editingObj.target_label || ''} onChange={e => setEditingObj(p => ({ ...p, target_label: e.target.value }))} placeholder="Ex: 95% de satisfação, 100 ativos cadastrados..." /></div>
+
               {/* Indicadores (multi-select from KPIs) */}
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-primary" />Indicadores</Label>
