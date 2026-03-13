@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
   Calendar, Users, Target, Clock, CheckCircle2, Play, Pause, AlertTriangle,
-  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2
+  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2, Pencil
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OkrKeyResult, OkrObjective } from '@/hooks/useOkrs';
+import type { Kpi } from '@/hooks/useKpis';
 
 interface ActivityLink {
   label: string;
@@ -33,13 +34,15 @@ const activityStatuses: Record<string, { label: string; color: string; icon: Rea
 interface Props {
   objective: OkrObjective | null;
   activities: OkrKeyResult[];
+  kpis?: Kpi[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateLinks?: (activityId: string, links: ActivityLink[]) => void;
+  onEditActivity?: (activity: OkrKeyResult) => void;
   canManage?: boolean;
 }
 
-export function ActivityDetailDialog({ objective, activities, open, onOpenChange, onUpdateLinks, canManage }: Props) {
+export function ActivityDetailDialog({ objective, activities, kpis = [], open, onOpenChange, onUpdateLinks, onEditActivity, canManage }: Props) {
   if (!objective) return null;
 
   return (
@@ -93,7 +96,9 @@ export function ActivityDetailDialog({ objective, activities, open, onOpenChange
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
+                  kpis={kpis}
                   onUpdateLinks={onUpdateLinks}
+                  onEditActivity={onEditActivity}
                   canManage={canManage}
                 />
               ))}
@@ -107,9 +112,11 @@ export function ActivityDetailDialog({ objective, activities, open, onOpenChange
 
 /* ── Activity Card ── */
 
-function ActivityCard({ activity, onUpdateLinks, canManage }: {
+function ActivityCard({ activity, kpis = [], onUpdateLinks, onEditActivity, canManage }: {
   activity: OkrKeyResult;
+  kpis?: Kpi[];
   onUpdateLinks?: (id: string, links: ActivityLink[]) => void;
+  onEditActivity?: (activity: OkrKeyResult) => void;
   canManage?: boolean;
 }) {
   const [showAddLink, setShowAddLink] = useState(false);
@@ -119,6 +126,7 @@ function ActivityCard({ activity, onUpdateLinks, canManage }: {
   const status = activityStatuses[activity.activity_status] || activityStatuses.a_iniciar;
   const StatusIcon = status.icon;
   const links: ActivityLink[] = Array.isArray(activity.links) ? activity.links : [];
+  const linkedKpi = activity.kpi_id ? kpis.find(k => k.id === activity.kpi_id) : null;
 
   const progressPct = activity.target_value > activity.start_value
     ? Math.min(Math.max(((activity.current_value - activity.start_value) / (activity.target_value - activity.start_value)) * 100, 0), 100)
@@ -166,11 +174,24 @@ function ActivityCard({ activity, onUpdateLinks, canManage }: {
             {activity.description && (
               <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{activity.description}</p>
             )}
+            {linkedKpi && (
+              <p className="text-[11px] text-primary mt-1 flex items-center gap-1">
+                <BarChart3 className="h-3 w-3" />
+                {linkedKpi.name} ({linkedKpi.unit})
+              </p>
+            )}
           </div>
-          <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold shrink-0 mt-0.5', status.bgClass)}>
-            <StatusIcon className="h-3 w-3" />
-            {status.label}
-          </Badge>
+          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+            {canManage && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditActivity?.(activity)}>
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            )}
+            <Badge variant="outline" className={cn('text-[10px] gap-1 font-semibold', status.bgClass)}>
+              <StatusIcon className="h-3 w-3" />
+              {status.label}
+            </Badge>
+          </div>
         </div>
 
         {/* Progress */}

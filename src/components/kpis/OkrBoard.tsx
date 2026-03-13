@@ -561,9 +561,14 @@ export function OkrBoard() {
         <ActivityDetailDialog
           objective={detailObjective}
           activities={detailActivities}
+          kpis={kpis}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           onUpdateLinks={handleUpdateLinks}
+          onEditActivity={(activity) => {
+            setEditingKr(activity);
+            setKrDialogOpen(true);
+          }}
           canManage={!!canManage}
         />
       </div>
