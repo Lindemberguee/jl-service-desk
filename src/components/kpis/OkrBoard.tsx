@@ -276,6 +276,14 @@ export function OkrBoard() {
     } catch { toast.error('Erro'); }
   };
 
+  const handleSaveKr = async () => {
+    if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
+    try {
+      if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr }); } else { await createKeyResult.mutateAsync(editingKr); }
+      setKrDialogOpen(false); toast.success('Resultado-chave salvo');
+    } catch { toast.error('Erro'); }
+  };
+
   const handleBulkDelete = async () => {
     if (!confirm(`Excluir ${selectedKrs.size} itens?`)) return;
     try { await Promise.all(Array.from(selectedKrs).map(id => deleteKeyResult.mutateAsync(id))); setSelectedKrs(new Set()); toast.success('Excluídos'); } catch { toast.error('Erro'); }
