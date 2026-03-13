@@ -423,10 +423,6 @@ export function OkrBoard() {
                       </div>
                     </div>
 
-                    {/* Indicador */}
-                    <div className="p-3 min-w-0">
-                      <p className="text-xs text-muted-foreground truncate">{obj.indicator || '—'}</p>
-                    </div>
 
                     {/* Status */}
                     <div className="p-3 text-center">
