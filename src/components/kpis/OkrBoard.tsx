@@ -564,8 +564,8 @@ export function OkrBoard() {
         </Dialog>
         {/* Activity Detail Dialog */}
         <ActivityDetailDialog
-          activity={detailActivity}
           objective={detailObjective}
+          activities={detailActivities}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           onUpdateLinks={handleUpdateLinks}
