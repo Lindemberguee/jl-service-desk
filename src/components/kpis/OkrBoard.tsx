@@ -82,6 +82,7 @@ export function OkrBoard() {
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'plan' | 'board'>('plan');
   const [expandedObjectives, setExpandedObjectives] = useState<Set<string> | null>(null);
+  const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArea, setFilterArea] = useState<string>('all');
   const [filterResponsible, setFilterResponsible] = useState<string>('all');
