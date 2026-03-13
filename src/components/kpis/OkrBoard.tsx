@@ -46,7 +46,7 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   cancelado:             { label: 'Cancelado',           color: 'text-muted-foreground', icon: Trash2,       cls: 'bg-muted/60 text-muted-foreground border-border line-through' },
 };
 
-const GRID = 'grid-cols-[36px_minmax(180px,2.5fr)_minmax(120px,1.2fr)_70px_50px_90px_80px_70px_100px_40px]';
+const GRID = 'grid-cols-[minmax(200px,3fr)_minmax(140px,1.5fr)_120px_100px_40px]';
 
 /* ───────── Helpers ───────── */
 
@@ -95,20 +95,21 @@ export function OkrBoard() {
   const [selectedKrs, setSelectedKrs] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ krId: string; field: string } | null>(null);
   const [editCellValue, setEditCellValue] = useState('');
-  const [detailActivity, setDetailActivity] = useState<OkrKeyResult | null>(null);
   const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
+  const [detailActivities, setDetailActivities] = useState<OkrKeyResult[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const openDetail = (kr: OkrKeyResult, obj: OkrObjective) => {
-    setDetailActivity(kr);
+  const openDetail = (obj: OkrObjective) => {
+    const krs = keyResults.filter(kr => kr.objective_id === obj.id);
     setDetailObjective(obj);
+    setDetailActivities(krs);
     setDetailOpen(true);
   };
 
   const handleUpdateLinks = async (activityId: string, links: Array<{ label: string; url: string }>) => {
     try {
       await updateKeyResult.mutateAsync({ id: activityId, links } as any);
-      setDetailActivity(prev => prev ? { ...prev, links } : null);
+      setDetailActivities(prev => prev.map(a => a.id === activityId ? { ...a, links } : a));
       toast.success('Links atualizados');
     } catch { toast.error('Erro ao atualizar links'); }
   };
@@ -383,237 +384,84 @@ export function OkrBoard() {
             <div className="overflow-x-auto">
 
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[800px]">
-              <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2", GRID)}>
-                <div className="p-2 pl-3" />
-                <div className="p-2">Resultado-chave</div>
+            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[600px]">
+              <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4", GRID)}>
+                <div className="p-2">Objetivo</div>
                 <div className="p-2">Indicador</div>
-                <div className="p-2 text-center">Meta</div>
-                <div className="p-2 text-center">%</div>
-                <div className="p-2">Responsável</div>
-                <div className="p-2">Equipe</div>
-                <div className="p-2 text-center">Prazo</div>
                 <div className="p-2 text-center">Status</div>
+                <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
               </div>
             </div>
 
             {/* Body */}
-            <div className="divide-y divide-border/40 min-w-[800px]">
+            <div className="divide-y divide-border/40 min-w-[600px]">
               {tableData.map(({ objective: obj, keyResults: krs }) => {
-                const isExpanded = expandedObjs.has(obj.id);
-                const allSel = krs.length > 0 && krs.every(kr => selectedKrs.has(kr.id));
                 const doneCount = krs.filter(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status)).length;
+                // Determine overall status from KRs
+                const hasAtrasado = krs.some(kr => kr.activity_status === 'atrasado');
+                const allDone = krs.length > 0 && krs.every(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status));
+                const overallStatus = allDone ? 'finalizado' : hasAtrasado ? 'atrasado' : krs.some(kr => kr.activity_status === 'em_andamento') ? 'em_andamento' : 'a_iniciar';
+                const st = STATUSES[overallStatus] || STATUSES.a_iniciar;
+                const StIcon = st.icon;
 
                 return (
-                  <div key={obj.id} className="group/obj">
-                    {/* ── Objective row ── */}
-                    <div
-                      className="flex items-center px-2 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer gap-2"
-                      onClick={() => toggleExpand(obj.id)}
-                    >
-                      {canManage && (
-                        <Checkbox checked={allSel} onCheckedChange={() => selectAllKrs(krs)} onClick={e => e.stopPropagation()} className="ml-1" />
+                  <div
+                    key={obj.id}
+                    onClick={() => openDetail(obj)}
+                    className={cn("grid items-center px-4 hover:bg-accent/30 transition-colors cursor-pointer group/obj", GRID)}
+                  >
+                    {/* Objetivo */}
+                    <div className="p-3 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{obj.title}</p>
+                      {obj.description && (
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{obj.description}</p>
                       )}
-                      <div className={cn("transition-transform duration-200 shrink-0", isExpanded && "rotate-90")}>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <Progress value={obj.progress} className="h-1 flex-1 max-w-[120px]" />
+                        <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{Math.round(obj.progress)}%</span>
+                        <Badge variant="outline" className="text-[10px] tabular-nums">{doneCount}/{krs.length}</Badge>
                       </div>
-                      <div className="flex-1 min-w-0 flex items-center gap-3">
-                        <p className="text-sm font-semibold text-foreground truncate">{obj.title}</p>
-                        <Badge variant="outline" className="text-[10px] shrink-0 tabular-nums">{doneCount}/{krs.length}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Progress value={obj.progress} className="h-1.5 w-20" />
-                        <span className="text-xs font-bold tabular-nums text-foreground w-9 text-right">{Math.round(obj.progress)}%</span>
-                      </div>
+                    </div>
+
+                    {/* Indicador */}
+                    <div className="p-3 min-w-0">
+                      <p className="text-xs text-muted-foreground truncate">{obj.indicator || '—'}</p>
+                    </div>
+
+                    {/* Status */}
+                    <div className="p-3 text-center">
+                      <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full font-semibold', st.cls)}>
+                        <StIcon className="h-3 w-3" />
+                        {st.label}
+                      </Badge>
+                    </div>
+
+                    {/* Meta */}
+                    <div className="p-3 text-center">
+                      <span className="text-xs font-bold tabular-nums text-foreground">{obj.target_label || '—'}</span>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="p-3 flex justify-end" onClick={e => e.stopPropagation()}>
                       {canManage && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/obj:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/obj:opacity-100 transition-opacity">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={e => { e.stopPropagation(); setEditingObj(obj); setObjDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" />Editar</DropdownMenuItem>
-                            <DropdownMenuItem onClick={e => { e.stopPropagation(); setEditingKr({ objective_id: obj.id, start_value: 0, target_value: 100, current_value: 0, confidence_level: 70, unit: '%', status: 'on_track', activity_status: 'a_iniciar' }); setKrDialogOpen(true); }}>
-                              <Plus className="h-3.5 w-3.5 mr-2" />Adicionar resultado-chave
+                            <DropdownMenuItem onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" />Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setEditingKr({ objective_id: obj.id, start_value: 0, target_value: 100, current_value: 0, confidence_level: 70, unit: '%', status: 'on_track', activity_status: 'a_iniciar' }); setKrDialogOpen(true); }}>
+                              <Plus className="h-3.5 w-3.5 mr-2" />Adicionar atividade
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={e => { e.stopPropagation(); if (confirm('Excluir objetivo?')) deleteObjective.mutateAsync(obj.id); }}><Trash2 className="h-3.5 w-3.5 mr-2" />Excluir</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Excluir objetivo?')) deleteObjective.mutateAsync(obj.id); }}><Trash2 className="h-3.5 w-3.5 mr-2" />Excluir</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
                     </div>
-
-                    {/* ── Key Results ── */}
-                    {isExpanded && (
-                      <div className="animate-accordion-down">
-                        {krs.length > 0 ? krs.map(kr => {
-                          const linkedKpi = kr.kpi_id ? kpis.find(k => k.id === kr.kpi_id) : null;
-                          const indicator = linkedKpi?.name || kr.description || '—';
-                          const meta = `${kr.target_value}${kr.unit === '%' ? '%' : ` ${kr.unit}`}`;
-                          const pct = krProgress(kr);
-                          const st = STATUSES[kr.activity_status] || STATUSES.a_iniciar;
-                          const StIcon = st.icon;
-                          const team = supportTeamAvatars(kr.support_team);
-
-                          return (
-                            <div
-                              key={kr.id}
-                              onClick={() => openDetail(kr, obj)}
-                              className={cn(
-                                "grid items-center px-2 border-t border-border/20 hover:bg-accent/30 transition-colors group/kr cursor-pointer",
-                                GRID,
-                                selectedKrs.has(kr.id) && "bg-accent/20"
-                              )}
-                            >
-                              {/* Checkbox */}
-                              <div className="p-2.5 flex justify-center" onClick={e => e.stopPropagation()}>
-                                {canManage && <Checkbox checked={selectedKrs.has(kr.id)} onCheckedChange={() => toggleSelectKr(kr.id)} />}
-                              </div>
-
-
-                              {/* Resultado-chave + Descrição */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'title', kr.title); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
-                                {editingCell?.krId === kr.id && editingCell.field === 'title' ? (
-                                  <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
-                                ) : (
-                                  <div className="min-w-0">
-                                    <p className="text-xs leading-relaxed text-foreground truncate">{kr.title}</p>
-                                    {kr.description && (
-                                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{kr.description}</p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Indicador */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'description', kr.description || ''); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
-                                {editingCell?.krId === kr.id && editingCell.field === 'description' ? (
-                                  <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
-                                ) : (
-                                  <p className="text-[11px] text-muted-foreground truncate">{indicator}</p>
-                                )}
-                              </div>
-
-                              {/* Meta */}
-                              <div className="p-2.5 text-center">
-                                <span className="text-xs font-bold tabular-nums text-foreground">{meta}</span>
-                              </div>
-
-                              {/* Progresso */}
-                              <div className="p-2.5 text-center">
-                                <span className={cn("text-xs font-bold tabular-nums", pct >= 100 ? "text-emerald-500" : "text-foreground")}>{pct}%</span>
-                              </div>
-
-                              {/* Responsável */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'responsible_name', kr.responsible_name || ''); }} onClick={e => { if (editingCell) e.stopPropagation(); }}>
-                                {editingCell?.krId === kr.id && editingCell.field === 'responsible_name' ? (
-                                  <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" />
-                                ) : (
-                                  <p className="text-xs text-foreground truncate">{kr.responsible_name || '—'}</p>
-                                )}
-                              </div>
-
-                              {/* Equipe de apoio */}
-                              <div className="p-2.5 cursor-text min-w-0" onDoubleClick={e => { e.stopPropagation(); startInlineEdit(kr.id, 'support_team', kr.support_team || ''); }} onClick={e => e.stopPropagation()}>
-                                {editingCell?.krId === kr.id && editingCell.field === 'support_team' ? (
-                                  <Input autoFocus value={editCellValue} onChange={e => setEditCellValue(e.target.value)} onBlur={commitInlineEdit} onKeyDown={e => e.key === 'Enter' && commitInlineEdit()} className="h-7 text-xs" placeholder="Ex: Infra, Suporte" />
-                                ) : team.length > 0 ? (
-                                  <div className="flex -space-x-1.5">
-                                    {team.slice(0, 3).map((name, i) => (
-                                      <Tooltip key={i}>
-                                        <TooltipTrigger asChild>
-                                          <div className="h-6 w-6 rounded-full bg-primary/15 border-2 border-card flex items-center justify-center">
-                                            <span className="text-[9px] font-bold text-primary">{name.charAt(0).toUpperCase()}</span>
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top"><p className="text-xs">{name}</p></TooltipContent>
-                                      </Tooltip>
-                                    ))}
-                                    {team.length > 3 && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="h-6 w-6 rounded-full bg-muted border-2 border-card flex items-center justify-center">
-                                            <span className="text-[9px] font-medium text-muted-foreground">+{team.length - 3}</span>
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top"><p className="text-xs">{team.slice(3).join(', ')}</p></TooltipContent>
-                                      </Tooltip>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-[11px] text-muted-foreground">—</span>
-                                )}
-                              </div>
-
-                              {/* Prazo */}
-                              <div className="p-2.5 text-center" onClick={e => e.stopPropagation()}>
-                                {kr.end_date ? (
-                                  <span className={cn("text-[11px] tabular-nums font-medium", deadlineColor(kr.end_date))}>
-                                    {format(parseISO(kr.end_date), 'dd MMM', { locale: ptBR })}
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] text-muted-foreground">—</span>
-                                )}
-                              </div>
-
-                              {/* Status */}
-                              <div className="p-2.5 text-center">
-                                {canManage ? (
-                                  <Select value={kr.activity_status} onValueChange={v => handleQuickStatusChange(kr.id, v)}>
-                                    <SelectTrigger className={cn("h-6 text-[10px] font-semibold border gap-1 px-2 w-auto mx-auto rounded-full", st.cls)}>
-                                      <StIcon className="h-3 w-3 shrink-0" />
-                                      <span className="hidden lg:inline">{st.label}</span>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {Object.entries(STATUSES).map(([k, v]) => (
-                                        <SelectItem key={k} value={k}><div className="flex items-center gap-2"><v.icon className={cn("h-3 w-3", v.color)} />{v.label}</div></SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full', st.cls)}>
-                                    <StIcon className="h-3 w-3" />{st.label}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              {/* Ações */}
-                              <div className="p-2.5 flex justify-end" onClick={e => e.stopPropagation()}>
-                                {canManage && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/kr:opacity-100 transition-opacity">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => { setEditingKr(kr); setKrDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 mr-2" />Editar</DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDuplicateKr(kr)}><Copy className="h-3.5 w-3.5 mr-2" />Duplicar</DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleQuickStatusChange(kr.id, 'finalizado')}><CheckCircle2 className="h-3.5 w-3.5 mr-2 text-emerald-500" />Concluir</DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Excluir?')) deleteKeyResult.mutateAsync(kr.id); }}><Trash2 className="h-3.5 w-3.5 mr-2" />Excluir</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }) : (
-                          <div className="px-6 py-6 text-center text-sm text-muted-foreground">Nenhum resultado-chave</div>
-                        )}
-
-                        {canManage && (
-                          <div className="border-t border-border/20 px-6 py-2">
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-                              onClick={() => { setEditingKr({ objective_id: obj.id, start_value: 0, target_value: 100, current_value: 0, confidence_level: 70, unit: '%', status: 'on_track', activity_status: 'a_iniciar' }); setKrDialogOpen(true); }}>
-                              <Plus className="h-3 w-3" /> Adicionar resultado-chave
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -716,8 +564,8 @@ export function OkrBoard() {
         </Dialog>
         {/* Activity Detail Dialog */}
         <ActivityDetailDialog
-          activity={detailActivity}
           objective={detailObjective}
+          activities={detailActivities}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           onUpdateLinks={handleUpdateLinks}
