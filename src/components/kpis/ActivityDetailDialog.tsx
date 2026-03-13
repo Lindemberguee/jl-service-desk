@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
   Calendar, Users, Target, Clock, CheckCircle2, Play, Pause, AlertTriangle,
-  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2
+  Timer, Trash2, BarChart3, ExternalLink, Plus, X, LinkIcon, MapPin, Building2, Pencil
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
