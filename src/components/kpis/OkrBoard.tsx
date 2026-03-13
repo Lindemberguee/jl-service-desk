@@ -496,10 +496,8 @@ export function OkrBoard() {
                       </Badge>
                     </div>
 
-                    {/* Meta */}
-                    <div className="p-3 text-center">
-                      <span className="text-xs font-bold tabular-nums text-foreground">{obj.target_label || '—'}</span>
-                    </div>
+
+
 
                     {/* Ações */}
                     <div className="p-3 flex justify-end" onClick={e => e.stopPropagation()}>
