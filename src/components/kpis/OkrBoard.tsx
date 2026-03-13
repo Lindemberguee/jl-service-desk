@@ -300,8 +300,8 @@ export function OkrBoard() {
   useEffect(() => {
     if (!editingKr.id || !krDialogOpen) return;
     const { id, ...rest } = editingKr;
-    debouncedSaveKr({ id, ...rest } as any);
-  }, [editingKr, krDialogOpen]);
+    debouncedSaveKr({ id, ...rest, kpi_ids: editingKrKpiIds, kpi_id: editingKrKpiIds[0] || null } as any);
+  }, [editingKr, editingKrKpiIds, krDialogOpen]);
 
   // Cleanup timer
   useEffect(() => () => { if (krSaveTimer.current) clearTimeout(krSaveTimer.current); }, []);
