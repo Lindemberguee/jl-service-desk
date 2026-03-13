@@ -109,7 +109,7 @@ export function OkrBoard() {
   const handleUpdateLinks = async (activityId: string, links: Array<{ label: string; url: string }>) => {
     try {
       await updateKeyResult.mutateAsync({ id: activityId, links } as any);
-      setDetailActivity(prev => prev ? { ...prev, links } : null);
+      setDetailActivities(prev => prev.map(a => a.id === activityId ? { ...a, links } : a));
       toast.success('Links atualizados');
     } catch { toast.error('Erro ao atualizar links'); }
   };
