@@ -1,0 +1,1 @@
+ALTER TABLE public.okr_key_results ADD COLUMN IF NOT EXISTS kpi_ids text[] DEFAULT '{}'::text[];

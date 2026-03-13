@@ -1625,6 +1625,7 @@ export type Database = {
           end_date: string | null
           id: string
           kpi_id: string | null
+          kpi_ids: string[] | null
           links: Json
           objective_id: string
           owner_user_id: string | null
@@ -1651,6 +1652,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           kpi_id?: string | null
+          kpi_ids?: string[] | null
           links?: Json
           objective_id: string
           owner_user_id?: string | null
@@ -1677,6 +1679,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           kpi_id?: string | null
+          kpi_ids?: string[] | null
           links?: Json
           objective_id?: string
           owner_user_id?: string | null
