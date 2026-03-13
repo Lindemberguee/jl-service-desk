@@ -112,9 +112,11 @@ export function ActivityDetailDialog({ objective, activities, kpis = [], open, o
 
 /* ── Activity Card ── */
 
-function ActivityCard({ activity, onUpdateLinks, canManage }: {
+function ActivityCard({ activity, kpis = [], onUpdateLinks, onEditActivity, canManage }: {
   activity: OkrKeyResult;
+  kpis?: Kpi[];
   onUpdateLinks?: (id: string, links: ActivityLink[]) => void;
+  onEditActivity?: (activity: OkrKeyResult) => void;
   canManage?: boolean;
 }) {
   const [showAddLink, setShowAddLink] = useState(false);
@@ -124,6 +126,7 @@ function ActivityCard({ activity, onUpdateLinks, canManage }: {
   const status = activityStatuses[activity.activity_status] || activityStatuses.a_iniciar;
   const StatusIcon = status.icon;
   const links: ActivityLink[] = Array.isArray(activity.links) ? activity.links : [];
+  const linkedKpi = activity.kpi_id ? kpis.find(k => k.id === activity.kpi_id) : null;
 
   const progressPct = activity.target_value > activity.start_value
     ? Math.min(Math.max(((activity.current_value - activity.start_value) / (activity.target_value - activity.start_value)) * 100, 0), 100)
