@@ -460,8 +460,9 @@ export function OkrBoard() {
                           return (
                             <div
                               key={kr.id}
+                              onClick={() => openDetail(kr, obj)}
                               className={cn(
-                                "grid items-center px-2 border-t border-border/20 hover:bg-accent/30 transition-colors group/kr",
+                                "grid items-center px-2 border-t border-border/20 hover:bg-accent/30 transition-colors group/kr cursor-pointer",
                                 GRID,
                                 selectedKrs.has(kr.id) && "bg-accent/20"
                               )}
