@@ -384,17 +384,12 @@ export function OkrBoard() {
             <div className="overflow-x-auto">
 
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[800px]">
-              <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2", GRID)}>
-                <div className="p-2 pl-3" />
-                <div className="p-2">Resultado-chave</div>
+            <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b border-border/60 min-w-[600px]">
+              <div className={cn("grid items-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4", GRID)}>
+                <div className="p-2">Objetivo</div>
                 <div className="p-2">Indicador</div>
-                <div className="p-2 text-center">Meta</div>
-                <div className="p-2 text-center">%</div>
-                <div className="p-2">Responsável</div>
-                <div className="p-2">Equipe</div>
-                <div className="p-2 text-center">Prazo</div>
                 <div className="p-2 text-center">Status</div>
+                <div className="p-2 text-center">Meta</div>
                 <div className="p-2" />
               </div>
             </div>
