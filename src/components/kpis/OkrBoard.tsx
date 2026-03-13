@@ -529,278 +529,270 @@ export function OkrBoard() {
           </Card>
         )}
 
-        {/* Plan View - Table-like */}
-        {viewMode === 'plan' && cycleObjectives.map(obj => {
-          const objActivities = keyResults
-            .filter(kr => kr.objective_id === obj.id)
-            .filter(kr => filterStatus === 'all' || kr.activity_status === filterStatus)
-            .filter(kr => filterArea === 'all' || kr.area === filterArea)
-            .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible)
-            .filter(kr => {
-              if (filterMonth === 'all') return true;
-              const [y, m] = filterMonth.split('-').map(Number);
-              const monthStart = new Date(y, m - 1, 1);
-              const monthEnd = endOfMonth(monthStart);
-              const start = kr.start_date ? parseISO(kr.start_date) : null;
-              const end = kr.end_date ? parseISO(kr.end_date) : null;
-              if (start && end) return start <= monthEnd && end >= monthStart;
-              if (start) return start <= monthEnd && start >= monthStart;
-              if (end) return end >= monthStart && end <= monthEnd;
-              return true;
-            });
+        {/* Plan View - Structured OKR Table */}
+        {viewMode === 'plan' && cycleObjectives.length > 0 && (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px]">
+                <thead>
+                  <tr className="bg-primary text-primary-foreground">
+                    <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider w-[28%]">Objetivo</th>
+                    <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider w-[36%]">Resultados-Chave</th>
+                    <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider w-[20%]">Indicadores</th>
+                    <th className="text-center px-5 py-3 text-xs font-bold uppercase tracking-wider w-[8%]">Meta</th>
+                    <th className="text-center px-5 py-3 text-xs font-bold uppercase tracking-wider w-[8%]">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cycleObjectives.map((obj, objIdx) => {
+                    const objActivities = keyResults
+                      .filter(kr => kr.objective_id === obj.id)
+                      .filter(kr => filterStatus === 'all' || kr.activity_status === filterStatus)
+                      .filter(kr => filterArea === 'all' || kr.area === filterArea)
+                      .filter(kr => filterResponsible === 'all' || kr.responsible_name === filterResponsible)
+                      .filter(kr => {
+                        if (filterMonth === 'all') return true;
+                        const [y, m] = filterMonth.split('-').map(Number);
+                        const monthStart = new Date(y, m - 1, 1);
+                        const monthEnd = endOfMonth(monthStart);
+                        const start = kr.start_date ? parseISO(kr.start_date) : null;
+                        const end = kr.end_date ? parseISO(kr.end_date) : null;
+                        if (start && end) return start <= monthEnd && end >= monthStart;
+                        if (start) return start <= monthEnd && start >= monthStart;
+                        if (end) return end >= monthStart && end <= monthEnd;
+                        return true;
+                      });
 
-          const totalActivities = keyResults.filter(kr => kr.objective_id === obj.id).length;
-          const completedActivities = keyResults.filter(kr => kr.objective_id === obj.id && (kr.activity_status === 'finalizado' || kr.activity_status === 'finalizado_com_atraso')).length;
-          const objPct = Math.round(obj.progress);
-          const StatusInfo = objectiveStatuses[obj.status] || objectiveStatuses.on_track;
-          const isExpanded = currentExpanded.has(obj.id);
-          const catColor = categoryColors[obj.category] || 'hsl(var(--primary))';
+                    const rowCount = Math.max(objActivities.length, 1);
+                    const objPct = Math.round(obj.progress);
+                    const StatusInfo = objectiveStatuses[obj.status] || objectiveStatuses.on_track;
+                    const catColor = categoryColors[obj.category] || 'hsl(var(--primary))';
 
-          return (
-            <Card key={obj.id} className={cn("overflow-hidden border", objPct >= 100 && "ring-1 ring-primary/30")}>
-              {/* Objective Header */}
-              <div
-                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                onClick={() => toggleObjective(obj.id)}
-                style={{ borderLeft: `4px solid ${catColor}` }}
-              >
-                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </Button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm">{obj.title}</span>
-                    <Badge variant="outline" className={cn('text-[9px] gap-1 h-5', StatusInfo.color)}>
-                      <StatusInfo.icon className="h-2.5 w-2.5" />
-                      {StatusInfo.label}
-                    </Badge>
-                    <Badge variant="outline" className={cn('text-[9px] h-5', priorityConfig[obj.priority]?.color)}>
-                      {priorityConfig[obj.priority]?.label}
-                    </Badge>
-                    {obj.category && (
-                      <Badge variant="secondary" className="text-[9px] h-5">{obj.category}</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 text-[11px] text-muted-foreground">
-                    {obj.indicator && <span>📊 {obj.indicator}</span>}
-                    {obj.target_label && <span>🎯 Meta: {obj.target_label}</span>}
-                    {obj.responsible_name && (
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {obj.responsible_name}</span>
-                    )}
-                    {obj.area && <span>📍 {obj.area}</span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="text-right w-20">
-                    <p className={cn("text-lg font-bold", objPct >= 100 ? 'text-primary' : objPct >= 70 ? 'text-emerald-500' : '')}>
-                      {objPct >= 100 ? (
-                        <span className="flex items-center justify-end gap-1">
-                          <CheckCircle2 className="h-4 w-4" />
-                          {objPct}%
-                        </span>
-                      ) : `${objPct}%`}
-                    </p>
-                    <p className="text-[9px] text-muted-foreground">{completedActivities}/{totalActivities} ativ.</p>
-                  </div>
-                  <div className="w-20">
-                    <Progress value={objPct} className="h-2" />
-                  </div>
-                </div>
-              </div>
+                    return objActivities.length > 0 ? objActivities.map((activity, krIdx) => {
+                      const actStatus = activityStatuses[activity.activity_status] || activityStatuses.a_iniciar;
+                      const ActIcon = actStatus.icon;
+                      const deadlineInfo = getActivityDeadlineInfo(activity);
 
-              {/* Activities Table */}
-              {isExpanded && (
-                <div className="border-t">
-                  {objActivities.length > 0 && (
-                    <div className="overflow-x-auto border-b">
-                      {/* Header */}
-                      <table className="w-full min-w-[700px] table-fixed">
-                        <thead>
-                          <tr className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50">
-                            <th className="text-left px-4 py-2 w-[38%]">Atividade</th>
-                            <th className="text-left px-3 py-2 w-[18%]">Responsável</th>
-                            <th className="text-left px-3 py-2 w-[18%]">Prazo</th>
-                            <th className="text-left px-3 py-2 w-[12%]">Entrega</th>
-                            <th className="text-left px-3 py-2 w-[14%]">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                      {/* Rows */}
-                      {objActivities.map((activity, idx) => {
-                        const actStatus = activityStatuses[activity.activity_status] || activityStatuses.a_iniciar;
-                        const deadlineInfo = getActivityDeadlineInfo(activity);
-                        const ActIcon = actStatus.icon;
-
-                        return (
-                          <tr
-                            key={activity.id}
-                            className={cn(
-                              "group hover:bg-muted/20 transition-colors cursor-pointer",
-                              idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'
-                            )}
-                            onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
-                          >
-                            <td className="px-4 py-3 max-w-0">
-                              <div className="flex items-start gap-2 min-w-0">
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" onClick={e => e.stopPropagation()}>
-                                  {canManage && (
-                                    <>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                            setCheckinKrId(activity.id);
-                                            setCheckinValue(activity.current_value.toString());
-                                            setCheckinConfidence((activity.confidence_level ?? 70).toString());
-                                            setCheckinDialogOpen(true);
-                                          }}>
-                                            <TrendingUp className="h-3 w-3" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Check-in</TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                            setEditingActivity(activity);
-                                            setActivityDialogOpen(true);
-                                          }}>
-                                            <Pencil className="h-3 w-3" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Editar</TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteKeyResult.mutateAsync(activity.id)}>
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Excluir</TooltipContent>
-                                      </Tooltip>
-                                    </>
-                                  )}
+                      return (
+                        <tr
+                          key={activity.id}
+                          className={cn(
+                            "border-b border-border/60 transition-colors group",
+                            objIdx % 2 === 0 ? 'bg-muted/20' : 'bg-card',
+                            'hover:bg-muted/40'
+                          )}
+                        >
+                          {/* OBJETIVO - spans all KRs */}
+                          {krIdx === 0 && (
+                            <td
+                              rowSpan={rowCount}
+                              className="px-5 py-4 align-top border-r border-border/40"
+                              style={{ borderLeft: `4px solid ${catColor}` }}
+                            >
+                              <div className="space-y-2">
+                                <p className="font-semibold text-sm leading-snug">{obj.title}</p>
+                                {obj.description && (
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">{obj.description}</p>
+                                )}
+                                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                                  <Badge variant="outline" className={cn('text-[9px] gap-1 h-5', StatusInfo.color)}>
+                                    <StatusInfo.icon className="h-2.5 w-2.5" />
+                                    {StatusInfo.label}
+                                  </Badge>
+                                  <Badge variant="outline" className={cn('text-[9px] h-5', priorityConfig[obj.priority]?.color)}>
+                                    {priorityConfig[obj.priority]?.label}
+                                  </Badge>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="text-sm truncate block min-w-0 cursor-default">{activity.title}</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-xs">{activity.title}</TooltipContent>
-                                  </Tooltip>
-                                  {(activity.kpi_id || deadlineInfo) && (
-                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                      {activity.kpi_id && (() => {
-                                        const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
-                                        return linkedKpi ? (
-                                          <Badge variant="outline" className="text-[8px] h-4 gap-0.5 border-primary/30 text-primary">
-                                            <BarChart3 className="h-2.5 w-2.5" />
-                                            {linkedKpi.name}
-                                          </Badge>
-                                        ) : null;
-                                      })()}
-                                      {deadlineInfo && (
-                                        <Badge variant="outline" className={cn("text-[8px] h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
-                                          {deadlineInfo.text}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  )}
+                                <div className="pt-1">
+                                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                                    <span>Progresso</span>
+                                    <span className={cn("font-bold", objPct >= 100 ? 'text-primary' : objPct >= 70 ? 'text-emerald-500' : '')}>{objPct}%</span>
+                                  </div>
+                                  <Progress value={objPct} className="h-1.5" />
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div>
-                                <span className="text-xs truncate block">{activity.responsible_name || '—'}</span>
-                                {(activity.area || activity.support_team) && (
-                                  <span className="text-[10px] text-muted-foreground truncate block mt-0.5">
-                                    {activity.area}{activity.area && activity.support_team ? ' / ' : ''}{activity.support_team && <span className="text-primary/70">{activity.support_team}</span>}
-                                  </span>
+                                {(obj.responsible_name || obj.area) && (
+                                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
+                                    {obj.responsible_name && (
+                                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {obj.responsible_name}</span>
+                                    )}
+                                    {obj.area && <span>📍 {obj.area}</span>}
+                                  </div>
+                                )}
+                                {canManage && (
+                                  <div className="flex items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={(e) => { e.stopPropagation(); setEditingObj(obj); setObjDialogOpen(true); }}>
+                                      <Pencil className="h-3 w-3" /> Editar
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2 border-dashed border" onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingActivity({
+                                        objective_id: obj.id,
+                                        start_value: 0, target_value: 100, current_value: 0,
+                                        confidence_level: 70, unit: '%', status: 'on_track',
+                                        activity_status: 'a_iniciar', area: obj.area || '', responsible_name: '',
+                                      });
+                                      setActivityDialogOpen(true);
+                                    }}>
+                                      <Plus className="h-3 w-3" /> RC
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-3">
-                              <div>
-                                <span className="text-xs whitespace-nowrap">
-                                  {activity.start_date ? format(parseISO(activity.start_date), 'dd/MM/yyyy') : '—'}
-                                  {' → '}
-                                  {activity.end_date ? format(parseISO(activity.end_date), 'dd/MM/yyyy') : '—'}
-                                </span>
+                          )}
+
+                          {/* RESULTADOS-CHAVE */}
+                          <td
+                            className="px-5 py-3 align-middle cursor-pointer border-r border-border/40"
+                            onClick={() => { setDetailActivity(activity); setDetailDialogOpen(true); }}
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm leading-snug">{activity.title}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                {activity.responsible_name && (
+                                  <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {activity.responsible_name}</span>
+                                )}
+                                {activity.end_date && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(parseISO(activity.end_date), 'dd/MM/yyyy')}
+                                  </span>
+                                )}
+                                {deadlineInfo && (
+                                  <Badge variant="outline" className={cn("text-[8px] h-4", deadlineInfo.urgent ? 'border-destructive/40 text-destructive' : 'border-amber-500/40 text-amber-500')}>
+                                    {deadlineInfo.text}
+                                  </Badge>
+                                )}
                               </div>
-                            </td>
-                            <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                              {activity.delivery_date ? format(parseISO(activity.delivery_date), 'dd/MM/yyyy') : '—'}
-                            </td>
-                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                              {canManage ? (
-                                <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
-                                  <SelectTrigger className={cn("h-7 text-[10px] font-semibold border", actStatus.bgClass)}>
-                                    <div className="flex items-center gap-1">
-                                      <ActIcon className="h-3 w-3" />
-                                      <span className="truncate">{actStatus.label}</span>
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(activityStatuses).map(([k, v]) => (
-                                      <SelectItem key={k} value={k}>
-                                        <div className="flex items-center gap-2">
-                                          <v.icon className={cn("h-3 w-3", v.color)} />
-                                          {v.label}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Badge variant="outline" className={cn('text-[10px] gap-1', actStatus.bgClass)}>
-                                  <ActIcon className="h-3 w-3" />
-                                  {actStatus.label}
-                                </Badge>
+                              {/* Mini progress bar */}
+                              {activity.target_value > 0 && (
+                                <div className="w-32 pt-0.5">
+                                  <Progress
+                                    value={Math.min(((activity.current_value - activity.start_value) / (activity.target_value - activity.start_value || 1)) * 100, 100)}
+                                    className="h-1"
+                                  />
+                                </div>
                               )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                            </div>
+                          </td>
 
-                  {/* Add activity + edit objective actions */}
-                  {canManage && (
-                    <div className="flex items-center gap-2 p-3 border-t bg-muted/20">
-                      <Button variant="outline" size="sm" className="gap-2 h-7 text-xs border-dashed" onClick={() => {
-                        setEditingActivity({
-                          objective_id: obj.id,
-                          start_value: 0, target_value: 100, current_value: 0,
-                          confidence_level: 70, unit: '%', status: 'on_track',
-                          activity_status: 'a_iniciar', area: obj.area || '', responsible_name: '',
-                        });
-                        setActivityDialogOpen(true);
-                      }}>
-                        <Plus className="h-3 w-3" />
-                        Atividade
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-2 h-7 text-xs" onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}>
-                        <Pencil className="h-3 w-3" />
-                        Editar Objetivo
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-2 h-7 text-xs text-destructive" onClick={() => deleteObjective.mutateAsync(obj.id)}>
-                        <Trash2 className="h-3 w-3" />
-                        Excluir
-                      </Button>
-                    </div>
-                  )}
+                          {/* INDICADORES */}
+                          <td className="px-5 py-3 align-middle border-r border-border/40">
+                            <div className="space-y-1">
+                              {activity.kpi_id ? (() => {
+                                const linkedKpi = kpis.find(k => k.id === activity.kpi_id);
+                                return linkedKpi ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: linkedKpi.color }} />
+                                    <span className="text-xs">{linkedKpi.name}</span>
+                                  </div>
+                                ) : <span className="text-xs text-muted-foreground">—</span>;
+                              })() : (
+                                <span className="text-xs text-muted-foreground">
+                                  {obj.indicator || `${activity.unit === '%' ? '% de conclusão' : `${activity.unit}`}`}
+                                </span>
+                              )}
+                            </div>
+                          </td>
 
-                  {objActivities.length === 0 && (
-                    <div className="text-center py-8 text-sm text-muted-foreground">
-                      Nenhuma atividade{filterStatus !== 'all' || filterArea !== 'all' || filterResponsible !== 'all' ? ' com os filtros selecionados' : ''}
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
-          );
-        })}
+                          {/* META */}
+                          <td className="px-5 py-3 align-middle text-center border-r border-border/40">
+                            <span className="text-sm font-bold">
+                              {activity.target_value}{activity.unit === '%' ? '%' : ` ${activity.unit}`}
+                            </span>
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-3 py-3 align-middle text-center" onClick={e => e.stopPropagation()}>
+                            {canManage ? (
+                              <Select value={activity.activity_status} onValueChange={(v) => handleQuickStatusChange(activity.id, v)}>
+                                <SelectTrigger className={cn("h-7 text-[9px] font-semibold border w-full", actStatus.bgClass)}>
+                                  <ActIcon className="h-3 w-3" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(activityStatuses).map(([k, v]) => (
+                                    <SelectItem key={k} value={k}>
+                                      <div className="flex items-center gap-2">
+                                        <v.icon className={cn("h-3 w-3", v.color)} />
+                                        {v.label}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className={cn('text-[9px] gap-1', actStatus.bgClass)}>
+                                <ActIcon className="h-3 w-3" />
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      // Objective with no activities
+                      <tr
+                        key={obj.id}
+                        className={cn(
+                          "border-b border-border/60",
+                          objIdx % 2 === 0 ? 'bg-muted/20' : 'bg-card'
+                        )}
+                      >
+                        <td
+                          className="px-5 py-4 align-top border-r border-border/40"
+                          style={{ borderLeft: `4px solid ${catColor}` }}
+                        >
+                          <div className="space-y-2">
+                            <p className="font-semibold text-sm leading-snug">{obj.title}</p>
+                            {obj.description && (
+                              <p className="text-[11px] text-muted-foreground">{obj.description}</p>
+                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="outline" className={cn('text-[9px] gap-1 h-5', StatusInfo.color)}>
+                                <StatusInfo.icon className="h-2.5 w-2.5" />
+                                {StatusInfo.label}
+                              </Badge>
+                            </div>
+                            {canManage && (
+                              <div className="flex items-center gap-1 pt-1">
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={() => { setEditingObj(obj); setObjDialogOpen(true); }}>
+                                  <Pencil className="h-3 w-3" /> Editar
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 px-2 border-dashed" onClick={() => {
+                                  setEditingActivity({
+                                    objective_id: obj.id,
+                                    start_value: 0, target_value: 100, current_value: 0,
+                                    confidence_level: 70, unit: '%', status: 'on_track',
+                                    activity_status: 'a_iniciar', area: obj.area || '', responsible_name: '',
+                                  });
+                                  setActivityDialogOpen(true);
+                                }}>
+                                  <Plus className="h-3 w-3" /> Resultado-Chave
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td colSpan={4} className="px-5 py-4 text-center text-sm text-muted-foreground">
+                          Nenhum resultado-chave cadastrado
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* Plan View - Empty state */}
+        {viewMode === 'plan' && cycleObjectives.length > 0 && canManage && (
+          <div className="flex justify-center">
+            <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjDialogOpen(true); }} variant="outline" className="gap-2 border-dashed">
+              <Plus className="h-4 w-4" />
+              Adicionar Objetivo
+            </Button>
+          </div>
+        )}
 
         {/* Board View - Kanban by status */}
         {viewMode === 'board' && (() => {
