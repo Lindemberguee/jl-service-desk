@@ -245,16 +245,34 @@ export function OkrBoard() {
   const handleSaveObjective = async () => {
     if (!editingObj.title?.trim()) return toast.error('Título obrigatório');
     try {
-      if (editingObj.id) { await updateObjective.mutateAsync({ id: editingObj.id, ...editingObj }); } else { await createObjective.mutateAsync({ ...editingObj, cycle_id: cycleId }); }
-      setObjDialogOpen(false); toast.success('Objetivo salvo');
-    } catch { toast.error('Erro'); }
-  };
-
-  const handleSaveKr = async () => {
-    if (!editingKr.title?.trim()) return toast.error('Resultado-chave obrigatório');
-    try {
-      if (editingKr.id) { await updateKeyResult.mutateAsync({ id: editingKr.id, ...editingKr }); } else { await createKeyResult.mutateAsync(editingKr); }
-      setKrDialogOpen(false); toast.success('Resultado-chave salvo');
+      if (editingObj.id) {
+        await updateObjective.mutateAsync({ id: editingObj.id, ...editingObj });
+        toast.success('Objetivo salvo');
+      } else {
+        const created = await createObjective.mutateAsync({ ...editingObj, cycle_id: cycleId });
+        // Create activities (key results) from the inline list
+        const validActivities = objActivities.filter(a => a.trim());
+        for (const actTitle of validActivities) {
+          await createKeyResult.mutateAsync({
+            objective_id: created.id,
+            title: actTitle,
+            start_value: 0,
+            target_value: 100,
+            current_value: 0,
+            confidence_level: 70,
+            unit: '%',
+            status: 'on_track',
+            activity_status: 'a_iniciar',
+            responsible_name: editingObj.responsible_name || '',
+            area: editingObj.area || '',
+            start_date: objStartDate || null,
+            end_date: objEndDate || null,
+            kpi_id: objKpiIds.length === 1 ? objKpiIds[0] : null,
+          } as any);
+        }
+        toast.success('Objetivo criado');
+      }
+      setObjDialogOpen(false);
     } catch { toast.error('Erro'); }
   };
 
