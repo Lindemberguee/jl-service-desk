@@ -429,7 +429,14 @@ export function OkrBoard() {
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-dashed border-border/60 bg-muted/10">
             <Target className="h-14 w-14 text-muted-foreground/20" />
             <h3 className="text-lg font-semibold mt-5 text-foreground">Monte seu Plano de Ação</h3>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-md">Crie objetivos e defina resultados-chave.</p>
+            <p className="text-sm text-muted-foreground mt-1.5 max-w-md">
+              {!cycleId ? 'Crie um ciclo para começar a definir seus objetivos.' : 'Crie objetivos e defina resultados-chave.'}
+            </p>
+            {canManage && !cycleId && (
+              <Button onClick={() => { setEditingCycle({ type: 'annual', status: 'active' }); setCycleDialogOpen(true); }} className="mt-5 gap-1.5" size="sm">
+                <Plus className="h-3.5 w-3.5" /> Criar Ciclo
+              </Button>
+            )}
             {canManage && cycleId && (
               <Button onClick={() => { setEditingObj({ priority: 'media', status: 'on_track', progress: 0, category: 'Operacional' }); setObjActivities(['']); setObjKpiIds([]); setObjStartDate(''); setObjEndDate(''); setObjDialogOpen(true); }} className="mt-5 gap-1.5" size="sm">
                 <Plus className="h-3.5 w-3.5" /> Criar primeiro objetivo
