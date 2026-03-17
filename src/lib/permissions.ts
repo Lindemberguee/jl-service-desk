@@ -64,7 +64,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
   ],
-  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'vault:read', 'kb:read'],
+  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner', 'kpis:read', 'docs:read', 'vault:read', 'kb:read'],
   analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'docs:manage', 'vault:read', 'kb:read'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read', 'kpis:read'],
