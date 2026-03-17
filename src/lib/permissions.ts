@@ -46,7 +46,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'collaborators:read', 'collaborators:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
-    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner',
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
