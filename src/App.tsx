@@ -50,6 +50,8 @@ import IntegrationsPage from "@/pages/IntegrationsPage";
 import SmtpSettingsPage from "@/pages/integrations/SmtpSettingsPage";
 import TeamsSettingsPage from "@/pages/integrations/TeamsSettingsPage";
 import NotificationMetricsPage from "@/pages/integrations/NotificationMetricsPage";
+import CalendarSettingsPage from "@/pages/integrations/CalendarSettingsPage";
+import CalendarPage from "@/pages/CalendarPage";
 import PortalHome from "@/pages/portal/PortalHome";
 import PortalNewRequest from "@/pages/portal/PortalNewRequest";
 import PortalWorkOrderDetail from "@/pages/portal/PortalWorkOrderDetail";
