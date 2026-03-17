@@ -687,7 +687,8 @@ export function OkrBoard() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
-              <div className="grid gap-2"><Label>Objetivo / Resultado-chave</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
+              <div className="grid gap-2"><Label>Objetivo</Label><Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={3} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." /></div>
+              <div className="grid gap-2"><Label>Resultado-chave</Label><Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento e manutenção..." /></div>
 
               {/* Indicadores (multi-select from KPIs) */}
               <div className="grid gap-2">
