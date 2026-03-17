@@ -89,6 +89,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [tab, setTab] = useState('calendar');
 
   const canManage = hasPermission(currentRole as AppRole, 'integrations:manage');
 
