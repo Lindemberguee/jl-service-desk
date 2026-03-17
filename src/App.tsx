@@ -27,6 +27,7 @@ import KpisOkrsPage from "@/pages/KpisOkrsPage";
 import CanvasPage from "@/pages/CanvasPage";
 import NotesPage from "@/pages/NotesPage";
 import RemindersPage from "@/pages/RemindersPage";
+import PlannerPage from "@/pages/PlannerPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDepartments from "@/pages/admin/AdminDepartments";
