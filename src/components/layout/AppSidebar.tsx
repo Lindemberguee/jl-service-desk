@@ -13,7 +13,7 @@ import {
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
-  MessageCircle, PenTool, StickyNote, Bell, Plug, LayoutGrid,
+  MessageCircle, PenTool, StickyNote, Bell, Plug, LayoutGrid, CalendarDays,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ const permissionToModule: Record<string, string> = {
   'tools:notes': 'notes',
   'tools:reminders': 'reminders',
   'tools:planner': 'planner',
+  'tools:calendar': 'calendar',
   'api:manage': 'api',
 };
 
@@ -81,6 +82,7 @@ const toolsItems: MenuItem[] = [
   { label: 'Canvas', icon: PenTool, path: '/ferramentas/canvas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
   { label: 'Anotações', icon: StickyNote, path: '/ferramentas/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
   { label: 'Lembretes', icon: Bell, path: '/ferramentas/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
+  { label: 'Calendário', icon: CalendarDays, path: '/ferramentas/calendario', permission: 'tools:calendar', moduleKey: 'calendar', badge: 'Novo' },
 ];
 
 const integrationItems: MenuItem[] = [
