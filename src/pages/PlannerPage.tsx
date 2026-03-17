@@ -1,36 +1,52 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePlanner } from '@/hooks/usePlanner';
+import { useAuth } from '@/contexts/AuthContext';
 import { PlannerBoard } from '@/components/planner/PlannerBoard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, LayoutGrid, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, MoreHorizontal, Pencil, Trash2, Loader2, User, Users, Sparkles, Lock, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export default function PlannerPage() {
   const { plansQuery, createPlan, deletePlan, updatePlan } = usePlanner();
+  const { user } = useAuth();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newScope, setNewScope] = useState<'personal' | 'team'>('team');
   const [editingPlan, setEditingPlan] = useState<{ id: string; name: string } | null>(null);
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'personal' | 'team'>('all');
 
   const plans = plansQuery.data || [];
-  const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0] || null;
 
-  // Auto-select first plan
-  if (!selectedPlanId && plans.length > 0 && plans[0]) {
-    setSelectedPlanId(plans[0].id);
+  const filteredPlans = useMemo(() => {
+    let filtered = plans;
+    if (scopeFilter === 'personal') {
+      filtered = plans.filter(p => p.scope === 'personal' && p.created_by === user?.id);
+    } else if (scopeFilter === 'team') {
+      filtered = plans.filter(p => p.scope === 'team');
+    }
+    return filtered;
+  }, [plans, scopeFilter, user?.id]);
+
+  const selectedPlan = plans.find(p => p.id === selectedPlanId) || filteredPlans[0] || null;
+
+  if (!selectedPlanId && filteredPlans.length > 0 && filteredPlans[0]) {
+    setSelectedPlanId(filteredPlans[0].id);
   }
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    createPlan.mutate({ name: newName.trim() }, {
+    createPlan.mutate({ name: newName.trim(), scope: newScope }, {
       onSuccess: (data: any) => {
         setSelectedPlanId(data.id);
         setCreateOpen(false);
         setNewName('');
+        setNewScope('team');
       },
     });
   };
@@ -38,73 +54,130 @@ export default function PlannerPage() {
   if (plansQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+            <div className="absolute -inset-1 rounded-xl bg-primary/5 animate-pulse" />
+          </div>
+          <p className="text-xs text-muted-foreground">Carregando planos...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Plan tabs bar */}
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <LayoutGrid className="h-4 w-4 text-primary shrink-0" />
-        <h1 className="text-sm font-bold tracking-tight mr-3">Planner</h1>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-border/50 bg-gradient-to-r from-background via-background to-primary/[0.02]">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight">Planner</h1>
+            <p className="text-[10px] text-muted-foreground">Gerencie tarefas pessoais e da equipe</p>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin flex-1">
-          {plans.map(plan => (
+        {/* Scope filter pills */}
+        <div className="flex items-center gap-1 ml-4 bg-muted/50 rounded-lg p-0.5">
+          {[
+            { value: 'all', label: 'Todos', icon: null },
+            { value: 'personal', label: 'Pessoal', icon: User },
+            { value: 'team', label: 'Equipe', icon: Users },
+          ].map(({ value, label, icon: Icon }) => (
             <button
-              key={plan.id}
-              onClick={() => setSelectedPlanId(plan.id)}
+              key={value}
+              onClick={() => setScopeFilter(value as any)}
               className={cn(
-                "relative px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-all",
-                selectedPlan?.id === plan.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                "px-3 py-1 text-[11px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                scopeFilter === value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {selectedPlan?.id === plan.id && (
-                <motion.div
-                  layoutId="planner-tab-pill"
-                  className="absolute inset-0 rounded-lg bg-primary/10"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{plan.name}</span>
+              {Icon && <Icon className="h-3 w-3" />}
+              {label}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-3 w-3" /> Novo Plano
-          </Button>
-          {selectedPlan && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditingPlan({ id: selectedPlan.id, name: selectedPlan.name })}>
-                  <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => {
-                    if (confirm('Excluir este plano e todas as tarefas?')) {
-                      deletePlan.mutate(selectedPlan.id, {
-                        onSuccess: () => setSelectedPlanId(null),
-                      });
-                    }
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        <div className="flex-1" />
+
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20"
+          onClick={() => setCreateOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" /> Novo Plano
+        </Button>
+      </div>
+
+      {/* Plan tabs */}
+      <div className="flex items-center gap-1 px-5 py-2 border-b border-border/30 overflow-x-auto scrollbar-thin bg-muted/20">
+        <AnimatePresence mode="popLayout">
+          {filteredPlans.map(plan => (
+            <motion.button
+              key={plan.id}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={() => setSelectedPlanId(plan.id)}
+              className={cn(
+                "relative px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 group",
+                selectedPlan?.id === plan.id
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {selectedPlan?.id === plan.id && (
+                <motion.div
+                  layoutId="planner-tab-active"
+                  className="absolute inset-0 rounded-lg bg-primary/10 border border-primary/20"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                {plan.scope === 'personal' ? (
+                  <Lock className="h-3 w-3 opacity-60" />
+                ) : (
+                  <Globe className="h-3 w-3 opacity-60" />
+                )}
+                {plan.name}
+              </span>
+            </motion.button>
+          ))}
+        </AnimatePresence>
+
+        {selectedPlan && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 ml-1 shrink-0">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setEditingPlan({ id: selectedPlan.id, name: selectedPlan.name })}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  if (confirm('Excluir este plano e todas as tarefas?')) {
+                    deletePlan.mutate(selectedPlan.id, {
+                      onSuccess: () => setSelectedPlanId(null),
+                    });
+                  }
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Board content */}
@@ -112,13 +185,25 @@ export default function PlannerPage() {
         {selectedPlan ? (
           <PlannerBoard planId={selectedPlan.id} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-            <LayoutGrid className="h-12 w-12 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Crie seu primeiro plano para começar</p>
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Criar Plano
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center h-full text-center gap-4"
+          >
+            <div className="relative">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center">
+                <Sparkles className="h-7 w-7 text-primary/60" />
+              </div>
+              <div className="absolute -inset-2 rounded-3xl bg-primary/5 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Crie seu primeiro plano</p>
+              <p className="text-xs text-muted-foreground mt-1">Organize tarefas pessoais ou da equipe</p>
+            </div>
+            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Criar Plano
             </Button>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -126,22 +211,72 @@ export default function PlannerPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Novo Plano</DialogTitle>
-            <DialogDescription>Dê um nome ao seu plano de tarefas.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Novo Plano
+            </DialogTitle>
+            <DialogDescription>Configure seu novo plano de tarefas.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <Input
-              placeholder="Nome do plano"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nome</label>
+              <Input
+                placeholder="Nome do plano"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Escopo</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setNewScope('personal')}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                    newScope === 'personal'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/30"
+                  )}
+                >
+                  <div className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center",
+                    newScope === 'personal' ? "bg-primary/15" : "bg-muted"
+                  )}>
+                    <User className={cn("h-4 w-4", newScope === 'personal' ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium">Pessoal</p>
+                    <p className="text-[10px] text-muted-foreground">Só você visualiza</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setNewScope('team')}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                    newScope === 'team'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/30"
+                  )}
+                >
+                  <div className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center",
+                    newScope === 'team' ? "bg-primary/15" : "bg-muted"
+                  )}>
+                    <Users className={cn("h-4 w-4", newScope === 'team' ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium">Equipe</p>
+                    <p className="text-[10px] text-muted-foreground">Toda a equipe acessa</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setCreateOpen(false)}>Cancelar</Button>
               <Button size="sm" onClick={handleCreate} disabled={createPlan.isPending || !newName.trim()}>
                 {createPlan.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                Criar
+                Criar Plano
               </Button>
             </div>
           </div>
