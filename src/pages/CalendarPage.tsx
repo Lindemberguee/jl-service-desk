@@ -4,13 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Loader2, RefreshCw, Settings, ExternalLink,
+  CalendarDays, ChevronLeft, ChevronRight, Loader2, RefreshCw, Settings, ExternalLink, BarChart3,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { hasPermission } from '@/lib/permissions';
 import type { AppRole } from '@/lib/permissions';
+import { MeetingAnalytics } from '@/components/calendar/MeetingAnalytics';
 
 interface CalEvent {
   uid: string;
