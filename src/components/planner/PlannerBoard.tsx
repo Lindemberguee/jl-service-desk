@@ -4,8 +4,9 @@ import { PlannerKanban } from './PlannerKanban';
 import { PlannerListView } from './PlannerListView';
 import { PlannerCharts } from './PlannerCharts';
 import { TaskDetailDialog } from './TaskDetailDialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Kanban, List, BarChart3, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface Props {
   planId: string;
@@ -25,6 +26,11 @@ export function PlannerBoard({ planId }: Props) {
 
   const isLoading = board.bucketsQuery.isLoading || board.tasksQuery.isLoading;
 
+  // Stats
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.completed_at).length;
+  const overdueTasks = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && !t.completed_at).length;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -33,23 +39,59 @@ export function PlannerBoard({ planId }: Props) {
     );
   }
 
+  const views = [
+    { key: 'kanban', label: 'Quadro', icon: Kanban },
+    { key: 'list', label: 'Lista', icon: List },
+    { key: 'charts', label: 'Gráficos', icon: BarChart3 },
+  ] as const;
+
   return (
     <div className="flex flex-col h-full">
-      {/* View switcher */}
-      <div className="px-4 pt-2 pb-1">
-        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-          <TabsList className="h-8">
-            <TabsTrigger value="kanban" className="text-xs gap-1 px-3 h-7">
-              <Kanban className="h-3 w-3" /> Quadro
-            </TabsTrigger>
-            <TabsTrigger value="list" className="text-xs gap-1 px-3 h-7">
-              <List className="h-3 w-3" /> Lista
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="text-xs gap-1 px-3 h-7">
-              <BarChart3 className="h-3 w-3" /> Gráficos
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Sub-header with view switcher and stats */}
+      <div className="flex items-center justify-between px-5 py-2 border-b border-border/30">
+        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-0.5">
+          {views.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={cn(
+                "relative px-3 py-1 text-[11px] font-medium rounded-md transition-all flex items-center gap-1.5",
+                view === key
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {view === key && (
+                <motion.div
+                  layoutId="planner-view-pill"
+                  className="absolute inset-0 rounded-md bg-background shadow-sm"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Icon className="h-3 w-3" />
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Mini stats */}
+        <div className="flex items-center gap-3 text-[11px]">
+          <span className="text-muted-foreground">
+            <span className="font-semibold text-foreground">{totalTasks}</span> tarefas
+          </span>
+          {completedTasks > 0 && (
+            <span className="text-green-500">
+              <span className="font-semibold">{completedTasks}</span> concluídas
+            </span>
+          )}
+          {overdueTasks > 0 && (
+            <span className="text-destructive">
+              <span className="font-semibold">{overdueTasks}</span> atrasadas
+            </span>
+          )}
+        </div>
       </div>
 
       {/* View content */}

@@ -8,6 +8,7 @@ export interface PlannerPlan {
   tenant_id: string;
   name: string;
   description: string;
+  scope: 'personal' | 'team';
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -107,20 +108,20 @@ export function usePlanner() {
   });
 
   const createPlan = useMutation({
-    mutationFn: async (input: { name: string; description?: string }) => {
+    mutationFn: async (input: { name: string; description?: string; scope?: 'personal' | 'team' }) => {
       const { data, error } = await supabase
         .from('planner_plans')
         .insert({
           tenant_id: currentTenantId!,
           name: input.name,
           description: input.description || '',
+          scope: input.scope || 'team',
           created_by: user!.id,
         })
         .select()
         .single();
       if (error) throw error;
 
-      // Create default buckets
       const defaultBuckets = ['A fazer', 'Em andamento', 'Concluído'];
       await supabase.from('planner_buckets').insert(
         defaultBuckets.map((name, i) => ({
@@ -152,11 +153,12 @@ export function usePlanner() {
   });
 
   const updatePlan = useMutation({
-    mutationFn: async (input: { id: string; name?: string; description?: string }) => {
+    mutationFn: async (input: { id: string; name?: string; description?: string; scope?: 'personal' | 'team' }) => {
+      const { id, ...rest } = input;
       const { error } = await supabase
         .from('planner_plans')
-        .update({ name: input.name, description: input.description })
-        .eq('id', input.id);
+        .update(rest)
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [...key, 'plans'] }),
@@ -284,7 +286,6 @@ export function usePlannerBoard(planId: string | null) {
   const updateTask = useMutation({
     mutationFn: async (input: Partial<PlannerTask> & { id: string }) => {
       const { id, ...rest } = input;
-      // Remove fields that shouldn't be sent to DB
       const { created_at, updated_at, plan_id, tenant_id, created_by, ...updateData } = rest as any;
       const { error } = await supabase.from('planner_tasks').update(updateData).eq('id', id);
       if (error) throw error;

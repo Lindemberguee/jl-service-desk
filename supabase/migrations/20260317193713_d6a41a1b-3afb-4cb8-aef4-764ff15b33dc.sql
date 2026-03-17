@@ -1,0 +1,1 @@
+ALTER TABLE public.planner_plans ADD COLUMN scope text NOT NULL DEFAULT 'team' CHECK (scope IN ('personal', 'team'));
