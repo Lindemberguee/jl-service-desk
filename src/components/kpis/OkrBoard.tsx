@@ -743,10 +743,7 @@ export function OkrBoard() {
                 </div>
               )}
 
-              {/* Edição: Descrição simples */}
-              {editingObj.id && (
-                <div className="grid gap-2"><Label>Descrição</Label><Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} /></div>
-              )}
+              {/* Campo "Resultado-chave" já está acima, remover duplicata */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>Área</Label><Input value={editingObj.area || ''} onChange={e => setEditingObj(p => ({ ...p, area: e.target.value }))} /></div>
