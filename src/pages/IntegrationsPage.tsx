@@ -52,6 +52,17 @@ const integrations: IntegrationCard[] = [
     badgeLabel: 'Disponível',
   },
   {
+    id: 'calendar',
+    name: 'Microsoft Calendar',
+    description: 'Sincronize calendários do Outlook via URL iCal para visualizar eventos e agendamentos.',
+    icon: CalendarDays,
+    route: '/integracoes/calendario',
+    available: true,
+    gradient: 'from-sky-500/20 to-blue-500/10',
+    iconColor: 'text-sky-500',
+    badgeLabel: 'Disponível',
+  },
+  {
     id: 'slack',
     name: 'Slack',
     description: 'Receba alertas de OS, estoque e manutenção diretamente em canais do Slack.',
