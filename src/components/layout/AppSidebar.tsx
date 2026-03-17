@@ -82,6 +82,7 @@ const toolsItems: MenuItem[] = [
   { label: 'Canvas', icon: PenTool, path: '/ferramentas/canvas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
   { label: 'Anotações', icon: StickyNote, path: '/ferramentas/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
   { label: 'Lembretes', icon: Bell, path: '/ferramentas/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
+  { label: 'Calendário', icon: CalendarDays, path: '/ferramentas/calendario', permission: 'tools:calendar', moduleKey: 'calendar', badge: 'Novo' },
 ];
 
 const integrationItems: MenuItem[] = [
