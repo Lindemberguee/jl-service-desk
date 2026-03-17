@@ -77,6 +77,7 @@ const knowledgeItems: MenuItem[] = [
 ];
 
 const toolsItems: MenuItem[] = [
+  { label: 'Planner', icon: LayoutGrid, path: '/ferramentas/planner', permission: 'tools:planner', moduleKey: 'planner', badge: 'Novo' },
   { label: 'Canvas', icon: PenTool, path: '/ferramentas/canvas', permission: 'tools:canvas', moduleKey: 'canvas', badge: 'Beta' },
   { label: 'Anotações', icon: StickyNote, path: '/ferramentas/anotacoes', permission: 'tools:notes', moduleKey: 'notes', badge: 'Beta' },
   { label: 'Lembretes', icon: Bell, path: '/ferramentas/lembretes', permission: 'tools:reminders', moduleKey: 'reminders', badge: 'Beta' },
