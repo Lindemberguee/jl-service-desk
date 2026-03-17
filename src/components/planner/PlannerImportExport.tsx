@@ -48,7 +48,7 @@ export function PlannerExportButton({ plans, selectedPlan }: Props) {
       ]);
 
       const buckets = (bucketsRes.data || []) as PlannerBucket[];
-      const tasks = (tasksRes.data || []) as PlannerTask[];
+      const tasks = (tasksRes.data || []) as unknown as PlannerTask[];
 
       const wb = new ExcelJS.Workbook();
       wb.creator = 'Ordfy Planner';
