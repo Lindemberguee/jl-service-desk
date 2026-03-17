@@ -197,6 +197,8 @@ export function usePlannerBoard(planId: string | null) {
         ...t,
         checklist: Array.isArray(t.checklist) ? t.checklist : [],
         labels: Array.isArray(t.labels) ? t.labels : [],
+        links: Array.isArray(t.links) ? t.links : [],
+        attachments: Array.isArray(t.attachments) ? t.attachments : [],
       })) as PlannerTask[];
     },
     enabled: !!planId,
