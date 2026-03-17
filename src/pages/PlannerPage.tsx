@@ -116,50 +116,61 @@ export default function PlannerPage() {
       </div>
 
       {/* Plan tabs */}
-      <div className="flex items-center gap-1 px-5 py-2 border-b border-border/30 overflow-x-auto scrollbar-thin bg-muted/20">
+      <div className="flex items-center gap-2 px-5 py-2.5 border-b border-border/30 overflow-x-auto scrollbar-thin bg-gradient-to-r from-muted/30 via-background to-muted/30">
         <AnimatePresence mode="popLayout">
-          {filteredPlans.map(plan => (
-            <motion.button
-              key={plan.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              onClick={() => setSelectedPlanId(plan.id)}
-              className={cn(
-                "relative px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 group",
-                selectedPlan?.id === plan.id
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {selectedPlan?.id === plan.id && (
-                <motion.div
-                  layoutId="planner-tab-active"
-                  className="absolute inset-0 rounded-lg bg-primary/10 border border-primary/20"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-1.5">
-                {plan.scope === 'personal' ? (
-                  <Lock className="h-3 w-3 opacity-60" />
-                ) : (
-                  <Globe className="h-3 w-3 opacity-60" />
+          {filteredPlans.map((plan, index) => {
+            const isActive = selectedPlan?.id === plan.id;
+            return (
+              <motion.button
+                key={plan.id}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                transition={{ delay: index * 0.03 }}
+                onClick={() => setSelectedPlanId(plan.id)}
+                className={cn(
+                  "relative px-4 py-2 text-xs font-medium rounded-xl whitespace-nowrap transition-all flex items-center gap-2 group",
+                  isActive
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 )}
-                {plan.name}
-              </span>
-            </motion.button>
-          ))}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="planner-tab-active"
+                    className="absolute inset-0 rounded-xl bg-primary shadow-lg shadow-primary/25"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <span className={cn(
+                    "flex items-center justify-center h-5 w-5 rounded-md text-[10px]",
+                    isActive
+                      ? "bg-primary-foreground/20"
+                      : "bg-muted/80"
+                  )}>
+                    {plan.scope === 'personal' ? (
+                      <Lock className="h-3 w-3" />
+                    ) : (
+                      <Globe className="h-3 w-3" />
+                    )}
+                  </span>
+                  {plan.name}
+                </span>
+              </motion.button>
+            );
+          })}
         </AnimatePresence>
 
         {selectedPlan && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 ml-1 shrink-0">
-                <MoreHorizontal className="h-3.5 w-3.5" />
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-1 shrink-0 rounded-xl hover:bg-muted/60">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-44 rounded-xl">
               <DropdownMenuItem onClick={() => setEditingPlan({ id: selectedPlan.id, name: selectedPlan.name })}>
                 <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
               </DropdownMenuItem>
