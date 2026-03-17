@@ -36,6 +36,7 @@ const permissionToModule: Record<string, string> = {
   'tools:canvas': 'canvas',
   'tools:notes': 'notes',
   'tools:reminders': 'reminders',
+  'tools:planner': 'planner',
   'api:manage': 'api',
 };
 
