@@ -12,7 +12,7 @@ export type Permission =
   | 'cadastros:read' | 'cadastros:manage'
   | 'manutencao:read' | 'manutencao:manage'
   | 'collaborators:read' | 'collaborators:manage'
-  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar'
+  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar' | 'tools:planner'
   | 'kpis:read' | 'kpis:manage'
   | 'api:manage'
   | 'docs:read' | 'docs:manage'
