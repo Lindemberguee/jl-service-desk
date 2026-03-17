@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Workflow, StickyNote, Bell, CalendarDays,
+  Workflow, StickyNote, Bell, CalendarDays, LayoutGrid,
   ArrowRight, Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,16 @@ interface ToolCard {
 }
 
 const tools: ToolCard[] = [
+  {
+    id: 'planner',
+    name: 'Planner',
+    description: 'Organize tarefas em quadros Kanban, atribua membros e acompanhe o progresso da equipe.',
+    icon: LayoutGrid,
+    route: '/ferramentas/planner',
+    available: true,
+    gradient: 'from-indigo-500/20 to-blue-500/10',
+    iconColor: 'text-indigo-500',
+  },
   {
     id: 'canvas',
     name: 'Canvas',

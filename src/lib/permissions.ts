@@ -12,7 +12,7 @@ export type Permission =
   | 'cadastros:read' | 'cadastros:manage'
   | 'manutencao:read' | 'manutencao:manage'
   | 'collaborators:read' | 'collaborators:manage'
-  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar'
+  | 'tools:read' | 'tools:canvas' | 'tools:notes' | 'tools:reminders' | 'tools:calendar' | 'tools:planner'
   | 'kpis:read' | 'kpis:manage'
   | 'api:manage'
   | 'docs:read' | 'docs:manage'
@@ -31,7 +31,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'collaborators:read', 'collaborators:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
-    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner',
     'kpis:read', 'kpis:manage',
     'api:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
@@ -46,7 +46,7 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'collaborators:read', 'collaborators:manage',
     'users:read', 'users:manage', 'reports:read', 'settings:manage',
     'cadastros:read', 'cadastros:manage', 'tools:read',
-    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner',
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
@@ -59,13 +59,13 @@ const rolePermissions: Record<AppRole, Permission[]> = {
     'materiais:read', 'materiais:manage', 'manutencao:read', 'manutencao:manage',
     'collaborators:read', 'collaborators:manage',
     'reports:read', 'cadastros:read', 'cadastros:manage', 'users:read', 'tools:read',
-    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar',
+    'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner',
     'kpis:read', 'kpis:manage',
     'docs:read', 'docs:manage', 'vault:read', 'vault:manage', 'kb:read', 'kb:manage',
     'disposal:read', 'disposal:manage',
   ],
-  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'vault:read', 'kb:read'],
-  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'kpis:read', 'docs:read', 'docs:manage', 'vault:read', 'kb:read'],
+  tecnico: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:update', 'os:comment', 'stock:read', 'stock:manage', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner', 'kpis:read', 'docs:read', 'vault:read', 'kb:read'],
+  analista: ['dashboard:read', 'my_os:read', 'os:read', 'os:create', 'os:comment', 'assets:read', 'stock:read', 'materiais:read', 'manutencao:read', 'manutencao:manage', 'collaborators:read', 'collaborators:manage', 'reports:read', 'cadastros:read', 'tools:read', 'tools:canvas', 'tools:notes', 'tools:reminders', 'tools:calendar', 'tools:planner', 'kpis:read', 'docs:read', 'docs:manage', 'vault:read', 'kb:read'],
   solicitante: ['os:read', 'os:create', 'os:comment'],
   leitura: ['os:read', 'dashboard:read', 'kpis:read'],
 };
