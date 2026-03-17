@@ -1967,6 +1967,7 @@ export type Database = {
       }
       planner_tasks: {
         Row: {
+          attachments: Json
           bucket_id: string
           checklist: Json
           completed_at: string | null
@@ -1976,6 +1977,7 @@ export type Database = {
           due_date: string | null
           id: string
           labels: Json
+          links: Json
           plan_id: string
           priority: string
           sort_order: number
@@ -1986,6 +1988,7 @@ export type Database = {
           work_order_id: string | null
         }
         Insert: {
+          attachments?: Json
           bucket_id: string
           checklist?: Json
           completed_at?: string | null
@@ -1995,6 +1998,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           labels?: Json
+          links?: Json
           plan_id: string
           priority?: string
           sort_order?: number
@@ -2005,6 +2009,7 @@ export type Database = {
           work_order_id?: string | null
         }
         Update: {
+          attachments?: Json
           bucket_id?: string
           checklist?: Json
           completed_at?: string | null
@@ -2014,6 +2019,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           labels?: Json
+          links?: Json
           plan_id?: string
           priority?: string
           sort_order?: number

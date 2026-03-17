@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { type PlannerTask, type PlannerBucket, type TaskAssignment, type TaskComment, type ChecklistItem, type TaskLabel } from '@/hooks/usePlanner';
+import { useState, useEffect, useRef } from 'react';
+import { type PlannerTask, type PlannerBucket, type TaskAssignment, type TaskComment, type ChecklistItem, type TaskLabel, type TaskLink, type TaskAttachment } from '@/hooks/usePlanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Trash2, Plus, Calendar, Tag, CheckCircle2, MessageSquare,
-  Send, Users, X, Pencil, AlertTriangle, Link2,
+  Send, Users, X, Pencil, Link2, Paperclip, ExternalLink, Download, FileText, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const priorityOptions = [
   { value: 'urgent', label: 'Urgente', color: 'text-red-500' },
@@ -31,6 +32,8 @@ const labelColors = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6',
   '#EC4899', '#14B8A6', '#6366F1', '#F43F5E',
 ];
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 interface Props {
   task: PlannerTask | null;
@@ -59,6 +62,10 @@ export function TaskDetailDialog({
   const [newLabelName, setNewLabelName] = useState('');
   const [selectedLabelColor, setSelectedLabelColor] = useState(labelColors[0]);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load team members for assignment
   const membersQuery = useQuery({
@@ -102,6 +109,8 @@ export function TaskDetailDialog({
 
   const checklist: ChecklistItem[] = task.checklist || [];
   const labels: TaskLabel[] = task.labels || [];
+  const links: TaskLink[] = task.links || [];
+  const attachments: TaskAttachment[] = task.attachments || [];
   const isCompleted = !!task.completed_at;
 
   const handleTitleSave = () => {
@@ -144,6 +153,88 @@ export function TaskDetailDialog({
   const removeLabel = (idx: number) => {
     const updated = labels.filter((_, i) => i !== idx);
     onUpdate({ id: task.id, labels: updated as any });
+  };
+
+  // Links
+  const addLink = () => {
+    if (!newLinkUrl.trim()) return;
+    let url = newLinkUrl.trim();
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    const linkTitle = newLinkTitle.trim() || new URL(url).hostname;
+    const updated = [...links, { id: crypto.randomUUID(), url, title: linkTitle }];
+    onUpdate({ id: task.id, links: updated as any });
+    setNewLinkUrl('');
+    setNewLinkTitle('');
+  };
+
+  const removeLink = (linkId: string) => {
+    const updated = links.filter(l => l.id !== linkId);
+    onUpdate({ id: task.id, links: updated as any });
+  };
+
+  // Attachments
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Arquivo muito grande. Máximo: 10MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || '';
+      const storageKey = `${currentTenantId}/${task.id}/${crypto.randomUUID()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('planner-attachments')
+        .upload(storageKey, file);
+
+      if (error) throw error;
+
+      const newAttachment: TaskAttachment = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        size: file.size,
+        mime_type: file.type,
+        storage_key: storageKey,
+        uploaded_at: new Date().toISOString(),
+      };
+
+      onUpdate({ id: task.id, attachments: [...attachments, newAttachment] as any });
+      toast.success('Arquivo anexado');
+    } catch (err: any) {
+      toast.error('Erro ao enviar arquivo: ' + (err.message || ''));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownloadAttachment = async (att: TaskAttachment) => {
+    const { data, error } = await supabase.storage
+      .from('planner-attachments')
+      .createSignedUrl(att.storage_key, 300);
+
+    if (error || !data?.signedUrl) {
+      toast.error('Erro ao baixar arquivo');
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  };
+
+  const handleDeleteAttachment = async (att: TaskAttachment) => {
+    await supabase.storage.from('planner-attachments').remove([att.storage_key]);
+    const updated = attachments.filter(a => a.id !== att.id);
+    onUpdate({ id: task.id, attachments: updated as any });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const handleSendComment = () => {
@@ -321,6 +412,118 @@ export function TaskDetailDialog({
                     <Plus className="h-3 w-3" />
                   </Button>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Links */}
+              <div>
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Link2 className="h-3 w-3" /> Links
+                </h4>
+                {links.length > 0 && (
+                  <div className="space-y-1.5 mb-2">
+                    {links.map(link => (
+                      <div key={link.id} className="flex items-center gap-2 group rounded-md px-2 py-1.5 bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <ExternalLink className="h-3 w-3 text-primary shrink-0" />
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline truncate flex-1"
+                          title={link.url}
+                        >
+                          {link.title}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive"
+                          onClick={() => removeLink(link.id)}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      placeholder="URL do link..."
+                      className="h-7 text-xs flex-1"
+                      value={newLinkUrl}
+                      onChange={e => setNewLinkUrl(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addLink()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      placeholder="Título (opcional)"
+                      className="h-7 text-xs flex-1"
+                      value={newLinkTitle}
+                      onChange={e => setNewLinkTitle(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addLink()}
+                    />
+                    <Button size="sm" className="h-7 text-[10px]" onClick={addLink} disabled={!newLinkUrl.trim()}>
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Attachments */}
+              <div>
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Paperclip className="h-3 w-3" /> Anexos
+                </h4>
+                {attachments.length > 0 && (
+                  <div className="space-y-1.5 mb-2">
+                    {attachments.map(att => (
+                      <div key={att.id} className="flex items-center gap-2 group rounded-md px-2 py-1.5 bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs truncate font-medium">{att.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{formatFileSize(att.size)}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => handleDownloadAttachment(att)}
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-destructive"
+                          onClick={() => handleDeleteAttachment(att)}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px] gap-1 w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
+                  {uploading ? 'Enviando...' : 'Anexar arquivo'}
+                </Button>
               </div>
 
               <Separator />

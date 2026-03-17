@@ -33,6 +33,21 @@ export interface TaskLabel {
   color: string;
 }
 
+export interface TaskLink {
+  id: string;
+  url: string;
+  title: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  storage_key: string;
+  uploaded_at: string;
+}
+
 export interface PlannerTask {
   id: string;
   plan_id: string;
@@ -46,6 +61,8 @@ export interface PlannerTask {
   completed_at: string | null;
   checklist: ChecklistItem[];
   labels: TaskLabel[];
+  links: TaskLink[];
+  attachments: TaskAttachment[];
   work_order_id: string | null;
   created_by: string;
   sort_order: number;
@@ -180,6 +197,8 @@ export function usePlannerBoard(planId: string | null) {
         ...t,
         checklist: Array.isArray(t.checklist) ? t.checklist : [],
         labels: Array.isArray(t.labels) ? t.labels : [],
+        links: Array.isArray(t.links) ? t.links : [],
+        attachments: Array.isArray(t.attachments) ? t.attachments : [],
       })) as PlannerTask[];
     },
     enabled: !!planId,
