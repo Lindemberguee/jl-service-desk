@@ -255,6 +255,8 @@ const App = () => (
               <Route path="integracoes/smtp" element={<PermissionGuard permission="integrations:manage"><SmtpSettingsPage /></PermissionGuard>} />
               <Route path="integracoes/teams" element={<PermissionGuard permission="integrations:manage"><TeamsSettingsPage /></PermissionGuard>} />
               <Route path="integracoes/metricas" element={<PermissionGuard permission="integrations:manage"><NotificationMetricsPage /></PermissionGuard>} />
+              <Route path="integracoes/calendario" element={<PermissionGuard permission="integrations:manage"><CalendarSettingsPage /></PermissionGuard>} />
+              <Route path="ferramentas/calendario" element={<PermissionGuard permission="tools:calendar"><CalendarPage /></PermissionGuard>} />
               <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
               <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
               <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />

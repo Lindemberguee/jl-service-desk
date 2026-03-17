@@ -80,7 +80,7 @@ const MONTHS = [
 ];
 
 export default function CalendarPage() {
-  const { tenantId, currentRole } = useAuth();
+  const { currentTenantId: tenantId, currentRole } = useAuth();
   const navigate = useNavigate();
   const [calendars, setCalendars] = useState<CalendarConfig[]>([]);
   const [events, setEvents] = useState<CalEvent[]>([]);
