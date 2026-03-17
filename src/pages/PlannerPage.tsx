@@ -107,6 +107,14 @@ export default function PlannerPage() {
 
         <div className="flex-1" />
 
+        <PlannerExportButton
+          plans={plans}
+          selectedPlan={selectedPlan}
+          onImportComplete={() => {}}
+        />
+        <PlannerImportButton
+          onImportComplete={() => plansQuery.refetch()}
+        />
         <Button
           size="sm"
           className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20"
