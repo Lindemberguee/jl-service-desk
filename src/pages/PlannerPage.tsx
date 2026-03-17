@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePlanner } from '@/hooks/usePlanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { PlannerBoard } from '@/components/planner/PlannerBoard';
+import { PlannerExportButton, PlannerImportButton } from '@/components/planner/PlannerImportExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -106,6 +107,14 @@ export default function PlannerPage() {
 
         <div className="flex-1" />
 
+        <PlannerExportButton
+          plans={plans}
+          selectedPlan={selectedPlan}
+          onImportComplete={() => {}}
+        />
+        <PlannerImportButton
+          onImportComplete={() => plansQuery.refetch()}
+        />
         <Button
           size="sm"
           className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20"
