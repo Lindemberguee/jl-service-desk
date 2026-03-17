@@ -115,9 +115,12 @@ export default function CalendarPage() {
     const allEvents: CalEvent[] = [];
     for (const cal of cals) {
       try {
-        const resp = await fetch(cal.ical_url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const raw = await resp.text();
+        const { data: fnData, error: fnError } = await supabase.functions.invoke('fetch-ical', {
+          body: { url: cal.ical_url },
+        });
+        if (fnError) throw fnError;
+        if (fnData?.error) throw new Error(fnData.error);
+        const raw = fnData?.data || '';
         allEvents.push(...parseICal(raw, cal.name, cal.color));
       } catch (err) {
         console.warn(`Falha ao carregar calendário "${cal.name}":`, err);
