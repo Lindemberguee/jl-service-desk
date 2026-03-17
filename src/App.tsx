@@ -256,6 +256,7 @@ const App = () => (
               <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
               <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
               <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />
+              <Route path="ferramentas/planner" element={<PermissionGuard permission="tools:planner"><PlannerPage /></PermissionGuard>} />
               <Route path="notificacoes" element={<NotificationsPage />} />
               <Route path="perfil" element={<ProfilePage />} />
               {/* Admin routes */}
