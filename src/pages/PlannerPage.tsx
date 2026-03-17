@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePlanner } from '@/hooks/usePlanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { PlannerBoard } from '@/components/planner/PlannerBoard';
+import { PlannerExportButton, PlannerImportButton } from '@/components/planner/PlannerImportExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
