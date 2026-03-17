@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Workflow, StickyNote, Bell, CalendarDays,
+  Workflow, StickyNote, Bell, CalendarDays, LayoutGrid,
   ArrowRight, Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
