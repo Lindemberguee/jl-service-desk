@@ -61,6 +61,8 @@ export interface PlannerTask {
   completed_at: string | null;
   checklist: ChecklistItem[];
   labels: TaskLabel[];
+  links: TaskLink[];
+  attachments: TaskAttachment[];
   work_order_id: string | null;
   created_by: string;
   sort_order: number;
