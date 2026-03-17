@@ -2477,6 +2477,47 @@ export type Database = {
           },
         ]
       }
+      tenant_calendar_settings: {
+        Row: {
+          color: string | null
+          created_at: string
+          ical_url: string
+          id: string
+          is_active: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          ical_url: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          ical_url?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_calendar_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_smtp_settings: {
         Row: {
           created_at: string
