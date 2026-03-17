@@ -508,58 +508,51 @@ export function OkrBoard() {
                     </div>
                   </div>
 
-                  {/* ── Atividades (KRs) expandidas ── */}
+                  {/* ── Atividades (KRs) expandidas – estilo planilha ── */}
                   {isExpanded && krs.length > 0 && (
-                    <div className="border-t border-border/40">
-                      {/* Header da lista */}
-                      <div className="grid grid-cols-[auto_minmax(200px,3fr)_80px_100px_100px_80px_40px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-4 py-2 bg-muted/30">
-                        <div className="p-1 w-8" />
-                        <div className="p-1">Atividade</div>
-                        <div className="p-1 text-center">Progresso</div>
-                        <div className="p-1 text-center">Status</div>
-                        <div className="p-1">Responsável</div>
-                        <div className="p-1 text-center">Prazo</div>
-                        <div className="p-1" />
+                    <div className="border-t border-border/40 overflow-x-auto">
+                      {/* Header da tabela */}
+                      <div className="grid grid-cols-[minmax(160px,2fr)_80px_70px_minmax(180px,3fr)_100px_110px_80px_80px_80px_60px_40px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2 bg-muted/30 min-w-[1100px]">
+                        <div className="px-1">Indicador</div>
+                        <div className="px-1 text-center">Status</div>
+                        <div className="px-1 text-center">Meta</div>
+                        <div className="px-1">Descrição Atividade</div>
+                        <div className="px-1">Responsável</div>
+                        <div className="px-1">Equipe de Apoio</div>
+                        <div className="px-1 text-center">Início</div>
+                        <div className="px-1 text-center">Final</div>
+                        <div className="px-1 text-center">Entrega</div>
+                        <div className="px-1 text-center">Link</div>
+                        <div className="px-1" />
                       </div>
                       {/* Rows */}
-                      <div className="divide-y divide-border/30">
+                      <div className="divide-y divide-border/30 min-w-[1100px]">
                         {krs.map(kr => {
                           const pct = krProgress(kr);
                           const krSt = STATUSES[kr.activity_status] || STATUSES.a_iniciar;
                           const KrIcon = krSt.icon;
+                          const linkedKpiIds: string[] = (kr as any).kpi_ids || (kr.kpi_id ? [kr.kpi_id] : []);
+                          const linkedKpiNames = linkedKpiIds.map(id => kpis.find(k => k.id === id)?.name).filter(Boolean).join(', ');
+                          const krLinks: Array<{ label: string; url: string }> = kr.links || [];
+
                           return (
                             <div
                               key={kr.id}
-                              className="grid grid-cols-[auto_minmax(200px,3fr)_80px_100px_100px_80px_40px] items-center px-4 hover:bg-accent/20 transition-colors cursor-pointer group/kr"
+                              className="grid grid-cols-[minmax(160px,2fr)_80px_70px_minmax(180px,3fr)_100px_110px_80px_80px_80px_60px_40px] items-center px-3 hover:bg-accent/20 transition-colors cursor-pointer group/kr"
                               onClick={() => openDetail(obj)}
                             >
-                              <div className="p-2 w-8" onClick={e => e.stopPropagation()}>
-                                {canManage && (
-                                  <Checkbox
-                                    checked={selectedKrs.has(kr.id)}
-                                    onCheckedChange={() => toggleSelectKr(kr.id)}
-                                    className="h-3.5 w-3.5"
-                                  />
-                                )}
+                              {/* Indicador */}
+                              <div className="px-1 py-2 min-w-0">
+                                <p className="text-xs text-muted-foreground truncate" title={linkedKpiNames || '—'}>{linkedKpiNames || '—'}</p>
                               </div>
-                              <div className="p-2 min-w-0">
-                                <p className="text-sm text-foreground truncate">{kr.title}</p>
-                                {kr.area && <span className="text-[10px] text-muted-foreground">{kr.area}</span>}
-                              </div>
-                              <div className="p-2 text-center">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span className="text-xs font-semibold tabular-nums">{pct}%</span>
-                                  <Progress value={pct} className="h-1 w-12" />
-                                </div>
-                              </div>
-                              <div className="p-2 text-center" onClick={e => e.stopPropagation()}>
+                              {/* Status */}
+                              <div className="px-1 py-2 text-center" onClick={e => e.stopPropagation()}>
                                 {canManage ? (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button className="inline-flex">
                                         <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full font-medium cursor-pointer', krSt.cls)}>
                                           <KrIcon className="h-3 w-3" />
-                                          {krSt.label}
                                         </Badge>
                                       </button>
                                     </DropdownMenuTrigger>
@@ -573,21 +566,54 @@ export function OkrBoard() {
                                   </DropdownMenu>
                                 ) : (
                                   <Badge variant="outline" className={cn('text-[10px] gap-1 rounded-full font-medium', krSt.cls)}>
-                                    <KrIcon className="h-3 w-3" />{krSt.label}
+                                    <KrIcon className="h-3 w-3" />
                                   </Badge>
                                 )}
                               </div>
-                              <div className="p-2 min-w-0">
+                              {/* Meta */}
+                              <div className="px-1 py-2 text-center">
+                                <span className="text-xs font-semibold tabular-nums">{pct}%</span>
+                              </div>
+                              {/* Descrição Atividade */}
+                              <div className="px-1 py-2 min-w-0">
+                                <p className="text-sm text-foreground truncate">{kr.title}</p>
+                              </div>
+                              {/* Responsável */}
+                              <div className="px-1 py-2 min-w-0">
                                 <span className="text-xs text-muted-foreground truncate block">{kr.responsible_name || '—'}</span>
                               </div>
-                              <div className="p-2 text-center">
-                                {kr.end_date ? (
-                                  <span className={cn("text-[11px] tabular-nums", deadlineColor(kr.end_date))}>
-                                    {format(parseISO(kr.end_date), 'dd/MM', { locale: ptBR })}
-                                  </span>
+                              {/* Equipe de Apoio */}
+                              <div className="px-1 py-2 min-w-0">
+                                <span className="text-xs text-muted-foreground truncate block">{kr.support_team || '—'}</span>
+                              </div>
+                              {/* Início */}
+                              <div className="px-1 py-2 text-center">
+                                {kr.start_date ? (
+                                  <span className="text-[11px] tabular-nums text-muted-foreground">{format(parseISO(kr.start_date), 'dd/MM/yy', { locale: ptBR })}</span>
                                 ) : <span className="text-[11px] text-muted-foreground">—</span>}
                               </div>
-                              <div className="p-2 flex justify-end" onClick={e => e.stopPropagation()}>
+                              {/* Final */}
+                              <div className="px-1 py-2 text-center">
+                                {kr.end_date ? (
+                                  <span className={cn("text-[11px] tabular-nums", deadlineColor(kr.end_date))}>{format(parseISO(kr.end_date), 'dd/MM/yy', { locale: ptBR })}</span>
+                                ) : <span className="text-[11px] text-muted-foreground">—</span>}
+                              </div>
+                              {/* Data de Entrega */}
+                              <div className="px-1 py-2 text-center">
+                                {kr.delivery_date ? (
+                                  <span className="text-[11px] tabular-nums text-muted-foreground">{format(parseISO(kr.delivery_date), 'dd/MM/yy', { locale: ptBR })}</span>
+                                ) : <span className="text-[11px] text-muted-foreground">—</span>}
+                              </div>
+                              {/* Link */}
+                              <div className="px-1 py-2 text-center" onClick={e => e.stopPropagation()}>
+                                {krLinks.length > 0 ? (
+                                  <a href={krLinks[0].url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate block" title={krLinks[0].label}>
+                                    {krLinks[0].label || 'Link'}
+                                  </a>
+                                ) : <span className="text-[11px] text-muted-foreground">—</span>}
+                              </div>
+                              {/* Menu */}
+                              <div className="px-1 py-2 flex justify-end" onClick={e => e.stopPropagation()}>
                                 {canManage && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
