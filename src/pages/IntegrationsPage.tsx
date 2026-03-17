@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Mail, MessageSquare, Webhook, ArrowRight, Plug, BarChart3,
+  Mail, MessageSquare, Webhook, ArrowRight, Plug, BarChart3, CalendarDays,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -49,6 +49,17 @@ const integrations: IntegrationCard[] = [
     available: true,
     gradient: 'from-emerald-500/20 to-teal-500/10',
     iconColor: 'text-emerald-500',
+    badgeLabel: 'Disponível',
+  },
+  {
+    id: 'calendar',
+    name: 'Microsoft Calendar',
+    description: 'Sincronize calendários do Outlook via URL iCal para visualizar eventos e agendamentos.',
+    icon: CalendarDays,
+    route: '/integracoes/calendario',
+    available: true,
+    gradient: 'from-sky-500/20 to-blue-500/10',
+    iconColor: 'text-sky-500',
     badgeLabel: 'Disponível',
   },
   {

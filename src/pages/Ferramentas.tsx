@@ -61,9 +61,10 @@ const tools: ToolCard[] = [
   {
     id: 'calendar',
     name: 'Calendário',
-    description: 'Visualize e planeje agendamentos, escalas de equipe e cronogramas de manutenção.',
+    description: 'Visualize eventos sincronizados do Microsoft Outlook via integração iCal.',
     icon: CalendarDays,
-    available: false,
+    route: '/ferramentas/calendario',
+    available: true,
     gradient: 'from-emerald-500/20 to-teal-500/10',
     iconColor: 'text-emerald-500',
   },
