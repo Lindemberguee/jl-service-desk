@@ -615,7 +615,129 @@ export default function Reports() {
           </ChartCard>
         </TabsContent>
 
-        {/* ═══════════ Performance Tab ═══════════ */}
+        {/* ═══════════ Advanced Indicators Tab ═══════════ */}
+        <TabsContent value="advanced" className="space-y-4">
+          {/* Advanced KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} />
+            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} />
+            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} />
+            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" />
+          </div>
+
+          {/* MTTR / MTBF explanation cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wrench className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">MTTR — Tempo Médio de Reparo</p>
+                    <p className="text-[11px] text-muted-foreground">Mean Time To Repair</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold tracking-tight">{mttr > 0 ? mttr : '—'}</span>
+                  <span className="text-sm text-muted-foreground">horas</span>
+                </div>
+                <Progress value={mttr > 0 ? Math.min((mttr / 48) * 100, 100) : 0} className="h-2 mb-2" />
+                <p className="text-[11px] text-muted-foreground">
+                  Tempo médio entre o início do atendimento e a resolução. Meta: &lt; 8h.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <CircleDot className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">MTBF — Tempo Médio Entre Falhas</p>
+                    <p className="text-[11px] text-muted-foreground">Mean Time Between Failures</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold tracking-tight">{mtbf > 0 ? mtbf : '—'}</span>
+                  <span className="text-sm text-muted-foreground">horas</span>
+                </div>
+                <Progress value={mtbf > 0 ? Math.min((mtbf / 720) * 100, 100) : 0} className="h-2 mb-2" />
+                <p className="text-[11px] text-muted-foreground">
+                  Intervalo médio entre falhas em ativos com múltiplas OS. Meta: &gt; 168h (1 semana).
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Cost Trend */}
+          <ChartCard title="Tendência de Custos" subtitle="Mão de obra vs Peças ao longo do período" icon={DollarSign}>
+            {costTrend.length === 0 ? <EmptyChart /> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={costTrend}>
+                  <defs>
+                    <linearGradient id="gradLabor" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradParts" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
+                  <Area type="monotone" dataKey="labor" name="Mão de Obra" stroke="hsl(var(--primary))" fill="url(#gradLabor)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                  <Area type="monotone" dataKey="parts" name="Peças/Materiais" stroke="hsl(38, 92%, 50%)" fill="url(#gradParts)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          {/* Cost by Priority */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChartCard title="Custo por Prioridade" icon={AlertTriangle}>
+              {costByPriority.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={costByPriority}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
+                    <Bar dataKey="value" name="Custo Total" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]}>
+                      {costByPriority.map((_, i) => <Cell key={i} fill={Object.values(PRIORITY_COLORS)[i] || 'hsl(var(--primary))'} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
+
+            {/* Cost Summary */}
+            <ChartCard title="Resumo Financeiro" icon={DollarSign}>
+              <div className="space-y-4 py-2">
+                {[
+                  { label: 'Custo Total (Mão de Obra)', value: closedWO.reduce((a: number, wo: any) => a + (wo.labor_cost || 0), 0), color: 'text-primary' },
+                  { label: 'Custo Total (Peças)', value: closedWO.reduce((a: number, wo: any) => a + (wo.parts_cost || 0), 0), color: 'text-amber-500' },
+                  { label: 'Custo Total Geral', value: totalCost, color: 'text-foreground' },
+                  { label: 'Custo Médio por OS', value: avgCostPerOS, color: 'text-muted-foreground' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                    <span className={cn('text-sm font-bold tabular-nums', item.color)}>
+                      R$ {item.value.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ChartCard>
+          </div>
+        </TabsContent>
+
         <TabsContent value="performance" className="space-y-4">
           <ChartCard title="Desempenho por Técnico" subtitle="Atribuídas vs Resolvidas" icon={Users}>
             {techPerformance.length === 0 ? <EmptyChart /> : (
