@@ -840,7 +840,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} domain={[0, 5]} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'Nota média']} />
+                  <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'Nota média']} />
                   <Area type="monotone" dataKey="avgRating" name="Nota média" stroke="hsl(38, 92%, 50%)" fill="url(#gradSat)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(38, 92%, 50%)' }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
