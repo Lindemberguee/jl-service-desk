@@ -819,7 +819,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <RechartsTooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="Avaliações" fill="hsl(38, 92%, 50%)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
