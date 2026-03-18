@@ -137,6 +137,31 @@ Deno.serve(async (req) => {
       diff: { company_name, admin_email, admin_name, plan: "starter", trial_days: 14 },
     });
 
+    // 7. Send welcome email (non-blocking)
+    try {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      await fetch(`${supabaseUrl}/functions/v1/platform-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-trigger": "true",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          action: "send_welcome",
+          company_name,
+          admin_name,
+          admin_email,
+          login_url: "https://jl-service-desk.lovable.app/login",
+          plan: "Starter",
+          trial_days: 14,
+        }),
+      });
+    } catch {
+      // Non-blocking - don't fail signup if email fails
+    }
+
     return json({
       success: true,
       tenant_id: tenant.id,
