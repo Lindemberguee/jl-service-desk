@@ -66,6 +66,7 @@ import { MasterLayout } from "@/components/layout/MasterLayout";
 import MasterDashboard from "@/pages/master/MasterDashboard";
 import MasterUsersPage from "@/pages/master/MasterUsersPage";
 import MasterAuditPage from "@/pages/master/MasterAuditPage";
+import MasterSmtpPage from "@/pages/master/MasterSmtpPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -230,6 +231,7 @@ const App = () => (
               <Route index element={<MasterDashboard />} />
               <Route path="usuarios" element={<MasterUsersPage />} />
               <Route path="auditoria" element={<MasterAuditPage />} />
+              <Route path="email" element={<MasterSmtpPage />} />
             </Route>
 
             {/* Admin/Operational Layout */}
