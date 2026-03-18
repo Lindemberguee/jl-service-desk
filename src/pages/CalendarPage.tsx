@@ -104,6 +104,7 @@ export default function CalendarPage() {
       .from('tenant_calendar_settings')
       .select('*')
       .eq('tenant_id', tenantId!)
+      .eq('user_id', user!.id)
       .eq('is_active', true);
 
     const cals: CalendarConfig[] = data || [];

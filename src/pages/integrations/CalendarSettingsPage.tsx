@@ -72,6 +72,7 @@ export default function CalendarSettingsPage() {
     setSaving(true);
     const { error } = await supabase.from('tenant_calendar_settings').insert({
       tenant_id: tenantId!,
+      user_id: user!.id,
       name: newName.trim(),
       ical_url: newUrl.trim(),
       color: newColor,
