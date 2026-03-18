@@ -21,7 +21,7 @@ interface CalendarEntry {
 
 export default function CalendarSettingsPage() {
   const navigate = useNavigate();
-  const { currentTenantId: tenantId } = useAuth();
+  const { currentTenantId: tenantId, user } = useAuth();
   const [calendars, setCalendars] = useState<CalendarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
