@@ -82,7 +82,7 @@ const MONTHS = [
 ];
 
 export default function CalendarPage() {
-  const { currentTenantId: tenantId, currentRole } = useAuth();
+  const { currentTenantId: tenantId, currentRole, user } = useAuth();
   const navigate = useNavigate();
   const [calendars, setCalendars] = useState<CalendarConfig[]>([]);
   const [events, setEvents] = useState<CalEvent[]>([]);
@@ -104,6 +104,7 @@ export default function CalendarPage() {
       .from('tenant_calendar_settings')
       .select('*')
       .eq('tenant_id', tenantId!)
+      .eq('user_id', user!.id)
       .eq('is_active', true);
 
     const cals: CalendarConfig[] = data || [];

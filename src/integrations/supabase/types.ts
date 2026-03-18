@@ -2490,6 +2490,7 @@ export type Database = {
           name: string
           tenant_id: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           color?: string | null
@@ -2500,6 +2501,7 @@ export type Database = {
           name?: string
           tenant_id: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           color?: string | null
@@ -2510,6 +2512,7 @@ export type Database = {
           name?: string
           tenant_id?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {

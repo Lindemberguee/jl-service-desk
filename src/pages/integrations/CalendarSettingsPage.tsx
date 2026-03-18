@@ -21,7 +21,7 @@ interface CalendarEntry {
 
 export default function CalendarSettingsPage() {
   const navigate = useNavigate();
-  const { currentTenantId: tenantId } = useAuth();
+  const { currentTenantId: tenantId, user } = useAuth();
   const [calendars, setCalendars] = useState<CalendarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,6 +40,7 @@ export default function CalendarSettingsPage() {
       .from('tenant_calendar_settings')
       .select('*')
       .eq('tenant_id', tenantId!)
+      .eq('user_id', user!.id)
       .order('created_at');
     if (error) {
       toast.error('Erro ao carregar calendários');
@@ -71,6 +72,7 @@ export default function CalendarSettingsPage() {
     setSaving(true);
     const { error } = await supabase.from('tenant_calendar_settings').insert({
       tenant_id: tenantId!,
+      user_id: user!.id,
       name: newName.trim(),
       ical_url: newUrl.trim(),
       color: newColor,
