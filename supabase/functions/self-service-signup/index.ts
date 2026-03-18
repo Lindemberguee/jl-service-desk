@@ -140,7 +140,8 @@ Deno.serve(async (req) => {
     // 7. Send welcome email (non-blocking)
     try {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      await fetch(`${supabaseUrl}/functions/v1/platform-email`, {
+      console.log("[signup] Sending welcome email to:", admin_email);
+      const emailRes = await fetch(`${supabaseUrl}/functions/v1/platform-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -158,8 +159,10 @@ Deno.serve(async (req) => {
           trial_days: 14,
         }),
       });
-    } catch {
-      // Non-blocking - don't fail signup if email fails
+      const emailBody = await emailRes.text();
+      console.log("[signup] Welcome email response:", emailRes.status, emailBody);
+    } catch (emailErr) {
+      console.error("[signup] Welcome email failed:", (emailErr as Error).message);
     }
 
     return json({
