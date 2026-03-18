@@ -620,10 +620,10 @@ export default function Reports() {
         <TabsContent value="advanced" className="space-y-4">
           {/* Advanced KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} />
-            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} />
-            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} />
-            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" />
+            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} description="Mean Time To Repair — Tempo médio entre o início do atendimento e a resolução da OS. Meta: abaixo de 8h." />
+            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} description="Mean Time Between Failures — Intervalo médio entre falhas em ativos com múltiplas OS. Meta: acima de 168h (1 semana)." />
+            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} description="Valor médio gasto por ordem de serviço, incluindo mão de obra e peças/materiais." />
+            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" description="Soma de todos os custos registrados nas OS do período selecionado." />
           </div>
 
           {/* MTTR / MTBF explanation cards */}
