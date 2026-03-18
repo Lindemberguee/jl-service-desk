@@ -383,14 +383,14 @@ export default function Reports() {
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KPICard icon={ClipboardList} label="Total de OS" value={total} change={totalChange} />
-        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" change={resolvedChange} />
-        <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} />
-        <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} />
-        <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} />
-        <KPICard icon={ShieldCheck} label="SLA" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} />
-        <KPICard icon={Hourglass} label="Backlog" value={totalBacklog} accent={totalBacklog > 0 ? 'text-amber-500' : undefined} />
-        <KPICard icon={RotateCcw} label="Reabertas" value={reopenedCount} accent={reopenedCount > 0 ? 'text-destructive' : undefined} />
+        <KPICard icon={ClipboardList} label="Total de OS" value={total} change={totalChange} description="Quantidade total de ordens de serviço criadas no período selecionado." />
+        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" change={resolvedChange} description="Ordens de serviço que foram finalizadas/resolvidas no período." />
+        <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} description="Percentual de OS resolvidas em relação ao total criado. Meta ideal: acima de 70%." />
+        <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} description="Tempo médio entre a criação da OS e sua resolução, em horas." />
+        <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} description="Tempo médio até o primeiro atendimento (início da execução) após a criação da OS." />
+        <KPICard icon={ShieldCheck} label="SLA" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} description="Percentual de OS resolvidas dentro do prazo de SLA acordado. Meta: acima de 90%." />
+        <KPICard icon={Hourglass} label="Backlog" value={totalBacklog} accent={totalBacklog > 0 ? 'text-amber-500' : undefined} description="Quantidade de OS ainda em aberto (não finalizadas) aguardando resolução." />
+        <KPICard icon={RotateCcw} label="Reabertas" value={reopenedCount} accent={reopenedCount > 0 ? 'text-destructive' : undefined} description="OS que foram reabertas após terem sido concluídas, indicando retrabalho." />
       </div>
 
       {overdue > 0 && (
