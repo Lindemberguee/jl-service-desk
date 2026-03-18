@@ -409,8 +409,9 @@ export default function Reports() {
 
       {/* ─── Tabs ───────────────────────────────────────────── */}
       <Tabs defaultValue="os" className="space-y-4">
-        <TabsList className="bg-card border border-border h-10 p-1 rounded-xl">
+        <TabsList className="bg-card border border-border h-10 p-1 rounded-xl flex-wrap">
           <TabsTrigger value="os" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><BarChart3 className="h-3.5 w-3.5 mr-1.5" />Ordens de Serviço</TabsTrigger>
+          <TabsTrigger value="advanced" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Cpu className="h-3.5 w-3.5 mr-1.5" />Indicadores Avançados</TabsTrigger>
           <TabsTrigger value="performance" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Users className="h-3.5 w-3.5 mr-1.5" />Desempenho</TabsTrigger>
           <TabsTrigger value="satisfaction" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Star className="h-3.5 w-3.5 mr-1.5" />Satisfação</TabsTrigger>
           <TabsTrigger value="stock" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Package className="h-3.5 w-3.5 mr-1.5" />Estoque</TabsTrigger>
