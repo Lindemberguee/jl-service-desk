@@ -15,8 +15,9 @@ import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
   Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck, Gauge,
-  Wrench, DollarSign, Cpu, CircleDot,
+  Wrench, DollarSign, Cpu, CircleDot, Info,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
