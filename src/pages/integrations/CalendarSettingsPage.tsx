@@ -40,6 +40,7 @@ export default function CalendarSettingsPage() {
       .from('tenant_calendar_settings')
       .select('*')
       .eq('tenant_id', tenantId!)
+      .eq('user_id', user!.id)
       .order('created_at');
     if (error) {
       toast.error('Erro ao carregar calendários');
