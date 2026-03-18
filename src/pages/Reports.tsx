@@ -566,7 +566,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} unit="h" axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
+                    <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
                     <Area type="monotone" dataKey="avgHours" name="Tempo médio" stroke="hsl(var(--primary))" fill="url(#gradRes)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
                   </AreaChart>
                 </ResponsiveContainer>
