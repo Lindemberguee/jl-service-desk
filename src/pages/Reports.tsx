@@ -15,11 +15,13 @@ import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
   Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck, Gauge,
+  Wrench, DollarSign, Cpu, CircleDot,
 } from 'lucide-react';
 import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { ReportExportActions } from '@/components/reports/ReportExportActions';
 
 // ─── Colors ──────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
