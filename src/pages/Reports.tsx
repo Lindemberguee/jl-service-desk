@@ -8,15 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { statusLabels, priorityLabels } from '@/lib/permissions';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, RadialBarChart, RadialBar,
 } from 'recharts';
 import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
   Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck, Gauge,
-  Wrench, DollarSign, Cpu, CircleDot,
+  Wrench, DollarSign, Cpu, CircleDot, Info,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
@@ -382,14 +383,14 @@ export default function Reports() {
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <KPICard icon={ClipboardList} label="Total de OS" value={total} change={totalChange} />
-        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" change={resolvedChange} />
-        <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} />
-        <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} />
-        <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} />
-        <KPICard icon={ShieldCheck} label="SLA" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} />
-        <KPICard icon={Hourglass} label="Backlog" value={totalBacklog} accent={totalBacklog > 0 ? 'text-amber-500' : undefined} />
-        <KPICard icon={RotateCcw} label="Reabertas" value={reopenedCount} accent={reopenedCount > 0 ? 'text-destructive' : undefined} />
+        <KPICard icon={ClipboardList} label="Total de OS" value={total} change={totalChange} description="Quantidade total de ordens de serviço criadas no período selecionado." />
+        <KPICard icon={CheckCircle} label="Resolvidas" value={resolved} accent="text-emerald-500" change={resolvedChange} description="Ordens de serviço que foram finalizadas/resolvidas no período." />
+        <KPICard icon={Target} label="Taxa Resolução" value={`${resolutionRate}%`} accent={resolutionRate >= 70 ? 'text-emerald-500' : 'text-amber-500'} description="Percentual de OS resolvidas em relação ao total criado. Meta ideal: acima de 70%." />
+        <KPICard icon={Timer} label="Tempo Médio" value={avgResolutionHours > 0 ? `${avgResolutionHours}h` : '-'} description="Tempo médio entre a criação da OS e sua resolução, em horas." />
+        <KPICard icon={Zap} label="1ª Resposta" value={avgResponseMinutes > 0 ? `${avgResponseMinutes}min` : '-'} description="Tempo médio até o primeiro atendimento (início da execução) após a criação da OS." />
+        <KPICard icon={ShieldCheck} label="SLA" value={`${slaCompliance}%`} accent={slaCompliance >= 90 ? 'text-emerald-500' : slaCompliance >= 70 ? 'text-amber-500' : 'text-destructive'} description="Percentual de OS resolvidas dentro do prazo de SLA acordado. Meta: acima de 90%." />
+        <KPICard icon={Hourglass} label="Backlog" value={totalBacklog} accent={totalBacklog > 0 ? 'text-amber-500' : undefined} description="Quantidade de OS ainda em aberto (não finalizadas) aguardando resolução." />
+        <KPICard icon={RotateCcw} label="Reabertas" value={reopenedCount} accent={reopenedCount > 0 ? 'text-destructive' : undefined} description="OS que foram reabertas após terem sido concluídas, indicando retrabalho." />
       </div>
 
       {overdue > 0 && (
@@ -437,7 +438,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Area type="monotone" dataKey="created" name="Criadas" stroke="hsl(var(--primary))" fill="url(#gradCreated)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                   <Area type="monotone" dataKey="closed" name="Encerradas" stroke="hsl(142, 71%, 45%)" fill="url(#gradClosedR)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
@@ -457,7 +458,7 @@ export default function Reports() {
                         <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
                           {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <RechartsTooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -491,7 +492,7 @@ export default function Reports() {
                         <Pie data={priorityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
                           {priorityData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <RechartsTooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -530,7 +531,7 @@ export default function Reports() {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                       <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
+                      <RechartsTooltip content={<CustomTooltip />} />
                       <Bar dataKey="value" name="OS Abertas" radius={[6, 6, 0, 0]}>
                         {agingData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                       </Bar>
@@ -565,7 +566,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} unit="h" axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
+                    <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`${value}h`, 'Tempo médio']} />
                     <Area type="monotone" dataKey="avgHours" name="Tempo médio" stroke="hsl(var(--primary))" fill="url(#gradRes)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -619,10 +620,10 @@ export default function Reports() {
         <TabsContent value="advanced" className="space-y-4">
           {/* Advanced KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} />
-            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} />
-            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} />
-            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" />
+            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} description="Mean Time To Repair — Tempo médio entre o início do atendimento e a resolução da OS. Meta: abaixo de 8h." />
+            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} description="Mean Time Between Failures — Intervalo médio entre falhas em ativos com múltiplas OS. Meta: acima de 168h (1 semana)." />
+            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} description="Valor médio gasto por ordem de serviço, incluindo mão de obra e peças/materiais." />
+            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" description="Soma de todos os custos registrados nas OS do período selecionado." />
           </div>
 
           {/* MTTR / MTBF explanation cards */}
@@ -690,7 +691,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
+                  <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Area type="monotone" dataKey="labor" name="Mão de Obra" stroke="hsl(var(--primary))" fill="url(#gradLabor)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                   <Area type="monotone" dataKey="parts" name="Peças/Materiais" stroke="hsl(38, 92%, 50%)" fill="url(#gradParts)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
@@ -708,7 +709,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
+                    <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
                     <Bar dataKey="value" name="Custo Total" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]}>
                       {costByPriority.map((_, i) => <Cell key={i} fill={Object.values(PRIORITY_COLORS)[i] || 'hsl(var(--primary))'} />)}
                     </Bar>
@@ -746,7 +747,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={130} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Bar dataKey="total" name="Atribuídas" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="resolved" name="Resolvidas" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} />
@@ -818,7 +819,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <RechartsTooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="Avaliações" fill="hsl(38, 92%, 50%)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -839,7 +840,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} domain={[0, 5]} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'Nota média']} />
+                  <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'Nota média']} />
                   <Area type="monotone" dataKey="avgRating" name="Nota média" stroke="hsl(38, 92%, 50%)" fill="url(#gradSat)" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(38, 92%, 50%)' }} activeDot={{ r: 5 }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -894,7 +895,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <RechartsTooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                     <Bar dataKey="entradas" name="Entradas" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="saidas" name="Saídas" fill="hsl(25, 95%, 53%)" radius={[4, 4, 0, 0]} />
@@ -910,7 +911,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={120} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <RechartsTooltip content={<CustomTooltip />} />
                     <Bar dataKey="qty" name="Saídas" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -944,16 +945,19 @@ export default function Reports() {
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function KPICard({ icon: Icon, label, value, accent, change }: { icon: React.ElementType; label: string; value: string | number; accent?: string; change?: number }) {
-  return (
+function KPICard({ icon: Icon, label, value, accent, change, description }: { icon: React.ElementType; label: string; value: string | number; accent?: string; change?: number; description?: string }) {
+  const content = (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_12px_0_hsl(var(--foreground)/0.08)] transition-shadow rounded-xl overflow-hidden group">
+      <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_12px_0_hsl(var(--foreground)/0.08)] transition-shadow rounded-xl overflow-hidden group cursor-default">
         <CardContent className="p-3 flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] text-muted-foreground truncate">{label}</p>
+            <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+              {label}
+              {description && <Info className="h-2.5 w-2.5 opacity-40" />}
+            </p>
             <div className="flex items-center gap-1.5">
               <p className={cn('text-lg font-bold leading-tight tracking-tight', accent)}>{value}</p>
               {change !== undefined && change !== 0 && (
@@ -966,6 +970,19 @@ function KPICard({ icon: Icon, label, value, accent, change }: { icon: React.Ele
         </CardContent>
       </Card>
     </motion.div>
+  );
+
+  if (!description) return content;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[220px] text-[11px] leading-relaxed">
+          {description}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
