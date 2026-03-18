@@ -341,11 +341,21 @@ export default function Login() {
               </motion.button>
             </form>
 
-            <div className="flex items-center gap-2 mt-6 pt-5" style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
-              <Lock className="h-3 w-3 text-slate-600" />
-              <p className="text-xs text-slate-500">
-                Acesso restrito. Solicite suas credenciais ao administrador.
-              </p>
+            <div className="mt-6 pt-5 space-y-3" style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
+              <div className="text-center">
+                <Link
+                  to="/signup"
+                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                >
+                  Não tem conta? Teste grátis por 14 dias →
+                </Link>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-3 w-3 text-slate-600" />
+                <p className="text-xs text-slate-500">
+                  Acesso restrito. Solicite suas credenciais ao administrador.
+                </p>
+              </div>
             </div>
           </motion.div>
 
