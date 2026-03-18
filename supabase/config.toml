@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.self-service-signup]
 verify_jwt = false
+
+[functions.platform-email]
+verify_jwt = false

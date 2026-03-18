@@ -231,6 +231,7 @@ const App = () => (
               <Route index element={<MasterDashboard />} />
               <Route path="usuarios" element={<MasterUsersPage />} />
               <Route path="auditoria" element={<MasterAuditPage />} />
+              <Route path="email" element={<MasterSmtpPage />} />
             </Route>
 
             {/* Admin/Operational Layout */}

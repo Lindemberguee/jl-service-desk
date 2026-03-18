@@ -9,6 +9,7 @@ const navItems = [
   { href: '/master', label: 'Dashboard', exact: true },
   { href: '/master/usuarios', label: 'Usuários' },
   { href: '/master/auditoria', label: 'Auditoria' },
+  { href: '/master/email', label: 'E-mail' },
 ];
 
 export function MasterLayout() {
