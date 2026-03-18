@@ -207,6 +207,7 @@ const App = () => (
             <Route path="/canvas/public" element={<PublicCanvasPage />} />
             <Route path="/api/docs" element={<ApiDocsPage />} />
             <Route path="/apresentacao" element={<PresentationPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
             {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>
