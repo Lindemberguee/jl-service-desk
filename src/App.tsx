@@ -46,6 +46,7 @@ import ApiDocsPage from "@/pages/ApiDocsPage";
 import PresentationPage from "@/pages/PresentationPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import DisposalPage from "@/pages/DisposalPage";
+import SignupPage from "@/pages/SignupPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
 import SmtpSettingsPage from "@/pages/integrations/SmtpSettingsPage";
 import TeamsSettingsPage from "@/pages/integrations/TeamsSettingsPage";
