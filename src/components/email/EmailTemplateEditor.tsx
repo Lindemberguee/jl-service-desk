@@ -53,7 +53,7 @@ const categoryOptions = [
 function replaceVariables(html: string, variables: TemplateVariable[]) {
   let result = html;
   for (const v of variables) {
-    result = result.replaceAll(`{{${v.key}}}`, v.example || v.key);
+    result = result.split(`{{${v.key}}}`).join(v.example || v.key);
   }
   return result;
 }
