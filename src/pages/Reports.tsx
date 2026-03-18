@@ -15,11 +15,13 @@ import {
   ClipboardList, Clock, Star, Package, TrendingUp, TrendingDown, AlertTriangle,
   CheckCircle, Timer, BarChart3, Users, Activity, Zap, ArrowUpRight, ArrowDownRight,
   Target, ShieldCheck, CalendarDays, Layers, Hourglass, RotateCcw, UserCheck, Gauge,
+  Wrench, DollarSign, Cpu, CircleDot,
 } from 'lucide-react';
 import { format, subDays, subMonths, isAfter, parseISO, differenceInHours, differenceInMinutes, differenceInDays, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { ReportExportActions } from '@/components/reports/ReportExportActions';
 
 // ─── Colors ──────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -44,7 +46,7 @@ function getDateFilter(period: Period) {
 }
 
 export default function Reports() {
-  const { currentTenantId } = useAuth();
+  const { currentTenantId, memberships: authMemberships } = useAuth();
   const [period, setPeriod] = useState<Period>('30d');
 
   const { data: workOrders = [] } = useTenantQuery<any>('work_orders', 'work_orders');
@@ -56,6 +58,10 @@ export default function Reports() {
   const { data: stockMovements = [] } = useTenantQuery<any>('stock_movements_reports', 'stock_movements', {
     select: '*, stock_items(name)',
   });
+  const { data: assets = [] } = useTenantQuery<any>('assets_reports', 'assets');
+  const { data: maintenanceRecords = [] } = useTenantQuery<any>('maintenance_reports', 'asset_maintenance_records');
+
+  const tenantName = authMemberships.find(m => m.tenant_id === currentTenantId)?.tenant_name || '';
 
   const cutoff = getDateFilter(period);
   const filteredWO = useMemo(() => workOrders.filter((wo: any) => isAfter(parseISO(wo.created_at), cutoff)), [workOrders, cutoff]);
@@ -81,6 +87,55 @@ export default function Reports() {
     if (r.length === 0) return 0;
     return Math.round(r.reduce((acc: number, wo: any) => acc + differenceInMinutes(parseISO(wo.started_at), parseISO(wo.created_at)), 0) / r.length);
   }, [filteredWO]);
+
+  // ─── Advanced KPIs: MTTR, MTBF, Costs ────────────────────
+  const mttr = useMemo(() => {
+    // Mean Time To Repair: avg from started_at to resolved_at
+    const repaired = filteredWO.filter((wo: any) => wo.started_at && wo.resolved_at);
+    if (repaired.length === 0) return 0;
+    return Math.round(repaired.reduce((acc: number, wo: any) => acc + differenceInHours(parseISO(wo.resolved_at), parseISO(wo.started_at)), 0) / repaired.length);
+  }, [filteredWO]);
+
+  const mtbf = useMemo(() => {
+    // Mean Time Between Failures: for assets with 2+ WOs, avg time between them
+    const assetWOs: Record<string, Date[]> = {};
+    filteredWO.filter((wo: any) => wo.asset_id).forEach((wo: any) => {
+      if (!assetWOs[wo.asset_id]) assetWOs[wo.asset_id] = [];
+      assetWOs[wo.asset_id].push(parseISO(wo.created_at));
+    });
+    let totalGap = 0, gapCount = 0;
+    Object.values(assetWOs).forEach(dates => {
+      if (dates.length < 2) return;
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      for (let i = 1; i < dates.length; i++) {
+        totalGap += differenceInHours(dates[i], dates[i - 1]);
+        gapCount++;
+      }
+    });
+    return gapCount > 0 ? Math.round(totalGap / gapCount) : 0;
+  }, [filteredWO]);
+
+  const totalCost = useMemo(() => filteredWO.reduce((acc: number, wo: any) => acc + (wo.total_cost || 0), 0), [filteredWO]);
+  const avgCostPerOS = resolved > 0 ? totalCost / resolved : 0;
+
+  const costTrend = useMemo(() => {
+    const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
+    const groups: Record<string, { labor: number; parts: number; total: number }> = {};
+    closedWO.forEach((wo: any) => {
+      const d = wo.resolved_at || wo.closed_at || wo.updated_at;
+      const key = format(parseISO(d), fmt, { locale: ptBR });
+      if (!groups[key]) groups[key] = { labor: 0, parts: 0, total: 0 };
+      groups[key].labor += wo.labor_cost || 0;
+      groups[key].parts += wo.parts_cost || 0;
+      groups[key].total += wo.total_cost || 0;
+    });
+    return Object.entries(groups).map(([name, v]) => ({ name, ...v }));
+  }, [closedWO, period]);
+
+  const costByPriority = useMemo(() => Object.entries(priorityLabels).map(([key, label]) => {
+    const wos = filteredWO.filter((wo: any) => wo.priority === key);
+    return { name: label, value: wos.reduce((a: number, wo: any) => a + (wo.total_cost || 0), 0), count: wos.length };
+  }).filter(d => d.value > 0), [filteredWO]);
 
   // ─── Previous period comparison ───────────────────────────
   const prevCutoff = useMemo(() => {
@@ -302,18 +357,27 @@ export default function Reports() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Relatórios</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Análise operacional e indicadores de desempenho</p>
         </div>
-        <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
-          <SelectTrigger className="h-9 w-[160px] text-xs bg-card border-border rounded-lg">
-            <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Últimos 7 dias</SelectItem>
-            <SelectItem value="30d">Últimos 30 dias</SelectItem>
-            <SelectItem value="90d">Últimos 90 dias</SelectItem>
-            <SelectItem value="12m">Últimos 12 meses</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <ReportExportActions
+            workOrders={filteredWO}
+            techPerformance={techPerformance}
+            period={period}
+            tenantName={tenantName}
+            kpis={{ total, resolved, resolutionRate, avgResolutionHours, avgResponseMinutes, slaCompliance, totalBacklog, reopenedCount, overdue, mttr, mtbf, avgCostPerOS, totalCost }}
+          />
+          <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
+            <SelectTrigger className="h-9 w-[160px] text-xs bg-card border-border rounded-lg">
+              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="90d">Últimos 90 dias</SelectItem>
+              <SelectItem value="12m">Últimos 12 meses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
@@ -345,8 +409,9 @@ export default function Reports() {
 
       {/* ─── Tabs ───────────────────────────────────────────── */}
       <Tabs defaultValue="os" className="space-y-4">
-        <TabsList className="bg-card border border-border h-10 p-1 rounded-xl">
+        <TabsList className="bg-card border border-border h-10 p-1 rounded-xl flex-wrap">
           <TabsTrigger value="os" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><BarChart3 className="h-3.5 w-3.5 mr-1.5" />Ordens de Serviço</TabsTrigger>
+          <TabsTrigger value="advanced" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Cpu className="h-3.5 w-3.5 mr-1.5" />Indicadores Avançados</TabsTrigger>
           <TabsTrigger value="performance" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Users className="h-3.5 w-3.5 mr-1.5" />Desempenho</TabsTrigger>
           <TabsTrigger value="satisfaction" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Star className="h-3.5 w-3.5 mr-1.5" />Satisfação</TabsTrigger>
           <TabsTrigger value="stock" className="text-xs h-8 rounded-lg data-[state=active]:shadow-sm"><Package className="h-3.5 w-3.5 mr-1.5" />Estoque</TabsTrigger>
@@ -550,7 +615,129 @@ export default function Reports() {
           </ChartCard>
         </TabsContent>
 
-        {/* ═══════════ Performance Tab ═══════════ */}
+        {/* ═══════════ Advanced Indicators Tab ═══════════ */}
+        <TabsContent value="advanced" className="space-y-4">
+          {/* Advanced KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <KPICard icon={Wrench} label="MTTR" value={mttr > 0 ? `${mttr}h` : '-'} accent={mttr > 0 && mttr <= 8 ? 'text-emerald-500' : mttr > 24 ? 'text-destructive' : undefined} />
+            <KPICard icon={CircleDot} label="MTBF" value={mtbf > 0 ? `${mtbf}h` : '-'} accent={mtbf > 168 ? 'text-emerald-500' : mtbf > 0 ? 'text-amber-500' : undefined} />
+            <KPICard icon={DollarSign} label="Custo Médio/OS" value={avgCostPerOS > 0 ? `R$ ${avgCostPerOS.toFixed(0)}` : '-'} />
+            <KPICard icon={DollarSign} label="Custo Total" value={totalCost > 0 ? `R$ ${totalCost.toFixed(0)}` : '-'} accent="text-primary" />
+          </div>
+
+          {/* MTTR / MTBF explanation cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wrench className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">MTTR — Tempo Médio de Reparo</p>
+                    <p className="text-[11px] text-muted-foreground">Mean Time To Repair</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold tracking-tight">{mttr > 0 ? mttr : '—'}</span>
+                  <span className="text-sm text-muted-foreground">horas</span>
+                </div>
+                <Progress value={mttr > 0 ? Math.min((mttr / 48) * 100, 100) : 0} className="h-2 mb-2" />
+                <p className="text-[11px] text-muted-foreground">
+                  Tempo médio entre o início do atendimento e a resolução. Meta: &lt; 8h.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-transparent shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] rounded-xl">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <CircleDot className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">MTBF — Tempo Médio Entre Falhas</p>
+                    <p className="text-[11px] text-muted-foreground">Mean Time Between Failures</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold tracking-tight">{mtbf > 0 ? mtbf : '—'}</span>
+                  <span className="text-sm text-muted-foreground">horas</span>
+                </div>
+                <Progress value={mtbf > 0 ? Math.min((mtbf / 720) * 100, 100) : 0} className="h-2 mb-2" />
+                <p className="text-[11px] text-muted-foreground">
+                  Intervalo médio entre falhas em ativos com múltiplas OS. Meta: &gt; 168h (1 semana).
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Cost Trend */}
+          <ChartCard title="Tendência de Custos" subtitle="Mão de obra vs Peças ao longo do período" icon={DollarSign}>
+            {costTrend.length === 0 ? <EmptyChart /> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={costTrend}>
+                  <defs>
+                    <linearGradient id="gradLabor" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradParts" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
+                  <Area type="monotone" dataKey="labor" name="Mão de Obra" stroke="hsl(var(--primary))" fill="url(#gradLabor)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                  <Area type="monotone" dataKey="parts" name="Peças/Materiais" stroke="hsl(38, 92%, 50%)" fill="url(#gradParts)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          {/* Cost by Priority */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChartCard title="Custo por Prioridade" icon={AlertTriangle}>
+              {costByPriority.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={costByPriority}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
+                    <Bar dataKey="value" name="Custo Total" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]}>
+                      {costByPriority.map((_, i) => <Cell key={i} fill={Object.values(PRIORITY_COLORS)[i] || 'hsl(var(--primary))'} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
+
+            {/* Cost Summary */}
+            <ChartCard title="Resumo Financeiro" icon={DollarSign}>
+              <div className="space-y-4 py-2">
+                {[
+                  { label: 'Custo Total (Mão de Obra)', value: closedWO.reduce((a: number, wo: any) => a + (wo.labor_cost || 0), 0), color: 'text-primary' },
+                  { label: 'Custo Total (Peças)', value: closedWO.reduce((a: number, wo: any) => a + (wo.parts_cost || 0), 0), color: 'text-amber-500' },
+                  { label: 'Custo Total Geral', value: totalCost, color: 'text-foreground' },
+                  { label: 'Custo Médio por OS', value: avgCostPerOS, color: 'text-muted-foreground' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                    <span className={cn('text-sm font-bold tabular-nums', item.color)}>
+                      R$ {item.value.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ChartCard>
+          </div>
+        </TabsContent>
+
         <TabsContent value="performance" className="space-y-4">
           <ChartCard title="Desempenho por Técnico" subtitle="Atribuídas vs Resolvidas" icon={Users}>
             {techPerformance.length === 0 ? <EmptyChart /> : (
