@@ -709,7 +709,7 @@ export default function Reports() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
+                    <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'Custo']} />
                     <Bar dataKey="value" name="Custo Total" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]}>
                       {costByPriority.map((_, i) => <Cell key={i} fill={Object.values(PRIORITY_COLORS)[i] || 'hsl(var(--primary))'} />)}
                     </Bar>
