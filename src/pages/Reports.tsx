@@ -691,7 +691,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
+                  <RechartsTooltip content={<CustomTooltip />} formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, '']} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Area type="monotone" dataKey="labor" name="Mão de Obra" stroke="hsl(var(--primary))" fill="url(#gradLabor)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                   <Area type="monotone" dataKey="parts" name="Peças/Materiais" stroke="hsl(38, 92%, 50%)" fill="url(#gradParts)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
