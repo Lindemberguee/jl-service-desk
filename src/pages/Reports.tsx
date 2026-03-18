@@ -747,7 +747,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={130} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                   <Bar dataKey="total" name="Atribuídas" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="resolved" name="Resolvidas" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} />
