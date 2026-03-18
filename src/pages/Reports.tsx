@@ -46,7 +46,7 @@ function getDateFilter(period: Period) {
 }
 
 export default function Reports() {
-  const { currentTenantId } = useAuth();
+  const { currentTenantId, memberships: authMemberships } = useAuth();
   const [period, setPeriod] = useState<Period>('30d');
 
   const { data: workOrders = [] } = useTenantQuery<any>('work_orders', 'work_orders');
@@ -58,6 +58,10 @@ export default function Reports() {
   const { data: stockMovements = [] } = useTenantQuery<any>('stock_movements_reports', 'stock_movements', {
     select: '*, stock_items(name)',
   });
+  const { data: assets = [] } = useTenantQuery<any>('assets_reports', 'assets');
+  const { data: maintenanceRecords = [] } = useTenantQuery<any>('maintenance_reports', 'asset_maintenance_records');
+
+  const tenantName = authMemberships.find(m => m.tenant_id === currentTenantId)?.tenant_name || '';
 
   const cutoff = getDateFilter(period);
   const filteredWO = useMemo(() => workOrders.filter((wo: any) => isAfter(parseISO(wo.created_at), cutoff)), [workOrders, cutoff]);
@@ -83,6 +87,55 @@ export default function Reports() {
     if (r.length === 0) return 0;
     return Math.round(r.reduce((acc: number, wo: any) => acc + differenceInMinutes(parseISO(wo.started_at), parseISO(wo.created_at)), 0) / r.length);
   }, [filteredWO]);
+
+  // ─── Advanced KPIs: MTTR, MTBF, Costs ────────────────────
+  const mttr = useMemo(() => {
+    // Mean Time To Repair: avg from started_at to resolved_at
+    const repaired = filteredWO.filter((wo: any) => wo.started_at && wo.resolved_at);
+    if (repaired.length === 0) return 0;
+    return Math.round(repaired.reduce((acc: number, wo: any) => acc + differenceInHours(parseISO(wo.resolved_at), parseISO(wo.started_at)), 0) / repaired.length);
+  }, [filteredWO]);
+
+  const mtbf = useMemo(() => {
+    // Mean Time Between Failures: for assets with 2+ WOs, avg time between them
+    const assetWOs: Record<string, Date[]> = {};
+    filteredWO.filter((wo: any) => wo.asset_id).forEach((wo: any) => {
+      if (!assetWOs[wo.asset_id]) assetWOs[wo.asset_id] = [];
+      assetWOs[wo.asset_id].push(parseISO(wo.created_at));
+    });
+    let totalGap = 0, gapCount = 0;
+    Object.values(assetWOs).forEach(dates => {
+      if (dates.length < 2) return;
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      for (let i = 1; i < dates.length; i++) {
+        totalGap += differenceInHours(dates[i], dates[i - 1]);
+        gapCount++;
+      }
+    });
+    return gapCount > 0 ? Math.round(totalGap / gapCount) : 0;
+  }, [filteredWO]);
+
+  const totalCost = useMemo(() => filteredWO.reduce((acc: number, wo: any) => acc + (wo.total_cost || 0), 0), [filteredWO]);
+  const avgCostPerOS = resolved > 0 ? totalCost / resolved : 0;
+
+  const costTrend = useMemo(() => {
+    const fmt = period === '12m' ? 'MMM/yy' : 'dd/MM';
+    const groups: Record<string, { labor: number; parts: number; total: number }> = {};
+    closedWO.forEach((wo: any) => {
+      const d = wo.resolved_at || wo.closed_at || wo.updated_at;
+      const key = format(parseISO(d), fmt, { locale: ptBR });
+      if (!groups[key]) groups[key] = { labor: 0, parts: 0, total: 0 };
+      groups[key].labor += wo.labor_cost || 0;
+      groups[key].parts += wo.parts_cost || 0;
+      groups[key].total += wo.total_cost || 0;
+    });
+    return Object.entries(groups).map(([name, v]) => ({ name, ...v }));
+  }, [closedWO, period]);
+
+  const costByPriority = useMemo(() => Object.entries(priorityLabels).map(([key, label]) => {
+    const wos = filteredWO.filter((wo: any) => wo.priority === key);
+    return { name: label, value: wos.reduce((a: number, wo: any) => a + (wo.total_cost || 0), 0), count: wos.length };
+  }).filter(d => d.value > 0), [filteredWO]);
 
   // ─── Previous period comparison ───────────────────────────
   const prevCutoff = useMemo(() => {
