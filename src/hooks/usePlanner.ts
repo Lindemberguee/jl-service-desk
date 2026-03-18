@@ -100,6 +100,7 @@ export function usePlanner() {
         .from('planner_plans')
         .select('*')
         .eq('tenant_id', currentTenantId!)
+        .or(`scope.eq.team,created_by.eq.${user!.id}`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as PlannerPlan[];
