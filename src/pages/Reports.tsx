@@ -458,7 +458,7 @@ export default function Reports() {
                         <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
                           {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <RechartsTooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
