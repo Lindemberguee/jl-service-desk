@@ -944,16 +944,19 @@ export default function Reports() {
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function KPICard({ icon: Icon, label, value, accent, change }: { icon: React.ElementType; label: string; value: string | number; accent?: string; change?: number }) {
-  return (
+function KPICard({ icon: Icon, label, value, accent, change, description }: { icon: React.ElementType; label: string; value: string | number; accent?: string; change?: number; description?: string }) {
+  const content = (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_12px_0_hsl(var(--foreground)/0.08)] transition-shadow rounded-xl overflow-hidden group">
+      <Card className="border-transparent shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)] hover:shadow-[0_4px_12px_0_hsl(var(--foreground)/0.08)] transition-shadow rounded-xl overflow-hidden group cursor-default">
         <CardContent className="p-3 flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] text-muted-foreground truncate">{label}</p>
+            <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+              {label}
+              {description && <Info className="h-2.5 w-2.5 opacity-40" />}
+            </p>
             <div className="flex items-center gap-1.5">
               <p className={cn('text-lg font-bold leading-tight tracking-tight', accent)}>{value}</p>
               {change !== undefined && change !== 0 && (
@@ -966,6 +969,19 @@ function KPICard({ icon: Icon, label, value, accent, change }: { icon: React.Ele
         </CardContent>
       </Card>
     </motion.div>
+  );
+
+  if (!description) return content;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[220px] text-[11px] leading-relaxed">
+          {description}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
