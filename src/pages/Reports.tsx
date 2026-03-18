@@ -357,18 +357,27 @@ export default function Reports() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Relatórios</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Análise operacional e indicadores de desempenho</p>
         </div>
-        <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
-          <SelectTrigger className="h-9 w-[160px] text-xs bg-card border-border rounded-lg">
-            <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Últimos 7 dias</SelectItem>
-            <SelectItem value="30d">Últimos 30 dias</SelectItem>
-            <SelectItem value="90d">Últimos 90 dias</SelectItem>
-            <SelectItem value="12m">Últimos 12 meses</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <ReportExportActions
+            workOrders={filteredWO}
+            techPerformance={techPerformance}
+            period={period}
+            tenantName={tenantName}
+            kpis={{ total, resolved, resolutionRate, avgResolutionHours, avgResponseMinutes, slaCompliance, totalBacklog, reopenedCount, overdue, mttr, mtbf, avgCostPerOS, totalCost }}
+          />
+          <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
+            <SelectTrigger className="h-9 w-[160px] text-xs bg-card border-border rounded-lg">
+              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="90d">Últimos 90 dias</SelectItem>
+              <SelectItem value="12m">Últimos 12 meses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* ─── KPI Grid ───────────────────────────────────────── */}
