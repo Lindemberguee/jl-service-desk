@@ -46,6 +46,7 @@ import ApiDocsPage from "@/pages/ApiDocsPage";
 import PresentationPage from "@/pages/PresentationPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import DisposalPage from "@/pages/DisposalPage";
+import SignupPage from "@/pages/SignupPage";
 import IntegrationsPage from "@/pages/IntegrationsPage";
 import SmtpSettingsPage from "@/pages/integrations/SmtpSettingsPage";
 import TeamsSettingsPage from "@/pages/integrations/TeamsSettingsPage";
@@ -206,6 +207,7 @@ const App = () => (
             <Route path="/canvas/public" element={<PublicCanvasPage />} />
             <Route path="/api/docs" element={<ApiDocsPage />} />
             <Route path="/apresentacao" element={<PresentationPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
             {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>

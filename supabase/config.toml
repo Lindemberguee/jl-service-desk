@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.send-email-notification]
 verify_jwt = false
+
+[functions.self-service-signup]
+verify_jwt = false
