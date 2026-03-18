@@ -2063,6 +2063,48 @@ export type Database = {
           },
         ]
       }
+      platform_email_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          html_body: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          subject: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          html_body?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          subject?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          html_body?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          subject?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           key: string
