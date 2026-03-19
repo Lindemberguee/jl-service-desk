@@ -349,6 +349,30 @@ export function OkrBoard() {
     } catch { toast.error('Erro'); }
   };
 
+  /* ── Real-time saving for Objective edits ── */
+  const objSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedObj = useRef<string>('');
+
+  const debouncedSaveObj = useCallback((obj: Partial<OkrObjective> & { id: string }) => {
+    if (objSaveTimer.current) clearTimeout(objSaveTimer.current);
+    const serialized = JSON.stringify(obj);
+    if (serialized === lastSavedObj.current) return;
+    objSaveTimer.current = setTimeout(async () => {
+      try {
+        lastSavedObj.current = serialized;
+        await updateObjective.mutateAsync(obj);
+      } catch { /* silent */ }
+    }, 800);
+  }, [updateObjective]);
+
+  useEffect(() => {
+    if (!editingObj.id || !objDialogOpen) return;
+    const { id, ...rest } = editingObj;
+    debouncedSaveObj({ id, ...rest } as any);
+  }, [editingObj, objDialogOpen]);
+
+  useEffect(() => () => { if (objSaveTimer.current) clearTimeout(objSaveTimer.current); }, []);
+
   /* ── Real-time saving for KR edits ── */
   const krSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedKr = useRef<string>('');
@@ -826,7 +850,7 @@ export function OkrBoard() {
             <DialogHeader>
               <DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle>
               <DialogDescription className="text-xs">
-                {editingObj.id ? 'Atualize as informações do objetivo.' : 'Defina o objetivo, resultado-chave e atividades do plano.'}
+                {editingObj.id ? 'Alterações são salvas automaticamente.' : 'Defina o objetivo, resultado-chave e atividades do plano.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
