@@ -194,6 +194,8 @@ export function OkrBoard() {
   useEffect(() => {
     if (cycleObjectives.length > 0 && expandedObjs.size === 0) {
       setExpandedObjs(new Set(cycleObjectives.map(o => o.id)));
+      const macros = new Set(cycleObjectives.map(o => o.macro_objective || ''));
+      setExpandedMacros(macros);
     }
   }, [cycleObjectives.length]);
 
