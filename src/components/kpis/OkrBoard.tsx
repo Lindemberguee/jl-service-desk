@@ -265,6 +265,7 @@ export function OkrBoard() {
 
   /* ── Interactions ── */
   const toggleExpand = (id: string) => setExpandedObjs(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleMacro = (macro: string) => setExpandedMacros(prev => { const n = new Set(prev); n.has(macro) ? n.delete(macro) : n.add(macro); return n; });
 
   const handleInlineSave = async (krId: string, field: string, value: string) => {
     try {
