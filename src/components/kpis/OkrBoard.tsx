@@ -850,7 +850,7 @@ export function OkrBoard() {
             <DialogHeader>
               <DialogTitle>{editingObj.id ? 'Editar Objetivo' : 'Novo Objetivo'}</DialogTitle>
               <DialogDescription className="text-xs">
-                {editingObj.id ? 'Atualize as informações do objetivo.' : 'Defina o objetivo, resultado-chave e atividades do plano.'}
+                {editingObj.id ? 'Alterações são salvas automaticamente.' : 'Defina o objetivo, resultado-chave e atividades do plano.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
