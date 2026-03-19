@@ -9,7 +9,7 @@ import { RequesterLayout } from "@/components/layout/RequesterLayout";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
-import WorkOrdersScreen from "@/modules/work-orders/screens/WorkOrdersScreen";
+import WorkOrdersEnterpriseScreen from "@/modules/work-orders/screens/WorkOrdersEnterpriseScreen";
 import WorkOrderCreate from "@/pages/WorkOrderCreate";
 import MyWorkOrders from "@/pages/MyWorkOrders";
 import MyWorkOrderDetail from "@/pages/MyWorkOrderDetail";
@@ -231,6 +231,7 @@ const App = () => (
 
             <Route path="/" element={<ProtectedRoutes />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
+
               <Route
                 path="dashboard"
                 element={
@@ -239,14 +240,16 @@ const App = () => (
                   </PermissionGuard>
                 }
               />
+
               <Route
                 path="os"
                 element={
                   <PermissionGuard permission="os:read">
-                    <WorkOrdersScreen />
+                    <WorkOrdersEnterpriseScreen />
                   </PermissionGuard>
                 }
               />
+
               <Route
                 path="os/nova"
                 element={
@@ -255,6 +258,7 @@ const App = () => (
                   </PermissionGuard>
                 }
               />
+
               <Route
                 path="os/:id"
                 element={
@@ -263,6 +267,7 @@ const App = () => (
                   </PermissionGuard>
                 }
               />
+
               <Route
                 path="minhas-os"
                 element={
@@ -271,6 +276,7 @@ const App = () => (
                   </PermissionGuard>
                 }
               />
+
               <Route
                 path="minhas-os/:id"
                 element={
@@ -279,36 +285,257 @@ const App = () => (
                   </PermissionGuard>
                 }
               />
-              <Route path="cadastros" element={<PermissionGuard permission="cadastros:read"><Cadastros /></PermissionGuard>} />
-              <Route path="ativos" element={<PermissionGuard permission="assets:read"><Assets /></PermissionGuard>} />
-              <Route path="colaboradores" element={<PermissionGuard permission="collaborators:read"><CollaboratorsPage /></PermissionGuard>} />
-              <Route path="estoque" element={<PermissionGuard permission="stock:read"><Stock /></PermissionGuard>} />
-              <Route path="manutencao" element={<PermissionGuard permission="manutencao:read"><MaintenancePage /></PermissionGuard>} />
-              <Route path="materiais" element={<PermissionGuard permission="materiais:read"><MaterialControl /></PermissionGuard>} />
-              <Route path="relatorios" element={<PermissionGuard permission="reports:read"><Reports /></PermissionGuard>} />
-              <Route path="usuarios" element={<PermissionGuard permission="users:read"><UsersPage /></PermissionGuard>} />
-              <Route path="ferramentas" element={<Navigate to="/ferramentas/canvas" replace />} />
-              <Route path="kpis" element={<PermissionGuard permission="kpis:read"><KpisOkrsPage /></PermissionGuard>} />
-              <Route path="documentos" element={<PermissionGuard permission="docs:read"><DocumentsPage /></PermissionGuard>} />
-              <Route path="descarte" element={<PermissionGuard permission="disposal:read"><DisposalPage /></PermissionGuard>} />
-              <Route path="integracoes" element={<PermissionGuard permission="integrations:manage"><IntegrationsPage /></PermissionGuard>} />
-              <Route path="integracoes/smtp" element={<PermissionGuard permission="integrations:manage"><SmtpSettingsPage /></PermissionGuard>} />
-              <Route path="integracoes/teams" element={<PermissionGuard permission="integrations:manage"><TeamsSettingsPage /></PermissionGuard>} />
-              <Route path="integracoes/metricas" element={<PermissionGuard permission="integrations:manage"><NotificationMetricsPage /></PermissionGuard>} />
-              <Route path="integracoes/calendario" element={<PermissionGuard permission="integrations:manage"><CalendarSettingsPage /></PermissionGuard>} />
-              <Route path="ferramentas/calendario" element={<PermissionGuard permission="tools:calendar"><CalendarPage /></PermissionGuard>} />
-              <Route path="ferramentas/canvas" element={<PermissionGuard permission="tools:canvas"><CanvasPage /></PermissionGuard>} />
-              <Route path="ferramentas/anotacoes" element={<PermissionGuard permission="tools:notes"><NotesPage /></PermissionGuard>} />
-              <Route path="ferramentas/lembretes" element={<PermissionGuard permission="tools:reminders"><RemindersPage /></PermissionGuard>} />
-              <Route path="ferramentas/planner" element={<PermissionGuard permission="tools:planner"><PlannerPage /></PermissionGuard>} />
+
+              <Route
+                path="cadastros"
+                element={
+                  <PermissionGuard permission="cadastros:read">
+                    <Cadastros />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ativos"
+                element={
+                  <PermissionGuard permission="assets:read">
+                    <Assets />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="colaboradores"
+                element={
+                  <PermissionGuard permission="collaborators:read">
+                    <CollaboratorsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="estoque"
+                element={
+                  <PermissionGuard permission="stock:read">
+                    <Stock />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="manutencao"
+                element={
+                  <PermissionGuard permission="manutencao:read">
+                    <MaintenancePage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="materiais"
+                element={
+                  <PermissionGuard permission="materiais:read">
+                    <MaterialControl />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="relatorios"
+                element={
+                  <PermissionGuard permission="reports:read">
+                    <Reports />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="usuarios"
+                element={
+                  <PermissionGuard permission="users:read">
+                    <UsersPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas"
+                element={<Navigate to="/ferramentas/canvas" replace />}
+              />
+
+              <Route
+                path="kpis"
+                element={
+                  <PermissionGuard permission="kpis:read">
+                    <KpisOkrsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="documentos"
+                element={
+                  <PermissionGuard permission="docs:read">
+                    <DocumentsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="descarte"
+                element={
+                  <PermissionGuard permission="disposal:read">
+                    <DisposalPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="integracoes"
+                element={
+                  <PermissionGuard permission="integrations:manage">
+                    <IntegrationsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="integracoes/smtp"
+                element={
+                  <PermissionGuard permission="integrations:manage">
+                    <SmtpSettingsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="integracoes/teams"
+                element={
+                  <PermissionGuard permission="integrations:manage">
+                    <TeamsSettingsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="integracoes/metricas"
+                element={
+                  <PermissionGuard permission="integrations:manage">
+                    <NotificationMetricsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="integracoes/calendario"
+                element={
+                  <PermissionGuard permission="integrations:manage">
+                    <CalendarSettingsPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas/calendario"
+                element={
+                  <PermissionGuard permission="tools:calendar">
+                    <CalendarPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas/canvas"
+                element={
+                  <PermissionGuard permission="tools:canvas">
+                    <CanvasPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas/anotacoes"
+                element={
+                  <PermissionGuard permission="tools:notes">
+                    <NotesPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas/lembretes"
+                element={
+                  <PermissionGuard permission="tools:reminders">
+                    <RemindersPage />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="ferramentas/planner"
+                element={
+                  <PermissionGuard permission="tools:planner">
+                    <PlannerPage />
+                  </PermissionGuard>
+                }
+              />
+
               <Route path="notificacoes" element={<NotificationsPage />} />
               <Route path="perfil" element={<ProfilePage />} />
-              <Route path="admin" element={<PermissionGuard permission="settings:manage"><AdminDashboard /></PermissionGuard>} />
-              <Route path="admin/departamentos" element={<PermissionGuard permission="settings:manage"><AdminDepartments /></PermissionGuard>} />
-              <Route path="admin/usuarios" element={<PermissionGuard permission="settings:manage"><AdminUsers /></PermissionGuard>} />
-              <Route path="admin/configuracoes" element={<PermissionGuard permission="settings:manage"><AdminSettings /></PermissionGuard>} />
-              <Route path="admin/auditoria" element={<PermissionGuard permission="settings:manage"><AdminAuditLogs /></PermissionGuard>} />
-              <Route path="admin/saude" element={<PermissionGuard permission="settings:manage"><AdminSystemHealth /></PermissionGuard>} />
+
+              <Route
+                path="admin"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminDashboard />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="admin/departamentos"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminDepartments />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="admin/usuarios"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminUsers />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="admin/configuracoes"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminSettings />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="admin/auditoria"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminAuditLogs />
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="admin/saude"
+                element={
+                  <PermissionGuard permission="settings:manage">
+                    <AdminSystemHealth />
+                  </PermissionGuard>
+                }
+              />
             </Route>
 
             <Route path="/403" element={<ForbiddenPage />} />
