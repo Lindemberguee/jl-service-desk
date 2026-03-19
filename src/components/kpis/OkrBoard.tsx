@@ -830,9 +830,16 @@ export function OkrBoard() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
-              {/* Objetivo */}
+              {/* Objetivo Macro */}
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold">Objetivo</Label>
+                <Label className="text-xs font-semibold">Objetivo Macro</Label>
+                <Textarea value={editingObj.macro_objective || ''} onChange={e => setEditingObj(p => ({ ...p, macro_objective: e.target.value }))} rows={2} placeholder="Ex: Aumentar o uso e pertencimento tecnológico e a infraestrutura digital..." className="text-sm resize-none" />
+                <p className="text-[10px] text-muted-foreground">Agrupa vários resultados-chave sob um mesmo objetivo estratégico.</p>
+              </div>
+
+              {/* Resultado-Chave (título do objetivo) */}
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-semibold">Resultado-Chave</Label>
                 <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." className="text-sm resize-none" />
               </div>
 
