@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
+import { OkrReportExport } from '@/components/kpis/OkrReportExport';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
@@ -135,7 +136,7 @@ function InlineCell({
 
 export function OkrBoard() {
   const {
-    cycles, objectives, keyResults, isLoading,
+    cycles, objectives, keyResults, checkins, isLoading,
     createCycle, updateCycle, deleteCycle,
     createObjective, updateObjective, deleteObjective,
     createKeyResult, updateKeyResult, deleteKeyResult,
@@ -452,6 +453,15 @@ export function OkrBoard() {
                     <Plus className="h-3 w-3" />
                   </Button>
                 )}
+                <OkrReportExport
+                  cycles={cycles}
+                  objectives={objectives}
+                  keyResults={keyResults}
+                  checkins={checkins}
+                  kpis={kpis}
+                  selectedCycleId={cycleId || null}
+                  tenantName={undefined}
+                />
               </div>
             </div>
 
