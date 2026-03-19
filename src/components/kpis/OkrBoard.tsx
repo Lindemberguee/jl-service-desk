@@ -514,10 +514,46 @@ export function OkrBoard() {
           </div>
         )}
 
-        {/* ═══ BLOCOS EXPANSÍVEIS ═══ */}
+        {/* ═══ BLOCOS POR OBJETIVO MACRO ═══ */}
         {tableData.length > 0 && (
-          <div className="space-y-2.5">
-            {tableData.map(({ objective: obj, keyResults: krs }) => {
+          <div className="space-y-5">
+            {tableData.map(({ macro, items: groupItems }) => {
+              const macroExpanded = expandedMacros.has(macro);
+              const macroAllKrs = groupItems.flatMap(g => g.keyResults);
+              const macroDone = macroAllKrs.filter(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status)).length;
+              const macroTotal = macroAllKrs.length;
+              const macroProgress = groupItems.length > 0
+                ? Math.round(groupItems.reduce((s, g) => s + (g.objective.progress || 0), 0) / groupItems.length)
+                : 0;
+
+              return (
+                <div key={macro || '__no_macro__'} className="space-y-2">
+                  {/* ── Macro Objective Header ── */}
+                  {macro && (
+                    <div
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 cursor-pointer select-none hover:bg-primary/10 transition-colors group/macro"
+                      onClick={() => toggleMacro(macro)}
+                    >
+                      <ChevronRight className={cn("h-5 w-5 shrink-0 text-primary/60 mt-0.5 transition-transform duration-200", macroExpanded && "rotate-90")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-snug">{macro}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {groupItems.length} resultado{groupItems.length !== 1 ? 's' : ''}-chave · {macroDone}/{macroTotal} atividades concluídas
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+                          <span className="text-sm font-bold tabular-nums text-foreground">{macroProgress}%</span>
+                          <Progress value={macroProgress} className="h-1.5 w-14" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Objectives inside this macro ── */}
+                  {(macroExpanded || !macro) && (
+                    <div className={cn("space-y-2.5", macro && "ml-4")}>
+                      {groupItems.map(({ objective: obj, keyResults: krs }) => {
               const isExpanded = expandedObjs.has(obj.id);
               const doneCount = krs.filter(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status)).length;
               const hasAtrasado = krs.some(kr => kr.activity_status === 'atrasado');
@@ -657,27 +693,27 @@ export function OkrBoard() {
                               <div className="px-1 min-w-0 cursor-pointer" onClick={() => openDetail(obj)}>
                                 <p className="text-xs font-medium text-foreground truncate hover:text-primary transition-colors">{kr.title}</p>
                               </div>
-                              {/* Área - inline editable */}
+                              {/* Área */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.area || ''} field="area" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Responsável - inline editable */}
+                              {/* Responsável */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.responsible_name || ''} field="responsible_name" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Equipe de Apoio - inline editable */}
+                              {/* Equipe de Apoio */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.support_team || ''} field="support_team" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Início - inline editable */}
+                              {/* Início */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.start_date || ''} field="start_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className={cn("text-center mx-auto")} />
                               </div>
-                              {/* Final - inline editable */}
+                              {/* Final */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.end_date || ''} field="end_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className={cn("text-center mx-auto", deadlineColor(kr.end_date))} />
                               </div>
-                              {/* Entrega - inline editable */}
+                              {/* Entrega */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.delivery_date || ''} field="delivery_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className="text-center mx-auto" />
                               </div>
@@ -743,6 +779,11 @@ export function OkrBoard() {
                           <Plus className="h-3 w-3" /> Adicionar atividade
                         </Button>
                       )}
+                    </div>
+                  )}
+                </div>
+              );
+                      })}
                     </div>
                   )}
                 </div>
