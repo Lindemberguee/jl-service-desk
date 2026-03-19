@@ -840,13 +840,13 @@ export function OkrBoard() {
               {/* Resultado-Chave (título do objetivo) */}
               <div className="grid gap-1.5">
                 <Label className="text-xs font-semibold">Resultado-Chave</Label>
-                <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." className="text-sm resize-none" />
+                <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento e manutenção..." className="text-sm resize-none" />
               </div>
 
-              {/* Resultado-chave */}
+              {/* Descrição */}
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold">Resultado-chave</Label>
-                <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento..." className="text-sm resize-none" />
+                <Label className="text-xs font-semibold">Descrição (opcional)</Label>
+                <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Detalhes adicionais..." className="text-sm resize-none" />
               </div>
 
               {/* Indicadores */}
