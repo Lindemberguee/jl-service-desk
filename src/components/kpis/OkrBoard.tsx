@@ -560,11 +560,12 @@ export function OkrBoard() {
                   {isExpanded && krs.length > 0 && (
                     <div className="border-t border-border/30 overflow-x-auto">
                       {/* Header */}
-                      <div className="grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_90px_100px_72px_72px_72px_48px_36px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 py-1.5 bg-muted/20 min-w-[1000px] border-b border-border/20">
+                      <div className="grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_80px_80px_90px_72px_72px_72px_48px_36px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 py-1.5 bg-muted/20 min-w-[1100px] border-b border-border/20">
                         <div className="px-1">Indicador</div>
                         <div className="px-1 text-center">Status</div>
                         <div className="px-1 text-center">Meta</div>
                         <div className="px-1">Descrição Atividade</div>
+                        <div className="px-1">Área</div>
                         <div className="px-1">Responsável</div>
                         <div className="px-1">Eq. Apoio</div>
                         <div className="px-1 text-center">Início</div>
