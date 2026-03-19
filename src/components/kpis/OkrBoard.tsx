@@ -453,6 +453,15 @@ export function OkrBoard() {
                     <Plus className="h-3 w-3" />
                   </Button>
                 )}
+                <OkrReportExport
+                  cycles={cycles}
+                  objectives={objectives}
+                  keyResults={keyResults}
+                  checkins={checkins}
+                  kpis={kpis}
+                  selectedCycleId={cycleId || null}
+                  tenantName={undefined}
+                />
               </div>
             </div>
 
