@@ -213,13 +213,13 @@ export function OkrBoard() {
       .forEach(a => updateKeyResult.mutateAsync({ id: a.id, activity_status: 'atrasado' }).catch(() => {}));
   }, [isLoading, allKrs]);
 
-  /* ── Table data ── */
+  /* ── Table data grouped by macro_objective ── */
   const tableData = useMemo(() => {
-    return cycleObjectives.map(obj => {
+    const items = cycleObjectives.map(obj => {
       let krs = keyResults.filter(kr => kr.objective_id === obj.id);
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const objMatch = obj.title.toLowerCase().includes(q);
+        const objMatch = obj.title.toLowerCase().includes(q) || obj.macro_objective?.toLowerCase().includes(q);
         const filtered = krs.filter(kr =>
           kr.title.toLowerCase().includes(q) ||
           kr.responsible_name?.toLowerCase().includes(q) ||
@@ -234,6 +234,19 @@ export function OkrBoard() {
       }
       return { objective: obj, keyResults: krs };
     }).filter(Boolean) as { objective: OkrObjective; keyResults: OkrKeyResult[] }[];
+
+    // Group by macro_objective
+    const groups: { macro: string; items: typeof items }[] = [];
+    const macroMap = new Map<string, typeof items>();
+    for (const item of items) {
+      const macro = item.objective.macro_objective || '';
+      if (!macroMap.has(macro)) macroMap.set(macro, []);
+      macroMap.get(macro)!.push(item);
+    }
+    for (const [macro, groupItems] of macroMap) {
+      groups.push({ macro, items: groupItems });
+    }
+    return groups;
   }, [cycleObjectives, keyResults, searchQuery, filterStatus]);
 
   /* ── Stats ── */
