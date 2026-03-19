@@ -163,6 +163,7 @@ export function OkrBoard() {
   const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
   const [detailActivities, setDetailActivities] = useState<OkrKeyResult[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [expandedMacros, setExpandedMacros] = useState<Set<string>>(new Set());
 
   const openDetail = (obj: OkrObjective) => {
     const krs = keyResults.filter(kr => kr.objective_id === obj.id);
@@ -193,6 +194,8 @@ export function OkrBoard() {
   useEffect(() => {
     if (cycleObjectives.length > 0 && expandedObjs.size === 0) {
       setExpandedObjs(new Set(cycleObjectives.map(o => o.id)));
+      const macros = new Set(cycleObjectives.map(o => o.macro_objective || ''));
+      setExpandedMacros(macros);
     }
   }, [cycleObjectives.length]);
 
@@ -213,13 +216,13 @@ export function OkrBoard() {
       .forEach(a => updateKeyResult.mutateAsync({ id: a.id, activity_status: 'atrasado' }).catch(() => {}));
   }, [isLoading, allKrs]);
 
-  /* ── Table data ── */
+  /* ── Table data grouped by macro_objective ── */
   const tableData = useMemo(() => {
-    return cycleObjectives.map(obj => {
+    const items = cycleObjectives.map(obj => {
       let krs = keyResults.filter(kr => kr.objective_id === obj.id);
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const objMatch = obj.title.toLowerCase().includes(q);
+        const objMatch = obj.title.toLowerCase().includes(q) || obj.macro_objective?.toLowerCase().includes(q);
         const filtered = krs.filter(kr =>
           kr.title.toLowerCase().includes(q) ||
           kr.responsible_name?.toLowerCase().includes(q) ||
@@ -234,6 +237,19 @@ export function OkrBoard() {
       }
       return { objective: obj, keyResults: krs };
     }).filter(Boolean) as { objective: OkrObjective; keyResults: OkrKeyResult[] }[];
+
+    // Group by macro_objective
+    const groups: { macro: string; items: typeof items }[] = [];
+    const macroMap = new Map<string, typeof items>();
+    for (const item of items) {
+      const macro = item.objective.macro_objective || '';
+      if (!macroMap.has(macro)) macroMap.set(macro, []);
+      macroMap.get(macro)!.push(item);
+    }
+    for (const [macro, groupItems] of macroMap) {
+      groups.push({ macro, items: groupItems });
+    }
+    return groups;
   }, [cycleObjectives, keyResults, searchQuery, filterStatus]);
 
   /* ── Stats ── */
@@ -249,6 +265,7 @@ export function OkrBoard() {
 
   /* ── Interactions ── */
   const toggleExpand = (id: string) => setExpandedObjs(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleMacro = (macro: string) => setExpandedMacros(prev => { const n = new Set(prev); n.has(macro) ? n.delete(macro) : n.add(macro); return n; });
 
   const handleInlineSave = async (krId: string, field: string, value: string) => {
     try {
@@ -497,10 +514,46 @@ export function OkrBoard() {
           </div>
         )}
 
-        {/* ═══ BLOCOS EXPANSÍVEIS ═══ */}
+        {/* ═══ BLOCOS POR OBJETIVO MACRO ═══ */}
         {tableData.length > 0 && (
-          <div className="space-y-2.5">
-            {tableData.map(({ objective: obj, keyResults: krs }) => {
+          <div className="space-y-5">
+            {tableData.map(({ macro, items: groupItems }) => {
+              const macroExpanded = expandedMacros.has(macro);
+              const macroAllKrs = groupItems.flatMap(g => g.keyResults);
+              const macroDone = macroAllKrs.filter(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status)).length;
+              const macroTotal = macroAllKrs.length;
+              const macroProgress = groupItems.length > 0
+                ? Math.round(groupItems.reduce((s, g) => s + (g.objective.progress || 0), 0) / groupItems.length)
+                : 0;
+
+              return (
+                <div key={macro || '__no_macro__'} className="space-y-2">
+                  {/* ── Macro Objective Header ── */}
+                  {macro && (
+                    <div
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 cursor-pointer select-none hover:bg-primary/10 transition-colors group/macro"
+                      onClick={() => toggleMacro(macro)}
+                    >
+                      <ChevronRight className={cn("h-5 w-5 shrink-0 text-primary/60 mt-0.5 transition-transform duration-200", macroExpanded && "rotate-90")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-snug">{macro}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {groupItems.length} resultado{groupItems.length !== 1 ? 's' : ''}-chave · {macroDone}/{macroTotal} atividades concluídas
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+                          <span className="text-sm font-bold tabular-nums text-foreground">{macroProgress}%</span>
+                          <Progress value={macroProgress} className="h-1.5 w-14" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Objectives inside this macro ── */}
+                  {(macroExpanded || !macro) && (
+                    <div className={cn("space-y-2.5", macro && "ml-4")}>
+                      {groupItems.map(({ objective: obj, keyResults: krs }) => {
               const isExpanded = expandedObjs.has(obj.id);
               const doneCount = krs.filter(kr => ['finalizado', 'finalizado_com_atraso'].includes(kr.activity_status)).length;
               const hasAtrasado = krs.some(kr => kr.activity_status === 'atrasado');
@@ -640,27 +693,27 @@ export function OkrBoard() {
                               <div className="px-1 min-w-0 cursor-pointer" onClick={() => openDetail(obj)}>
                                 <p className="text-xs font-medium text-foreground truncate hover:text-primary transition-colors">{kr.title}</p>
                               </div>
-                              {/* Área - inline editable */}
+                              {/* Área */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.area || ''} field="area" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Responsável - inline editable */}
+                              {/* Responsável */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.responsible_name || ''} field="responsible_name" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Equipe de Apoio - inline editable */}
+                              {/* Equipe de Apoio */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.support_team || ''} field="support_team" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
-                              {/* Início - inline editable */}
+                              {/* Início */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.start_date || ''} field="start_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className={cn("text-center mx-auto")} />
                               </div>
-                              {/* Final - inline editable */}
+                              {/* Final */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.end_date || ''} field="end_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className={cn("text-center mx-auto", deadlineColor(kr.end_date))} />
                               </div>
-                              {/* Entrega - inline editable */}
+                              {/* Entrega */}
                               <div className="px-1 text-center" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.delivery_date || ''} field="delivery_date" krId={kr.id} canManage={canManage} onSave={handleInlineSave} type="date" className="text-center mx-auto" />
                               </div>
@@ -730,6 +783,11 @@ export function OkrBoard() {
                   )}
                 </div>
               );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
             })}
           </div>
         )}
@@ -772,16 +830,23 @@ export function OkrBoard() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
-              {/* Objetivo */}
+              {/* Objetivo Macro */}
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold">Objetivo</Label>
-                <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Aumentar o uso e pertencimento tecnológico..." className="text-sm resize-none" />
+                <Label className="text-xs font-semibold">Objetivo Macro</Label>
+                <Textarea value={editingObj.macro_objective || ''} onChange={e => setEditingObj(p => ({ ...p, macro_objective: e.target.value }))} rows={2} placeholder="Ex: Aumentar o uso e pertencimento tecnológico e a infraestrutura digital..." className="text-sm resize-none" />
+                <p className="text-[10px] text-muted-foreground">Agrupa vários resultados-chave sob um mesmo objetivo estratégico.</p>
               </div>
 
-              {/* Resultado-chave */}
+              {/* Resultado-Chave (título do objetivo) */}
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold">Resultado-chave</Label>
-                <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento..." className="text-sm resize-none" />
+                <Label className="text-xs font-semibold">Resultado-Chave</Label>
+                <Textarea value={editingObj.title || ''} onChange={e => setEditingObj(p => ({ ...p, title: e.target.value }))} rows={2} placeholder="Ex: Gestão da infraestrutura de TI: Monitoramento e manutenção..." className="text-sm resize-none" />
+              </div>
+
+              {/* Descrição */}
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-semibold">Descrição (opcional)</Label>
+                <Textarea value={editingObj.description || ''} onChange={e => setEditingObj(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Detalhes adicionais..." className="text-sm resize-none" />
               </div>
 
               {/* Indicadores */}

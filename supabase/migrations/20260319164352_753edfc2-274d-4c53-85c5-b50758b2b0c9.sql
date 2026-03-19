@@ -1,0 +1,1 @@
+ALTER TABLE public.okr_objectives ADD COLUMN macro_objective text DEFAULT '';

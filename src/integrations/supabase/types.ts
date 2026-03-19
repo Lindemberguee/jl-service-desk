@@ -1729,6 +1729,7 @@ export type Database = {
           description: string | null
           id: string
           indicator: string | null
+          macro_objective: string | null
           owner_user_id: string | null
           priority: string
           progress: number
@@ -1749,6 +1750,7 @@ export type Database = {
           description?: string | null
           id?: string
           indicator?: string | null
+          macro_objective?: string | null
           owner_user_id?: string | null
           priority?: string
           progress?: number
@@ -1769,6 +1771,7 @@ export type Database = {
           description?: string | null
           id?: string
           indicator?: string | null
+          macro_objective?: string | null
           owner_user_id?: string | null
           priority?: string
           progress?: number

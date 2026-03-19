@@ -32,6 +32,7 @@ export interface OkrObjective {
   indicator: string;
   target_label: string;
   responsible_name: string;
+  macro_objective: string;
 }
 
 export interface OkrKeyResult {
