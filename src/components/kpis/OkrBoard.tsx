@@ -39,7 +39,8 @@ const STATUSES: Record<string, { label: string; color: string; icon: React.Eleme
   a_iniciar:             { label: 'Pendente',            color: 'text-muted-foreground', icon: Clock,        cls: 'bg-muted/60 text-muted-foreground border-border' },
   em_andamento:          { label: 'Em andamento',        color: 'text-blue-500',         icon: Play,         cls: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
   no_prazo:              { label: 'No prazo',            color: 'text-emerald-500',      icon: CheckCircle2, cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  atrasado:              { label: 'Atrasado',            color: 'text-red-500',          icon: AlertTriangle, cls: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+  fora_do_prazo:         { label: 'Fora do Prazo',       color: 'text-red-500',          icon: AlertTriangle, cls: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+  atrasado:              { label: 'Fora do Prazo',       color: 'text-red-500',          icon: AlertTriangle, cls: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
   finalizado:            { label: 'Concluído',           color: 'text-emerald-600',      icon: CheckCircle2, cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' },
   finalizado_com_atraso: { label: 'Concluído c/ atraso', color: 'text-orange-500',       icon: Timer,        cls: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
   pausado:               { label: 'Pausado',             color: 'text-muted-foreground', icon: Pause,        cls: 'bg-muted/60 text-muted-foreground border-border' },
@@ -559,11 +560,12 @@ export function OkrBoard() {
                   {isExpanded && krs.length > 0 && (
                     <div className="border-t border-border/30 overflow-x-auto">
                       {/* Header */}
-                      <div className="grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_90px_100px_72px_72px_72px_48px_36px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 py-1.5 bg-muted/20 min-w-[1000px] border-b border-border/20">
+                      <div className="grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_80px_80px_90px_72px_72px_72px_48px_36px] items-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 py-1.5 bg-muted/20 min-w-[1100px] border-b border-border/20">
                         <div className="px-1">Indicador</div>
                         <div className="px-1 text-center">Status</div>
                         <div className="px-1 text-center">Meta</div>
                         <div className="px-1">Descrição Atividade</div>
+                        <div className="px-1">Área</div>
                         <div className="px-1">Responsável</div>
                         <div className="px-1">Eq. Apoio</div>
                         <div className="px-1 text-center">Início</div>
@@ -573,7 +575,7 @@ export function OkrBoard() {
                         <div />
                       </div>
                       {/* Rows */}
-                      <div className="min-w-[1000px]">
+                      <div className="min-w-[1100px]">
                         {krs.map((kr, idx) => {
                           const pct = krProgress(kr);
                           const krSt = STATUSES[kr.activity_status] || STATUSES.a_iniciar;
@@ -587,7 +589,7 @@ export function OkrBoard() {
                             <div
                               key={kr.id}
                               className={cn(
-                                "grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_90px_100px_72px_72px_72px_48px_36px] items-center px-3 py-1.5 hover:bg-accent/15 transition-colors group/kr",
+                                "grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_80px_80px_90px_72px_72px_72px_48px_36px] items-center px-3 py-1.5 hover:bg-accent/15 transition-colors group/kr",
                                 !isLast && "border-b border-border/15"
                               )}
                             >
@@ -637,6 +639,10 @@ export function OkrBoard() {
                               {/* Descrição Atividade */}
                               <div className="px-1 min-w-0 cursor-pointer" onClick={() => openDetail(obj)}>
                                 <p className="text-xs font-medium text-foreground truncate hover:text-primary transition-colors">{kr.title}</p>
+                              </div>
+                              {/* Área - inline editable */}
+                              <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
+                                <InlineCell value={kr.area || ''} field="area" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
                               </div>
                               {/* Responsável - inline editable */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
