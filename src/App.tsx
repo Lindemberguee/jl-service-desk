@@ -9,7 +9,7 @@ import { RequesterLayout } from "@/components/layout/RequesterLayout";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
-import WorkOrders from "@/pages/WorkOrders";
+import WorkOrdersScreen from "@/modules/work-orders/screens/WorkOrdersScreen";
 import WorkOrderCreate from "@/pages/WorkOrderCreate";
 import MyWorkOrders from "@/pages/MyWorkOrders";
 import MyWorkOrderDetail from "@/pages/MyWorkOrderDetail";
@@ -84,17 +84,14 @@ function ProtectedRoutes() {
 
   if (!user) return <ShowcasePage />;
 
-  // Solicitante and leitura roles get the simplified portal
-  if (currentRole === 'solicitante' || currentRole === 'leitura') {
+  if (currentRole === "solicitante" || currentRole === "leitura") {
     return <Navigate to="/portal" replace />;
   }
 
-  // Technician gets the tech panel
-  if (currentRole === 'tecnico') {
+  if (currentRole === "tecnico") {
     return <Navigate to="/tech" replace />;
   }
 
-  // All other roles (admin, coordenador, analista, super_admin) use AppLayout
   return <AppLayout />;
 }
 
@@ -110,7 +107,7 @@ function ProtectedMasterRoutes() {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (currentRole !== 'super_admin') return <Navigate to="/403" replace />;
+  if (currentRole !== "super_admin") return <Navigate to="/403" replace />;
 
   return <MasterLayout />;
 }
@@ -132,7 +129,7 @@ function ProtectedPortalRoutes() {
 }
 
 function ProtectedTechRoutes() {
-  const { user, loading, currentRole } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -159,14 +156,15 @@ function AuthGate() {
   }
 
   if (user) {
-    if (currentRole === 'solicitante' || currentRole === 'leitura') {
+    if (currentRole === "solicitante" || currentRole === "leitura") {
       return <Navigate to="/portal" replace />;
     }
-    if (currentRole === 'tecnico') {
+    if (currentRole === "tecnico") {
       return <Navigate to="/tech" replace />;
     }
     return <Navigate to="/dashboard" replace />;
   }
+
   return <Login />;
 }
 
@@ -182,14 +180,15 @@ function HomeGate() {
   }
 
   if (user) {
-    if (currentRole === 'solicitante' || currentRole === 'leitura') {
+    if (currentRole === "solicitante" || currentRole === "leitura") {
       return <Navigate to="/portal" replace />;
     }
-    if (currentRole === 'tecnico') {
+    if (currentRole === "tecnico") {
       return <Navigate to="/tech" replace />;
     }
     return <Navigate to="/dashboard" replace />;
   }
+
   return <ShowcasePage />;
 }
 
@@ -201,7 +200,6 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            
             <Route path="/login" element={<AuthGate />} />
             <Route path="/showcase" element={<ShowcasePage />} />
             <Route path="/landing" element={<Navigate to="/" replace />} />
@@ -210,7 +208,6 @@ const App = () => (
             <Route path="/apresentacao" element={<PresentationPage />} />
             <Route path="/signup" element={<SignupPage />} />
 
-            {/* Requester Portal */}
             <Route path="/portal" element={<ProtectedPortalRoutes />}>
               <Route index element={<PortalHome />} />
               <Route path="nova" element={<PortalNewRequest />} />
@@ -218,7 +215,6 @@ const App = () => (
               <Route path="perfil" element={<PortalProfile />} />
             </Route>
 
-            {/* Technician Panel */}
             <Route path="/tech" element={<ProtectedTechRoutes />}>
               <Route index element={<TechDashboard />} />
               <Route path="os" element={<TechWorkOrders />} />
@@ -226,7 +222,6 @@ const App = () => (
               <Route path="perfil" element={<TechProfile />} />
             </Route>
 
-            {/* Master Admin Panel — super_admin only */}
             <Route path="/master" element={<ProtectedMasterRoutes />}>
               <Route index element={<MasterDashboard />} />
               <Route path="usuarios" element={<MasterUsersPage />} />
@@ -234,15 +229,56 @@ const App = () => (
               <Route path="email" element={<MasterSmtpPage />} />
             </Route>
 
-            {/* Admin/Operational Layout */}
             <Route path="/" element={<ProtectedRoutes />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<PermissionGuard permission="dashboard:read"><Dashboard /></PermissionGuard>} />
-              <Route path="os" element={<PermissionGuard permission="os:read"><WorkOrders /></PermissionGuard>} />
-              <Route path="os/nova" element={<PermissionGuard permission="os:create"><WorkOrderCreate /></PermissionGuard>} />
-              <Route path="os/:id" element={<PermissionGuard permission="os:read"><WorkOrderDetail /></PermissionGuard>} />
-              <Route path="minhas-os" element={<PermissionGuard permission="my_os:read"><MyWorkOrders /></PermissionGuard>} />
-              <Route path="minhas-os/:id" element={<PermissionGuard permission="my_os:read"><MyWorkOrderDetail /></PermissionGuard>} />
+              <Route
+                path="dashboard"
+                element={
+                  <PermissionGuard permission="dashboard:read">
+                    <Dashboard />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="os"
+                element={
+                  <PermissionGuard permission="os:read">
+                    <WorkOrdersScreen />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="os/nova"
+                element={
+                  <PermissionGuard permission="os:create">
+                    <WorkOrderCreate />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="os/:id"
+                element={
+                  <PermissionGuard permission="os:read">
+                    <WorkOrderDetail />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="minhas-os"
+                element={
+                  <PermissionGuard permission="my_os:read">
+                    <MyWorkOrders />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="minhas-os/:id"
+                element={
+                  <PermissionGuard permission="my_os:read">
+                    <MyWorkOrderDetail />
+                  </PermissionGuard>
+                }
+              />
               <Route path="cadastros" element={<PermissionGuard permission="cadastros:read"><Cadastros /></PermissionGuard>} />
               <Route path="ativos" element={<PermissionGuard permission="assets:read"><Assets /></PermissionGuard>} />
               <Route path="colaboradores" element={<PermissionGuard permission="collaborators:read"><CollaboratorsPage /></PermissionGuard>} />
@@ -267,7 +303,6 @@ const App = () => (
               <Route path="ferramentas/planner" element={<PermissionGuard permission="tools:planner"><PlannerPage /></PermissionGuard>} />
               <Route path="notificacoes" element={<NotificationsPage />} />
               <Route path="perfil" element={<ProfilePage />} />
-              {/* Admin routes */}
               <Route path="admin" element={<PermissionGuard permission="settings:manage"><AdminDashboard /></PermissionGuard>} />
               <Route path="admin/departamentos" element={<PermissionGuard permission="settings:manage"><AdminDepartments /></PermissionGuard>} />
               <Route path="admin/usuarios" element={<PermissionGuard permission="settings:manage"><AdminUsers /></PermissionGuard>} />
