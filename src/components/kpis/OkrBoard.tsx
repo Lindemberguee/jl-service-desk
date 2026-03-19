@@ -575,7 +575,7 @@ export function OkrBoard() {
                         <div />
                       </div>
                       {/* Rows */}
-                      <div className="min-w-[1000px]">
+                      <div className="min-w-[1100px]">
                         {krs.map((kr, idx) => {
                           const pct = krProgress(kr);
                           const krSt = STATUSES[kr.activity_status] || STATUSES.a_iniciar;
@@ -589,7 +589,7 @@ export function OkrBoard() {
                             <div
                               key={kr.id}
                               className={cn(
-                                "grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_90px_100px_72px_72px_72px_48px_36px] items-center px-3 py-1.5 hover:bg-accent/15 transition-colors group/kr",
+                                "grid grid-cols-[minmax(140px,2fr)_72px_56px_minmax(160px,3fr)_80px_80px_90px_72px_72px_72px_48px_36px] items-center px-3 py-1.5 hover:bg-accent/15 transition-colors group/kr",
                                 !isLast && "border-b border-border/15"
                               )}
                             >
