@@ -136,7 +136,7 @@ function InlineCell({
 
 export function OkrBoard() {
   const {
-    cycles, objectives, keyResults, isLoading,
+    cycles, objectives, keyResults, checkins, isLoading,
     createCycle, updateCycle, deleteCycle,
     createObjective, updateObjective, deleteObjective,
     createKeyResult, updateKeyResult, deleteKeyResult,
