@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useOkrs, type OkrCycle, type OkrObjective, type OkrKeyResult } from '@/hooks/useOkrs';
 import { useKpis } from '@/hooks/useKpis';
+import { OkrReportExport } from '@/components/kpis/OkrReportExport';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
