@@ -163,6 +163,7 @@ export function OkrBoard() {
   const [detailObjective, setDetailObjective] = useState<OkrObjective | null>(null);
   const [detailActivities, setDetailActivities] = useState<OkrKeyResult[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [expandedMacros, setExpandedMacros] = useState<Set<string>>(new Set());
 
   const openDetail = (obj: OkrObjective) => {
     const krs = keyResults.filter(kr => kr.objective_id === obj.id);
