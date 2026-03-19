@@ -640,6 +640,10 @@ export function OkrBoard() {
                               <div className="px-1 min-w-0 cursor-pointer" onClick={() => openDetail(obj)}>
                                 <p className="text-xs font-medium text-foreground truncate hover:text-primary transition-colors">{kr.title}</p>
                               </div>
+                              {/* Área - inline editable */}
+                              <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
+                                <InlineCell value={kr.area || ''} field="area" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
+                              </div>
                               {/* Responsável - inline editable */}
                               <div className="px-1 min-w-0" onClick={e => e.stopPropagation()}>
                                 <InlineCell value={kr.responsible_name || ''} field="responsible_name" krId={kr.id} canManage={canManage} onSave={handleInlineSave} />
