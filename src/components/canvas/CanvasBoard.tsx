@@ -32,7 +32,7 @@ import { useCanvasHistory } from '@/hooks/useCanvasHistory';
 import { useCanvasRealtime, type CanvasOp } from '@/hooks/useCanvasRealtime';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sparkles, PanelLeftOpen, Settings2, Workflow, Shapes, PlusCircle } from 'lucide-react';
+import { Sparkles, PanelLeftOpen, Settings2, Workflow, Shapes, PlusCircle, Share2, ShieldCheck, Eye, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +100,7 @@ function CanvasBoardInner({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [quickMenu, setQuickMenu] = useState<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ id: string; position: { x: number; y: number } } | null>(null);
+  const [shareInfo, setShareInfo] = useState<{ publicToken: string | null; sharesCount: number }>({ publicToken: null, sharesCount: 0 });
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const contextMenuPos = useRef({ x: 0, y: 0 });
   const { screenToFlowPosition, getViewport, flowToScreenPosition } = useReactFlow();
@@ -164,7 +165,7 @@ function CanvasBoardInner({
     }
   }, [setNodes, setEdges]);
 
-  const { remoteUsers, broadcastCursor, broadcastSelection, broadcastOp } = useCanvasRealtime({
+  const { remoteUsers, broadcastCursor, broadcastSelection, broadcastOp, connectionState, queuedOpsCount } = useCanvasRealtime({
     boardId,
     userId: user?.id || '',
     userName,
@@ -173,6 +174,22 @@ function CanvasBoardInner({
     readOnly,
     onRemoteOp: handleRemoteOp,
   });
+
+  useEffect(() => {
+    const loadShareInfo = async () => {
+      const [{ data: boardData }, { count }] = await Promise.all([
+        supabase.from('canvas_boards').select('public_share_token').eq('id', boardId).single(),
+        supabase.from('canvas_board_shares').select('*', { count: 'exact', head: true }).eq('board_id', boardId),
+      ]);
+
+      setShareInfo({
+        publicToken: boardData?.public_share_token || null,
+        sharesCount: count || 0,
+      });
+    };
+
+    if (boardId) loadShareInfo();
+  }, [boardId]);
 
   useEffect(() => {
     if (!hasSyncedSnapshotRef.current) {
@@ -193,15 +210,11 @@ function CanvasBoardInner({
     const nextNodeMap = new Map(nodes.map((n) => [n.id, n]));
 
     nodes.forEach((node) => {
-      if (!prevNodeMap.has(node.id)) {
-        broadcastOp({ type: 'node:add', node });
-      }
+      if (!prevNodeMap.has(node.id)) broadcastOp({ type: 'node:add', node });
     });
 
     prevNodes.forEach((node) => {
-      if (!nextNodeMap.has(node.id)) {
-        broadcastOp({ type: 'node:remove', nodeId: node.id });
-      }
+      if (!nextNodeMap.has(node.id)) broadcastOp({ type: 'node:remove', nodeId: node.id });
     });
 
     nodes.forEach((node) => {
@@ -216,15 +229,11 @@ function CanvasBoardInner({
     const nextEdgeMap = new Map(edges.map((e) => [e.id, e]));
 
     edges.forEach((edge) => {
-      if (!prevEdgeMap.has(edge.id)) {
-        broadcastOp({ type: 'edge:add', edge });
-      }
+      if (!prevEdgeMap.has(edge.id)) broadcastOp({ type: 'edge:add', edge });
     });
 
     prevEdges.forEach((edge) => {
-      if (!nextEdgeMap.has(edge.id)) {
-        broadcastOp({ type: 'edge:remove', edgeId: edge.id });
-      }
+      if (!nextEdgeMap.has(edge.id)) broadcastOp({ type: 'edge:remove', edgeId: edge.id });
     });
 
     edges.forEach((edge) => {
@@ -233,12 +242,7 @@ function CanvasBoardInner({
       const dataChanged = !isEqualJson(prevEdge.data, edge.data);
       const markerChanged = !isEqualJson(prevEdge.markerEnd, edge.markerEnd);
       if (dataChanged || markerChanged) {
-        broadcastOp({
-          type: 'edge:update',
-          edgeId: edge.id,
-          data: (edge.data ?? {}) as Record<string, unknown>,
-          markerEnd: edge.markerEnd,
-        });
+        broadcastOp({ type: 'edge:update', edgeId: edge.id, data: (edge.data ?? {}) as Record<string, unknown>, markerEnd: edge.markerEnd });
       }
     });
   }, [nodes, edges, readOnly, broadcastOp]);
@@ -253,20 +257,13 @@ function CanvasBoardInner({
   useEffect(() => {
     const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
     broadcastSelection(selectedIds);
-    if (selectedIds.length === 1) {
-      setSelectedNodeId(selectedIds[0]);
-    } else {
-      setSelectedNodeId(null);
-    }
+    setSelectedNodeId(selectedIds.length === 1 ? selectedIds[0] : null);
   }, [nodes, broadcastSelection]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
     if (!reactFlowWrapper.current) return;
     const bounds = reactFlowWrapper.current.getBoundingClientRect();
-    const flowPos = screenToFlowPosition({
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    });
+    const flowPos = screenToFlowPosition({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
     broadcastCursor(flowPos.x, flowPos.y);
   }, [screenToFlowPosition, broadcastCursor]);
 
@@ -274,9 +271,7 @@ function CanvasBoardInner({
     if (!currentTenantId) return;
     const channel = supabase
       .channel(`canvas-db-${boardId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'canvas_boards', filter: `id=eq.${boardId}`,
-      }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'canvas_boards', filter: `id=eq.${boardId}` }, (payload) => {
         const updated = payload.new as any;
         if (lastSavedAtRef.current && updated.updated_at === lastSavedAtRef.current) return;
         if (isSavingRef.current) return;
@@ -350,12 +345,7 @@ function CanvasBoardInner({
     pushHistory();
     const preset = getPreset('idea');
     const newId = getNodeId();
-    const newNode: Node = {
-      id: newId,
-      type: 'canvasNode',
-      data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: 'idea' } satisfies CanvasNodeData,
-      position,
-    };
+    const newNode: Node = { id: newId, type: 'canvasNode', data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: 'idea' } satisfies CanvasNodeData, position };
     setNodes((nds) => [...nds, newNode]);
     broadcastOp({ type: 'node:add', node: newNode });
 
@@ -381,13 +371,7 @@ function CanvasBoardInner({
     if (readOnly) return;
     pushHistory();
     const edgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const edgeToAdd: Edge = {
-      id: edgeId,
-      ...params,
-      type: 'custom',
-      data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
-      markerEnd: createEdgeMarker(edgeColor),
-    };
+    const edgeToAdd: Edge = { id: edgeId, ...params, type: 'custom', data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData, markerEnd: createEdgeMarker(edgeColor) };
     setEdges((eds) => addEdge(edgeToAdd, eds));
     broadcastOp({ type: 'edge:add', edge: edgeToAdd });
     connectingFrom.current = null;
@@ -397,12 +381,7 @@ function CanvasBoardInner({
     if (readOnly) return;
     pushHistory();
     const preset = getPreset(type);
-    const newNode: Node = {
-      id: getNodeId(),
-      type: 'canvasNode',
-      data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: type } satisfies CanvasNodeData,
-      position,
-    };
+    const newNode: Node = { id: getNodeId(), type: 'canvasNode', data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: type } satisfies CanvasNodeData, position };
     setNodes((nds) => [...nds, newNode]);
     broadcastOp({ type: 'node:add', node: newNode });
   }, [nodes.length, setNodes, readOnly, pushHistory, broadcastOp]);
@@ -410,10 +389,7 @@ function CanvasBoardInner({
   const createNodeAtViewportCenter = useCallback((type: string) => {
     if (!reactFlowWrapper.current) return;
     const bounds = reactFlowWrapper.current.getBoundingClientRect();
-    const center = screenToFlowPosition({
-      x: bounds.left + bounds.width / 2,
-      y: bounds.top + bounds.height / 2,
-    });
+    const center = screenToFlowPosition({ x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 });
     createNode(type, center);
   }, [createNode, screenToFlowPosition]);
 
@@ -455,13 +431,7 @@ function CanvasBoardInner({
     if (selected.length === 0) return;
     pushHistory();
     const newNodes = selected.map((n) => {
-      const nn: Node = {
-        ...n,
-        id: getNodeId(),
-        position: { x: n.position.x + 40, y: n.position.y + 40 },
-        selected: false,
-        data: { ...n.data },
-      };
+      const nn: Node = { ...n, id: getNodeId(), position: { x: n.position.x + 40, y: n.position.y + 40 }, selected: false, data: { ...n.data } };
       broadcastOp({ type: 'node:add', node: nn });
       return nn;
     });
@@ -522,9 +492,7 @@ function CanvasBoardInner({
     const hasDragEnd = changes.some((c: any) => c.type === 'position' && c.dragging === false);
     if (hasDragEnd) pushHistory();
     changes.forEach((c: any) => {
-      if (c.type === 'position' && c.position && !c.dragging) {
-        broadcastOp({ type: 'node:move', nodeId: c.id, position: c.position });
-      }
+      if (c.type === 'position' && c.position && !c.dragging) broadcastOp({ type: 'node:move', nodeId: c.id, position: c.position });
     });
     onNodesChange(changes);
   }, [onNodesChange, pushHistory, broadcastOp]);
@@ -565,27 +533,18 @@ function CanvasBoardInner({
     return map;
   }, [remoteUsers]);
 
-  const styledNodes = useMemo(() => {
-    return nodes.map((n) => {
-      const remote = remoteSelections.get(n.id);
-      if (remote) {
-        return {
-          ...n,
-          style: {
-            ...n.style,
-            outline: `2px solid ${remote.color}`,
-            outlineOffset: '3px',
-            borderRadius: '12px',
-          },
-        };
-      }
-      return n.style ? { ...n, style: undefined } : n;
-    });
-  }, [nodes, remoteSelections]);
+  const styledNodes = useMemo(() => nodes.map((n) => {
+    const remote = remoteSelections.get(n.id);
+    if (remote) {
+      return { ...n, style: { ...n.style, outline: `2px solid ${remote.color}`, outlineOffset: '3px', borderRadius: '12px' } };
+    }
+    return n.style ? { ...n, style: undefined } : n;
+  }), [nodes, remoteSelections]);
 
   const isEmpty = nodes.length === 0 && edges.length === 0;
   const boardModeLabel = readOnly ? 'Visualização' : 'Edição colaborativa';
   const collaboratorsCount = remoteUsers.length + 1;
+  const isShared = shareInfo.sharesCount > 0 || !!shareInfo.publicToken;
 
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative" onMouseMove={handleMouseMove}>
@@ -594,12 +553,7 @@ function CanvasBoardInner({
         <div className="absolute left-3 top-3 z-10">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-9 w-9 rounded-xl shadow-xl bg-card/95 backdrop-blur-md border border-border hover:bg-accent"
-                onClick={() => setShowPalette(true)}
-              >
+              <Button variant="secondary" size="icon" className="h-10 w-10 rounded-2xl shadow-xl bg-card/95 backdrop-blur-md border border-border hover:bg-accent" onClick={() => setShowPalette(true)}>
                 <PanelLeftOpen className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -609,22 +563,41 @@ function CanvasBoardInner({
       )}
 
       <div className="absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-1.5rem)] pr-4">
-        <div className="rounded-2xl border border-border/70 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-md">
+        <div className="rounded-3xl border border-border/70 bg-card/95 px-4 py-3 shadow-xl backdrop-blur-md min-w-[230px]">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Workflow className="h-4 w-4 text-primary" />
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">Canvas Board</span>
           </div>
-          <p className="mt-1 text-sm font-semibold truncate max-w-[260px]">{boardName}</p>
+          <p className="mt-1.5 text-sm font-semibold truncate max-w-[260px]">{boardName}</p>
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            <Badge variant="outline" className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] gap-1.5">
+              <Shapes className="h-3 w-3" /> {nodes.length} nós • {edges.length} conexões
+            </Badge>
+            <Badge variant={readOnly ? 'secondary' : 'default'} className="rounded-full px-2.5 py-1 text-[10px]">{boardModeLabel}</Badge>
+          </div>
         </div>
-        <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1 text-[10px] gap-1.5">
-          <Shapes className="h-3.5 w-3.5" /> {nodes.length} nós • {edges.length} conexões
-        </Badge>
-        <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1 text-[10px] gap-1.5">
+
+        <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1.5 text-[10px] gap-1.5">
           <Sparkles className="h-3.5 w-3.5" /> {collaboratorsCount} pessoa{collaboratorsCount > 1 ? 's' : ''}
         </Badge>
-        <Badge variant={readOnly ? 'secondary' : 'default'} className="rounded-full px-3 py-1 text-[10px]">
-          {boardModeLabel}
-        </Badge>
+
+        {isShared && (
+          <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1.5 text-[10px] gap-1.5 text-blue-600 border-blue-500/20 bg-blue-500/5">
+            <Share2 className="h-3.5 w-3.5" /> compartilhado
+          </Badge>
+        )}
+
+        {shareInfo.sharesCount > 0 && (
+          <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1.5 text-[10px] gap-1.5 text-indigo-600 border-indigo-500/20 bg-indigo-500/5">
+            <ShieldCheck className="h-3.5 w-3.5" /> {shareInfo.sharesCount} acesso(s) interno(s)
+          </Badge>
+        )}
+
+        {shareInfo.publicToken && (
+          <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1.5 text-[10px] gap-1.5 text-amber-600 border-amber-500/20 bg-amber-500/5">
+            <Eye className="h-3.5 w-3.5" /> link público ativo
+          </Badge>
+        )}
       </div>
 
       {showInspector && (
@@ -637,13 +610,7 @@ function CanvasBoardInner({
         />
       )}
 
-      {quickMenu && (
-        <QuickNodeMenu
-          position={quickMenu.screen}
-          onSelect={handleQuickNodeSelect}
-          onClose={() => setQuickMenu(null)}
-        />
-      )}
+      {quickMenu && <QuickNodeMenu position={quickMenu.screen} onSelect={handleQuickNodeSelect} onClose={() => setQuickMenu(null)} />}
 
       <CanvasCursors remoteUsers={remoteUsers} />
 
@@ -654,28 +621,16 @@ function CanvasBoardInner({
               <Workflow className="h-7 w-7" />
             </div>
             <h2 className="text-xl font-semibold tracking-tight">Seu canvas está pronto para ganhar forma</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Arraste blocos da paleta, dê 2 cliques no quadro para criar rapidamente ou use os atalhos da barra inferior para começar com ideias, tarefas e alertas.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Arraste blocos da paleta, dê 2 cliques no quadro para criar rapidamente ou use os atalhos da barra inferior para começar com ideias, tarefas e alertas.</p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <Button className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('idea')}>
-                <PlusCircle className="h-4 w-4" /> Adicionar ideia
-              </Button>
-              <Button variant="outline" className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('task')}>
-                <PlusCircle className="h-4 w-4" /> Adicionar tarefa
-              </Button>
+              <Button className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('idea')}><PlusCircle className="h-4 w-4" /> Adicionar ideia</Button>
+              <Button variant="outline" className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('task')}><PlusCircle className="h-4 w-4" /> Adicionar tarefa</Button>
             </div>
           </div>
         </div>
       )}
 
-      <CanvasContextMenu
-        onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))}
-        onDeleteSelected={deleteSelected}
-        onDuplicate={duplicateSelected}
-        onSelectAll={selectAll}
-        position={contextMenuPos}
-      >
+      <CanvasContextMenu onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))} onDeleteSelected={deleteSelected} onDuplicate={duplicateSelected} onSelectAll={selectAll} position={contextMenuPos}>
         <div className="w-full h-full">
           <ReactFlow
             nodes={styledNodes}
@@ -700,11 +655,7 @@ function CanvasBoardInner({
             nodesConnectable={!readOnly}
             elementsSelectable={!readOnly}
             connectionLineStyle={{ stroke: edgeColor, strokeWidth: 2 }}
-            defaultEdgeOptions={{
-              type: 'custom',
-              data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
-              markerEnd: createEdgeMarker(edgeColor),
-            }}
+            defaultEdgeOptions={{ type: 'custom', data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData, markerEnd: createEdgeMarker(edgeColor) }}
             className="canvas-flow"
             onContextMenu={(e) => { contextMenuPos.current = { x: e.clientX, y: e.clientY }; }}
             onDoubleClick={handleDoubleClick}
@@ -723,21 +674,14 @@ function CanvasBoardInner({
 
             <Panel position="top-right" className="mt-2 mr-2">
               <div className="flex items-center gap-2">
-                <CanvasPresenceBar remoteUsers={remoteUsers} currentUserName={userName} />
+                <CanvasPresenceBar remoteUsers={remoteUsers} currentUserName={userName} connectionState={connectionState} queuedOpsCount={queuedOpsCount} />
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant={showInspector ? 'default' : 'secondary'}
-                      size="icon"
-                      className="h-8 w-8 rounded-xl shadow-xl"
-                      onClick={() => setShowInspector((p) => !p)}
-                    >
+                    <Button variant={showInspector ? 'default' : 'secondary'} size="icon" className="h-10 w-10 rounded-2xl shadow-xl" onClick={() => setShowInspector((p) => !p)}>
                       <Settings2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="text-xs">
-                    {showInspector ? 'Ocultar inspetor' : 'Mostrar inspetor'}
-                  </TooltipContent>
+                  <TooltipContent side="left" className="text-xs">{showInspector ? 'Ocultar inspetor' : 'Mostrar inspetor'}</TooltipContent>
                 </Tooltip>
               </div>
             </Panel>
@@ -765,17 +709,7 @@ function CanvasBoardInner({
             <Panel position="bottom-left" className="mb-2 ml-2">
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 bg-card/80 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/50 shadow-sm">
                 <Sparkles className="h-3 w-3" />
-                {readOnly ? (
-                  'Somente leitura'
-                ) : (
-                  <span>
-                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">2×clique</kbd> novo bloco
-                    {' • '}
-                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Del</kbd> excluir
-                    {' • '}
-                    <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Ctrl+D</kbd> duplicar
-                  </span>
-                )}
+                {readOnly ? 'Somente leitura' : <span><kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">2×clique</kbd> novo bloco {' • '}<kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Del</kbd> excluir {' • '}<kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">Ctrl+D</kbd> duplicar</span>}
               </div>
             </Panel>
 
@@ -784,17 +718,8 @@ function CanvasBoardInner({
               if (!node) return null;
               const screen = flowToScreenPosition(node.position);
               return (
-                <div
-                  key={`sel-${nodeId}`}
-                  className="absolute pointer-events-none z-40"
-                  style={{ left: screen.x, top: screen.y - 20, transform: 'translateX(-50%)' }}
-                >
-                  <div
-                    className="px-1.5 py-0.5 rounded text-[9px] font-semibold text-white whitespace-nowrap"
-                    style={{ backgroundColor: color }}
-                  >
-                    {name}
-                  </div>
+                <div key={`sel-${nodeId}`} className="absolute pointer-events-none z-40" style={{ left: screen.x, top: screen.y - 20, transform: 'translateX(-50%)' }}>
+                  <div className="px-1.5 py-0.5 rounded text-[9px] font-semibold text-white whitespace-nowrap" style={{ backgroundColor: color }}>{name}</div>
                 </div>
               );
             })}
@@ -802,20 +727,11 @@ function CanvasBoardInner({
         </div>
       </CanvasContextMenu>
 
-      {!readOnly && (
-        <EdgeSettingsPanel
-          selectedEdgeId={selectedEdge?.id || null}
-          position={selectedEdge?.position || null}
-        />
-      )}
+      {!readOnly && <EdgeSettingsPanel selectedEdgeId={selectedEdge?.id || null} position={selectedEdge?.position || null} />}
     </div>
   );
 }
 
 export default function CanvasBoard(props: CanvasBoardProps) {
-  return (
-    <ReactFlowProvider>
-      <CanvasBoardInner {...props} />
-    </ReactFlowProvider>
-  );
+  return <ReactFlowProvider><CanvasBoardInner {...props} /></ReactFlowProvider>;
 }
