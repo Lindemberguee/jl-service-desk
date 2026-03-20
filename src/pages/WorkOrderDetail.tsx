@@ -11,12 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { statusLabels, statusColors, priorityLabels, priorityColors, hasPermission } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
-import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink, Printer } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clock, CheckSquare, Send, Loader2, Tag, MapPin, Play, Pause, RotateCcw, Lock, UserCheck, Building, Package, FolderOpen, AlertTriangle, Eye, EyeOff, Trash2, Star, User, Info, Calendar, Shield, Link, ExternalLink, Printer, TimerReset, Activity, Wrench } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -53,13 +52,11 @@ export default function WorkOrderDetail() {
   const [isPublicComment, setIsPublicComment] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [assignTo, setAssignTo] = useState('');
-  // Resolution fields
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [technicalNote, setTechnicalNote] = useState('');
   const [resolutionQuality, setResolutionQuality] = useState(0);
   const [resolutionTimeRating, setResolutionTimeRating] = useState(0);
 
-  // Data queries
   const { data: wo, isLoading } = useQuery({
     queryKey: ['work_order', id],
     queryFn: async () => {
@@ -117,7 +114,6 @@ export default function WorkOrderDetail() {
     enabled: !!woTenantId,
   });
 
-  // Checklist
   const { data: checklist = [], refetch: refetchChecklist } = useQuery({
     queryKey: ['wo_checklist', id],
     queryFn: async () => {
@@ -128,7 +124,6 @@ export default function WorkOrderDetail() {
     enabled: !!id,
   });
 
-  // Checklist mutation
   const checkMutation = useMutation({
     mutationFn: async ({ itemId, checked }: { itemId: string; checked: boolean }) => {
       const { error } = await supabase.from('work_order_checklist_items').update({
@@ -141,7 +136,6 @@ export default function WorkOrderDetail() {
     onSuccess: () => refetchChecklist(),
   });
 
-  // Mutations
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['work_order', id] });
     qc.invalidateQueries({ queryKey: ['work_order_events', id] });
@@ -175,7 +169,6 @@ export default function WorkOrderDetail() {
       await updateWO(updates, 'status_changed', { from: wo?.status, to: status });
       await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: status } });
 
-      // Auto-create maintenance record if asset linked and status is concluida
       if (status === 'concluida' && wo?.asset_id && currentTenantId) {
         try {
           await supabase.from('asset_maintenance_records').insert({
@@ -222,11 +215,7 @@ export default function WorkOrderDetail() {
     mutationFn: async () => {
       if (!wo) throw new Error('OS não encontrada');
       const now = new Date();
-      const updates: Record<string, any> = {
-        total_paused_ms: 0,
-        paused_at: null,
-      };
-      // Recalculate due dates from now, preserving original SLA windows
+      const updates: Record<string, any> = { total_paused_ms: 0, paused_at: null };
       if (wo.response_due_at && wo.created_at) {
         const originalWindow = new Date(wo.response_due_at).getTime() - new Date(wo.created_at).getTime();
         updates.response_due_at = new Date(now.getTime() + originalWindow).toISOString();
@@ -235,10 +224,7 @@ export default function WorkOrderDetail() {
         const originalWindow = new Date(wo.resolve_due_at).getTime() - new Date(wo.created_at).getTime();
         updates.resolve_due_at = new Date(now.getTime() + originalWindow).toISOString();
       }
-      // Reset started_at if not yet in execution
-      if (!['em_execucao'].includes(wo.status)) {
-        updates.started_at = null;
-      }
+      if (!['em_execucao'].includes(wo.status)) updates.started_at = null;
       await updateWO(updates, 'status_changed', { action: 'sla_reset', reset_by: user?.id });
       await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.sla_reset', tenantId: currentTenantId, diff: { old_response_due: wo.response_due_at, old_resolve_due: wo.resolve_due_at } });
     },
@@ -291,12 +277,21 @@ export default function WorkOrderDetail() {
   const getLocationName = (locId: string | null) => locations.find((l: any) => l.id === locId)?.name;
   const getAssetDisplay = (assetId: string | null) => { const a = assets.find((a: any) => a.id === assetId); if (!a) return undefined; return `${a.name}${a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}`; };
   const getCustomerName = (custId: string | null) => customers.find((c: any) => c.id === custId)?.name;
-
   const getRequesterDisplay = () => {
     if (wo.requester_id) return getCustomerName(wo.requester_id) || '—';
     if (wo.requester_user_id) return getProfileName(wo.requester_user_id) || '—';
     return '—';
   };
+
+  const openedAtLabel = new Date(wo.created_at).toLocaleString('pt-BR');
+  const updatedAtLabel = new Date(wo.updated_at).toLocaleString('pt-BR');
+  const checklistDone = checklist.filter((item: any) => item.is_checked).length;
+  const checklistLabel = checklist.length > 0 ? `${checklistDone}/${checklist.length}` : 'Sem checklist';
+  const activeSlaLabel = sla.resolveRemainingMs !== null && sla.resolveRemainingMs !== undefined
+    ? formatRemainingTime(sla.resolveRemainingMs)
+    : sla.responseRemainingMs !== null && sla.responseRemainingMs !== undefined
+      ? formatRemainingTime(sla.responseRemainingMs)
+      : 'Sem SLA';
 
   const handlePrintGuide = () => {
     const pc = primaryColor || '#3B82F6';
@@ -338,7 +333,7 @@ export default function WorkOrderDetail() {
         <div class="field"><div class="field-label">Unidade</div><div class="field-value">${getUnitName(wo.unit_id) || '—'}</div></div>
       </div>
       ${wo.description ? `<div class="desc-section"><h3>Descrição</h3><div class="desc-box">${wo.description}</div></div>` : ''}
-      ${wo.technical_note ? `<div class="desc-section"><h3>Nota Técnica</h3><div class="desc-box">${wo.technical_note}</div></div>` : ''}
+      ${(wo as any).technical_note ? `<div class="desc-section"><h3>Nota Técnica</h3><div class="desc-box">${(wo as any).technical_note}</div></div>` : ''}
       <div class="notes-section"><h3>Observações do Técnico</h3><div class="notes-box"></div></div>
       <div class="signature-area">
         <div class="sig-line"><div class="line"></div><span>Assinatura do Técnico</span></div>
@@ -355,117 +350,135 @@ export default function WorkOrderDetail() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
-      {/* ─── Hero Header ─── */}
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => navigate('/os')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">{wo.code}</span>
-              <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>{priorityLabels[wo.priority]}</Badge>
-              <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>{statusLabels[wo.status]}</Badge>
-              <SlaIndicator workOrder={wo} compact />
-              {wo.visibility === 'customer' && (
-                <Badge variant="outline" className="text-[11px] bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1">
-                  <Eye className="h-3 w-3" /> Cliente
-                </Badge>
+    <div className="max-w-7xl mx-auto space-y-5">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-sm">
+        <div className="p-4 sm:p-5 lg:p-6">
+          <div className="flex items-start gap-3">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl shrink-0" onClick={() => navigate('/os')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] font-mono text-muted-foreground">{wo.code}</span>
+                <Badge variant="outline" className={`text-[11px] ${priorityColors[wo.priority]}`}>{priorityLabels[wo.priority]}</Badge>
+                <Badge variant="outline" className={`text-[11px] ${statusColors[wo.status]}`}>{statusLabels[wo.status]}</Badge>
+                <SlaIndicator workOrder={wo} compact />
+                {wo.visibility === 'customer' && (
+                  <Badge variant="outline" className="text-[11px] gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                    <Eye className="h-3 w-3" /> Cliente
+                  </Badge>
+                )}
+              </div>
+
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight leading-tight">{wo.title}</h1>
+              <p className="mt-1 text-sm text-muted-foreground max-w-3xl">
+                Ordem de serviço com visão operacional completa, contexto técnico, SLA e histórico de execução centralizados em uma única tela.
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <HeaderMeta icon={User} label="Solicitante" value={getRequesterDisplay()} />
+                <HeaderMeta icon={UserCheck} label="Responsável" value={getProfileName(wo.assigned_to_id) || 'Não atribuído'} />
+                <HeaderMeta icon={Building} label="Unidade" value={getUnitName(wo.unit_id) || 'Não informada'} />
+                <HeaderMeta icon={Calendar} label="Abertura" value={openedAtLabel} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={handlePrintGuide} title="Imprimir Guia">
+                <Printer className="h-4 w-4" />
+              </Button>
+              {canManage && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
+                      <AlertDialogDescription>Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
-            <h1 className="text-lg sm:text-xl font-semibold leading-snug">{wo.title}</h1>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={handlePrintGuide} title="Imprimir Guia">
-              <Printer className="h-4 w-4" />
-            </Button>
-            {canManage && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
-                    <AlertDialogDescription>Tem certeza que deseja excluir a OS <strong>{wo.code}</strong>? Esta ação não pode ser desfeita.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        </div>
 
-        {/* Workflow action buttons */}
-        {canUpdate && !isClosed && (
-          <div className="flex gap-2 flex-wrap mt-4 pt-4 border-t border-border">
-            {wo.status === 'aberta' && (
-              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-                <Play className="h-3.5 w-3.5" /> Iniciar Execução
-              </Button>
-            )}
-            {isActive && (
-              <>
-                <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('aguardando_peca')} disabled={statusMutation.isPending}>
-                  <Pause className="h-3.5 w-3.5" /> Pausar (Peça)
+          {canUpdate && !isClosed && (
+            <div className="flex gap-2 flex-wrap mt-5 pt-4 border-t border-border/70">
+              {wo.status === 'aberta' && (
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                  <Play className="h-3.5 w-3.5" /> Iniciar Execução
                 </Button>
-                <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
-                  <Pause className="h-3.5 w-3.5" /> Pausar (Solicitante)
+              )}
+              {isActive && (
+                <>
+                  <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('aguardando_peca')} disabled={statusMutation.isPending}>
+                    <Pause className="h-3.5 w-3.5" /> Pausar (Peça)
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('aguardando_solicitante')} disabled={statusMutation.isPending}>
+                    <Pause className="h-3.5 w-3.5" /> Pausar (Solicitante)
+                  </Button>
+                  <Button size="sm" className="h-9 gap-1.5 text-xs rounded-xl bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowResolveDialog(true)} disabled={statusMutation.isPending}>
+                    <CheckSquare className="h-3.5 w-3.5" /> Resolver
+                  </Button>
+                </>
+              )}
+              {isPaused && (
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                  <Play className="h-3.5 w-3.5" /> Retomar
                 </Button>
-                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowResolveDialog(true)} disabled={statusMutation.isPending}>
-                  <CheckSquare className="h-3.5 w-3.5" /> Resolver
+              )}
+              {wo.status === 'concluida' && canClose && (
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('encerrada')} disabled={statusMutation.isPending}>
+                  <CheckSquare className="h-3.5 w-3.5" /> Encerrar
                 </Button>
-              </>
-            )}
-            {isPaused && (
-              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-                <Play className="h-3.5 w-3.5" /> Retomar
+              )}
+              {wo.status === 'reaberta' && (
+                <Button size="sm" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
+                  <Play className="h-3.5 w-3.5" /> Iniciar Execução
+                </Button>
+              )}
+            </div>
+          )}
+
+          {isClosed && wo.status !== 'reaberta' && canUpdate && (
+            <div className="mt-5 pt-4 border-t border-border/70">
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-xl" onClick={() => statusMutation.mutate('reaberta')} disabled={statusMutation.isPending}>
+                <RotateCcw className="h-3.5 w-3.5" /> Reabrir OS
               </Button>
-            )}
-            {wo.status === 'concluida' && canClose && (
-              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('encerrada')} disabled={statusMutation.isPending}>
-                <CheckSquare className="h-3.5 w-3.5" /> Encerrar
-              </Button>
-            )}
-            {wo.status === 'reaberta' && (
-              <Button size="sm" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('em_execucao')} disabled={statusMutation.isPending}>
-                <Play className="h-3.5 w-3.5" /> Iniciar Execução
-              </Button>
-            )}
-          </div>
-        )}
-        {isClosed && wo.status !== 'reaberta' && canUpdate && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs rounded-lg" onClick={() => statusMutation.mutate('reaberta')} disabled={statusMutation.isPending}>
-              <RotateCcw className="h-3.5 w-3.5" /> Reabrir OS
-            </Button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ─── Tabs ─── */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <QuickStatCard icon={Activity} label="Status atual" value={statusLabels[wo.status]} helper={isClosed ? 'Fluxo encerrado ou finalizado' : 'OS em ciclo operacional'} tone={isClosed ? 'success' : isPaused ? 'warning' : 'default'} />
+        <QuickStatCard icon={AlertTriangle} label="SLA ativo" value={activeSlaLabel} helper={sla.resolveOverdue || sla.responseOverdue ? 'Prazo extrapolado' : 'Prazo monitorado'} tone={sla.resolveOverdue || sla.responseOverdue ? 'danger' : 'success'} />
+        <QuickStatCard icon={CheckSquare} label="Checklist" value={checklistLabel} helper={checklist.length > 0 ? 'Acompanhamento operacional' : 'Nenhum item aplicado'} tone={checklist.length > 0 ? 'default' : 'warning'} />
+        <QuickStatCard icon={TimerReset} label="Última atualização" value={updatedAtLabel} helper="Movimentação mais recente da OS" tone="default" />
+      </div>
+
       <Tabs defaultValue="resumo">
-        <TabsList className="bg-card border border-border h-10 rounded-lg p-1">
-          <TabsTrigger value="resumo" className="text-xs h-8 rounded-md gap-1.5"><Info className="h-3.5 w-3.5" />Resumo</TabsTrigger>
-          <TabsTrigger value="timeline" className="text-xs h-8 rounded-md gap-1.5"><MessageSquare className="h-3.5 w-3.5" />Timeline ({events.length})</TabsTrigger>
-          {checklist.length > 0 && <TabsTrigger value="checklist" className="text-xs h-8 rounded-md gap-1.5"><CheckSquare className="h-3.5 w-3.5" />Checklist ({checklist.length})</TabsTrigger>}
-          <TabsTrigger value="anexos" className="text-xs h-8 rounded-md gap-1.5"><Package className="h-3.5 w-3.5" />Anexos</TabsTrigger>
-          <TabsTrigger value="custos" className="text-xs h-8 rounded-md gap-1.5"><Shield className="h-3.5 w-3.5" />Custos</TabsTrigger>
+        <TabsList className="bg-card border border-border h-10 rounded-xl p-1">
+          <TabsTrigger value="resumo" className="text-xs h-8 rounded-lg gap-1.5"><Info className="h-3.5 w-3.5" />Resumo</TabsTrigger>
+          <TabsTrigger value="timeline" className="text-xs h-8 rounded-lg gap-1.5"><MessageSquare className="h-3.5 w-3.5" />Timeline ({events.length})</TabsTrigger>
+          {checklist.length > 0 && <TabsTrigger value="checklist" className="text-xs h-8 rounded-lg gap-1.5"><CheckSquare className="h-3.5 w-3.5" />Checklist ({checklist.length})</TabsTrigger>}
+          <TabsTrigger value="anexos" className="text-xs h-8 rounded-lg gap-1.5"><Package className="h-3.5 w-3.5" />Anexos</TabsTrigger>
+          <TabsTrigger value="custos" className="text-xs h-8 rounded-lg gap-1.5"><Shield className="h-3.5 w-3.5" />Custos</TabsTrigger>
         </TabsList>
 
-        {/* ─── Resumo ─── */}
         <TabsContent value="resumo" className="mt-4 space-y-4">
-          {/* Row 1: Description + Requester side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <Card className="border-border shadow-none rounded-xl lg:col-span-3">
+            <Card className="border-border shadow-none rounded-2xl lg:col-span-3">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground" />Descrição</CardTitle>
               </CardHeader>
@@ -478,7 +491,7 @@ export default function WorkOrderDetail() {
               </CardContent>
             </Card>
 
-            <Card className="border-border shadow-none rounded-xl lg:col-span-2">
+            <Card className="border-border shadow-none rounded-2xl lg:col-span-2">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />Solicitante</CardTitle>
               </CardHeader>
@@ -500,7 +513,6 @@ export default function WorkOrderDetail() {
                   ) : (
                     <p className="text-muted-foreground text-xs italic">Não informado</p>
                   )}
-                  {/* Change requester — admin/coordenador only */}
                   {(canManage || canAssign) && (
                     <div className="pt-2 border-t border-border mt-2">
                       <Select
@@ -510,10 +522,7 @@ export default function WorkOrderDetail() {
                           const updates: any = {
                             requester_id: val,
                             requester_user_id: customer?.user_id || null,
-                            requester_contact: {
-                              email: customer?.email || null,
-                              phone: customer?.phone || null,
-                            },
+                            requester_contact: { email: customer?.email || null, phone: customer?.phone || null },
                           };
                           try {
                             await updateWO(updates);
@@ -541,13 +550,12 @@ export default function WorkOrderDetail() {
             </Card>
           </div>
 
-          {/* Row 2: Context (full width) */}
-          <Card className="border-border shadow-none rounded-xl">
+          <Card className="border-border shadow-none rounded-2xl">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />Contexto</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <InfoField icon={FolderOpen} label="Categoria" value={getCategoryName(wo.category_id)} />
                 <InfoField icon={Building} label="Unidade (Prédio / Campus)" value={getUnitName(wo.unit_id)} />
                 <InfoField icon={MapPin} label="Sala / Espaço" value={getLocationName(wo.location_id)} />
@@ -573,41 +581,33 @@ export default function WorkOrderDetail() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
-                        {assets
-                          .filter((a: any) => !['descartado', 'inativo'].includes(a.status))
-                          .map((a: any) => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}
-                            </SelectItem>
-                          ))}
+                        {assets.filter((a: any) => !['descartado', 'inativo'].includes(a.status)).map((a: any) => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}{a.patrimony_code ? ` — Pat. ${a.patrimony_code}` : ''}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
                 </div>
               </div>
+
               {(wo as any).external_link && (
-                <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-lg p-3">
+                <div className="mt-4 flex items-center gap-2 bg-muted/40 rounded-xl p-3">
                   <Link className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] uppercase font-medium text-muted-foreground">Link Externo</p>
-                    <a
-                      href={(wo as any).external_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-primary hover:underline flex items-center gap-1 truncate"
-                    >
+                    <a href={(wo as any).external_link} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline flex items-center gap-1 truncate">
                       {(wo as any).external_link}
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   </div>
                 </div>
               )}
-              {/* Technical Note */}
+
               {(wo as any).technical_note && (
-                <div className="mt-4 bg-muted/40 rounded-lg p-3 space-y-2">
+                <div className="mt-4 bg-muted/40 rounded-xl p-3 space-y-2">
                   <p className="text-[11px] uppercase font-medium text-muted-foreground">Nota Técnica</p>
                   <p className="text-sm whitespace-pre-wrap">{(wo as any).technical_note}</p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 flex-wrap">
                     {(wo as any).resolution_quality > 0 && (
                       <div className="flex items-center gap-1">
                         <span className="text-[11px] text-muted-foreground mr-1">Qualidade:</span>
@@ -630,12 +630,10 @@ export default function WorkOrderDetail() {
             </CardContent>
           </Card>
 
-          {/* Row 3: SLA + Assignment + Status + Info */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            {/* Left: SLA */}
             <div className="lg:col-span-3 space-y-4">
               {(wo.response_due_at || wo.resolve_due_at) && (
-                <Card className={`shadow-none rounded-xl ${sla.responseOverdue || sla.resolveOverdue ? 'border-destructive/40 bg-destructive/5' : 'border-border'}`}>
+                <Card className={`shadow-none rounded-2xl ${sla.responseOverdue || sla.resolveOverdue ? 'border-destructive/40 bg-destructive/5' : 'border-border'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -647,8 +645,7 @@ export default function WorkOrderDetail() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-muted-foreground hover:text-foreground">
-                              <RotateCcw className="h-3 w-3" />
-                              Resetar SLA
+                              <RotateCcw className="h-3 w-3" /> Resetar SLA
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -660,9 +657,7 @@ export default function WorkOrderDetail() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => resetSlaMutation.mutate()} disabled={resetSlaMutation.isPending}>
-                                Confirmar Reset
-                              </AlertDialogAction>
+                              <AlertDialogAction onClick={() => resetSlaMutation.mutate()} disabled={resetSlaMutation.isPending}>Confirmar Reset</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -672,7 +667,7 @@ export default function WorkOrderDetail() {
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {wo.response_due_at && (
-                        <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="bg-muted/40 rounded-xl p-3">
                           <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Resposta até</p>
                           <p className="text-sm font-medium">{new Date(wo.response_due_at).toLocaleString('pt-BR')}</p>
                           {sla.responseRemainingMs !== null && (
@@ -683,7 +678,7 @@ export default function WorkOrderDetail() {
                         </div>
                       )}
                       {wo.resolve_due_at && (
-                        <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="bg-muted/40 rounded-xl p-3">
                           <p className="text-[11px] uppercase font-medium text-muted-foreground mb-1">Solução até</p>
                           <p className="text-sm font-medium">{new Date(wo.resolve_due_at).toLocaleString('pt-BR')}</p>
                           {sla.resolveRemainingMs !== null && (
@@ -698,20 +693,19 @@ export default function WorkOrderDetail() {
                 </Card>
               )}
 
-              {/* Info card moved here */}
-              <Card className="border-border shadow-none rounded-xl">
+              <Card className="border-border shadow-none rounded-2xl">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Informações</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2.5 text-xs">
                   <InfoRow label="ID" value={wo.id.slice(0, 8)} mono />
                   <InfoRow label="Visibilidade" value={wo.visibility === 'internal' ? 'Interna' : 'Cliente'} />
-                  <InfoRow label="Criada em" value={new Date(wo.created_at).toLocaleString('pt-BR')} />
-                  {(wo as any).deadline_at && <InfoRow label="📅 Prazo Estimado" value={new Date((wo as any).deadline_at).toLocaleString('pt-BR')} />}
+                  <InfoRow label="Criada em" value={openedAtLabel} />
+                  {(wo as any).deadline_at && <InfoRow label="Prazo Estimado" value={new Date((wo as any).deadline_at).toLocaleString('pt-BR')} />}
                   {wo.started_at && <InfoRow label="Iniciada em" value={new Date(wo.started_at).toLocaleString('pt-BR')} />}
                   {wo.resolved_at && <InfoRow label="Resolvida em" value={new Date(wo.resolved_at).toLocaleString('pt-BR')} />}
                   {wo.closed_at && <InfoRow label="Encerrada em" value={new Date(wo.closed_at).toLocaleString('pt-BR')} />}
-                  <InfoRow label="Atualizada em" value={new Date(wo.updated_at).toLocaleString('pt-BR')} />
+                  <InfoRow label="Atualizada em" value={updatedAtLabel} />
                   {wo.tags && wo.tags.length > 0 && (
                     <div className="flex items-start gap-1.5 pt-1">
                       <Tag className="h-3 w-3 mt-0.5 text-muted-foreground" />
@@ -726,21 +720,20 @@ export default function WorkOrderDetail() {
               </Card>
             </div>
 
-            {/* Right: Assignment + Status */}
             <div className="lg:col-span-2 space-y-4">
-              <Card className="border-border shadow-none rounded-xl">
+              <Card className="border-border shadow-none rounded-2xl">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2"><UserCheck className="h-4 w-4 text-muted-foreground" />Atribuição</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="bg-muted/40 rounded-lg p-3">
+                  <div className="bg-muted/40 rounded-xl p-3">
                     <p className="text-[11px] uppercase font-medium text-muted-foreground mb-0.5">Responsável</p>
                     <p className="text-sm font-medium">{getProfileName(wo.assigned_to_id) || '—'}</p>
                   </div>
                   {canAssign && (
                     <div className="flex gap-2">
                       <Select value={assignTo} onValueChange={setAssignTo}>
-                        <SelectTrigger className="h-9 text-xs flex-1 rounded-lg"><SelectValue placeholder="Atribuir para..." /></SelectTrigger>
+                        <SelectTrigger className="h-9 text-xs flex-1 rounded-xl"><SelectValue placeholder="Atribuir para..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={user?.id || 'me'}>Para mim</SelectItem>
                           {profiles.filter((p: any) => p.id !== user?.id).map((p: any) => (
@@ -748,7 +741,7 @@ export default function WorkOrderDetail() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" className="h-9 w-9 p-0 rounded-lg" disabled={!assignTo || assignMutation.isPending} onClick={() => assignMutation.mutate(assignTo)}>
+                      <Button size="sm" className="h-9 w-9 p-0 rounded-xl" disabled={!assignTo || assignMutation.isPending} onClick={() => assignMutation.mutate(assignTo)}>
                         {assignMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
@@ -757,20 +750,20 @@ export default function WorkOrderDetail() {
               </Card>
 
               {canUpdate && (
-                <Card className="border-border shadow-none rounded-xl">
+                <Card className="border-border shadow-none rounded-2xl">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" />Alterar Status</CardTitle>
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="h-4 w-4 text-muted-foreground" />Alterar Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <Select value={newStatus} onValueChange={setNewStatus}>
-                      <SelectTrigger className="h-9 text-xs rounded-lg"><SelectValue placeholder="Novo status" /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue placeholder="Novo status" /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(statusLabels).map(([k, v]) => (
                           <SelectItem key={k} value={k}>{v}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button size="sm" className="w-full h-9 text-xs rounded-lg" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
+                    <Button size="sm" className="w-full h-9 text-xs rounded-xl" disabled={!newStatus || statusMutation.isPending} onClick={() => statusMutation.mutate(newStatus)}>
                       {statusMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
                     </Button>
                   </CardContent>
@@ -780,15 +773,13 @@ export default function WorkOrderDetail() {
           </div>
         </TabsContent>
 
-        {/* ─── Timeline ─── */}
         <TabsContent value="timeline" className="mt-4">
-          <Card className="border-border shadow-none rounded-xl">
+          <Card className="border-border shadow-none rounded-2xl">
             <CardContent className="pt-5">
-              {/* Comment input */}
               <div className="mb-5 pb-5 border-b border-border">
                 <div className="flex gap-2 mb-2.5">
-                  <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Escreva um comentário..." rows={2} className="flex-1 text-sm rounded-lg" />
-                  <Button size="icon" className="h-[68px] w-10 rounded-lg" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
+                  <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Escreva um comentário..." rows={2} className="flex-1 text-sm rounded-xl" />
+                  <Button size="icon" className="h-[68px] w-10 rounded-xl" disabled={!comment.trim() || commentMutation.isPending} onClick={() => commentMutation.mutate()}>
                     {commentMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
@@ -801,7 +792,6 @@ export default function WorkOrderDetail() {
                 </div>
               </div>
 
-              {/* Events */}
               <div className="space-y-0">
                 {events.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento registrado.</p>
@@ -815,15 +805,9 @@ export default function WorkOrderDetail() {
 
                     return (
                       <div key={ev.id} className="flex gap-3 items-start relative">
-                        {idx < events.length - 1 && (
-                          <div className="absolute left-[13px] top-8 bottom-0 w-px bg-border" />
-                        )}
-                        <div className={`mt-1 h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                          isComment ? (isInternal ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30') : 'bg-muted'
-                        }`}>
-                          <Icon className={`h-3.5 w-3.5 ${
-                            isComment ? (isInternal ? 'text-amber-600' : 'text-blue-600') : 'text-muted-foreground'
-                          }`} />
+                        {idx < events.length - 1 && <div className="absolute left-[13px] top-8 bottom-0 w-px bg-border" />}
+                        <div className={`mt-1 h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${isComment ? (isInternal ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30') : 'bg-muted'}`}>
+                          <Icon className={`h-3.5 w-3.5 ${isComment ? (isInternal ? 'text-amber-600' : 'text-blue-600') : 'text-muted-foreground'}`} />
                         </div>
                         <div className="flex-1 min-w-0 pb-4">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -836,11 +820,7 @@ export default function WorkOrderDetail() {
                             )}
                             <span className="text-[11px] text-muted-foreground ml-auto">{new Date(ev.created_at).toLocaleString('pt-BR')}</span>
                           </div>
-                          {payload?.text && (
-                            <p className={`text-sm mt-1.5 rounded-lg p-3 ${
-                              isInternal ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800' : 'bg-muted/50'
-                            }`}>{payload.text}</p>
-                          )}
+                          {payload?.text && <p className={`text-sm mt-1.5 rounded-xl p-3 ${isInternal ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800' : 'bg-muted/50'}`}>{payload.text}</p>}
                           {payload?.from && payload?.to && (
                             <p className="text-[11px] text-muted-foreground mt-1.5">
                               <Badge variant="outline" className={`text-[10px] mr-1 ${statusColors[payload.from] || ''}`}>{statusLabels[payload.from] || payload.from}</Badge>
@@ -848,9 +828,7 @@ export default function WorkOrderDetail() {
                               <Badge variant="outline" className={`text-[10px] ml-1 ${statusColors[payload.to] || ''}`}>{statusLabels[payload.to] || payload.to}</Badge>
                             </p>
                           )}
-                          {payload?.assigned_to && (
-                            <p className="text-[11px] text-muted-foreground mt-1">Atribuído para: <strong>{getProfileName(payload.assigned_to)}</strong></p>
-                          )}
+                          {payload?.assigned_to && <p className="text-[11px] text-muted-foreground mt-1">Atribuído para: <strong>{getProfileName(payload.assigned_to)}</strong></p>}
                           {payload?.rating && (
                             <div className="flex items-center gap-1 mt-1.5">
                               {[1, 2, 3, 4, 5].map(s => (
@@ -869,32 +847,20 @@ export default function WorkOrderDetail() {
           </Card>
         </TabsContent>
 
-        {/* ─── Checklist ─── */}
         {checklist.length > 0 && (
           <TabsContent value="checklist" className="mt-4">
-            <Card className="border-border shadow-none rounded-xl">
+            <Card className="border-border shadow-none rounded-2xl">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                  Checklist ({checklist.filter((i: any) => i.is_checked).length}/{checklist.length})
-                </CardTitle>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><CheckSquare className="h-4 w-4 text-muted-foreground" />Checklist ({checklistDone}/{checklist.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {checklist.map((item: any) => (
                   <div key={item.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
-                    <Checkbox
-                      checked={item.is_checked}
-                      onCheckedChange={(checked) => checkMutation.mutate({ itemId: item.id, checked: !!checked })}
-                      className="mt-0.5"
-                    />
+                    <Checkbox checked={item.is_checked} onCheckedChange={(checked) => checkMutation.mutate({ itemId: item.id, checked: !!checked })} className="mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm ${item.is_checked ? 'line-through text-muted-foreground' : ''}`}>{item.label}</p>
                       {item.observation && <p className="text-xs text-muted-foreground mt-0.5">{item.observation}</p>}
-                      {item.checked_at && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          ✓ {profiles.find((p: any) => p.id === item.checked_by)?.name || ''} em {new Date(item.checked_at).toLocaleString('pt-BR')}
-                        </p>
-                      )}
+                      {item.checked_at && <p className="text-[11px] text-muted-foreground mt-0.5">✓ {profiles.find((p: any) => p.id === item.checked_by)?.name || ''} em {new Date(item.checked_at).toLocaleString('pt-BR')}</p>}
                     </div>
                   </div>
                 ))}
@@ -912,7 +878,6 @@ export default function WorkOrderDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* Resolve Dialog */}
       <Dialog open={showResolveDialog} onOpenChange={setShowResolveDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -921,13 +886,7 @@ export default function WorkOrderDetail() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Nota Técnica</Label>
-              <Textarea
-                value={technicalNote}
-                onChange={e => setTechnicalNote(e.target.value)}
-                rows={3}
-                placeholder="Descreva a solução aplicada..."
-                className="text-sm"
-              />
+              <Textarea value={technicalNote} onChange={e => setTechnicalNote(e.target.value)} rows={3} placeholder="Descreva a solução aplicada..." className="text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Qualidade da Resolução</Label>
@@ -974,7 +933,6 @@ export default function WorkOrderDetail() {
                   await updateWO(updates, 'resolved', { technical_note: technicalNote.trim(), resolution_quality: resolutionQuality, resolution_time_rating: resolutionTimeRating });
                   await logAudit({ entity: 'work_order', entityId: id, action: 'work_order.status_changed', tenantId: currentTenantId, diff: { from: wo?.status, to: 'concluida' } });
 
-                  // Auto-create maintenance record if asset is linked
                   if (wo?.asset_id && currentTenantId) {
                     try {
                       await supabase.from('asset_maintenance_records').insert({
@@ -991,12 +949,7 @@ export default function WorkOrderDetail() {
                         completed_at: new Date().toISOString(),
                         created_by: user?.id || null,
                       });
-                      await logAudit({
-                        entity: 'maintenance',
-                        action: 'maintenance.auto_created',
-                        tenantId: currentTenantId,
-                        diff: { asset_id: wo.asset_id, work_order_id: id, source: 'work_order_resolution' },
-                      });
+                      await logAudit({ entity: 'maintenance', action: 'maintenance.auto_created', tenantId: currentTenantId, diff: { asset_id: wo.asset_id, work_order_id: id, source: 'work_order_resolution' } });
                     } catch (maintenanceErr) {
                       console.warn('Falha ao criar registro de manutenção automático:', maintenanceErr);
                     }
@@ -1022,9 +975,41 @@ export default function WorkOrderDetail() {
   );
 }
 
+function HeaderMeta({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-background px-3 py-2.5">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-[11px] font-medium uppercase tracking-[0.12em]">{label}</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-foreground line-clamp-2">{value}</p>
+    </div>
+  );
+}
+
+function QuickStatCard({ icon: Icon, label, value, helper, tone = 'default' }: { icon: any; label: string; value: string; helper?: string; tone?: 'default' | 'success' | 'warning' | 'danger' }) {
+  const toneClasses = {
+    default: 'border-border/70 bg-card',
+    success: 'border-emerald-500/20 bg-emerald-500/5',
+    warning: 'border-amber-500/20 bg-amber-500/5',
+    danger: 'border-red-500/20 bg-red-500/5',
+  } as const;
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${toneClasses[tone]}`}>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
+      </div>
+      <p className="mt-3 text-lg font-semibold tracking-tight text-foreground">{value}</p>
+      {helper ? <p className="mt-2 text-xs text-muted-foreground">{helper}</p> : null}
+    </div>
+  );
+}
+
 function InfoField({ icon: Icon, label, value }: { icon: any; label: string; value: string | undefined | null }) {
   return (
-    <div className="flex items-start gap-3 bg-muted/40 rounded-lg p-3">
+    <div className="flex items-start gap-3 bg-muted/40 rounded-xl p-3">
       <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
       <div>
         <p className="text-[11px] uppercase font-medium text-muted-foreground">{label}</p>
@@ -1036,9 +1021,9 @@ function InfoField({ icon: Icon, label, value }: { icon: any; label: string; val
 
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
+    <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0 gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`text-foreground ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</span>
+      <span className={`text-foreground text-right ${mono ? 'font-mono text-[11px]' : ''}`}>{value}</span>
     </div>
   );
 }
