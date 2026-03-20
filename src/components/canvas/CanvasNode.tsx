@@ -161,6 +161,12 @@ function CanvasNode({ id, data, selected }: NodeProps) {
   }, [id, setNodes, setEdges, nodeData]);
 
   const showHandles = hovered || selected;
+  const cardBorder = selected ? `${color}aa` : hovered ? `${color}44` : 'hsl(222, 47%, 15%)';
+  const cardShadow = selected
+    ? `0 0 0 1px ${color}55, 0 14px 36px ${color}18, inset 0 1px 0 rgba(255,255,255,0.04)`
+    : hovered
+      ? `0 10px 28px rgba(0,0,0,0.45), 0 0 0 1px ${color}18`
+      : '0 4px 18px rgba(0,0,0,0.28)';
 
   return (
     <div className="group relative" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ minWidth: 210, maxWidth: 340 }}>
@@ -216,7 +222,7 @@ function CanvasNode({ id, data, selected }: NodeProps) {
         </div>
       )}
 
-      <div className="rounded-2xl overflow-hidden transition-all duration-300 bg-[hsl(222,47%,8%)]" style={{ border: `1px solid ${selected ? `${color}aa` : hovered ? `${color}44` : 'hsl(222, 47%, 15%)'}`, boxShadow: selected ? `0 0 0 1px ${color}55, 0 14px 36px ${color}18, inset 0 1px 0 rgba(255,255,255,0.04)` : hovered ? `0 10px 28px rgba(0,0,0,0.45), 0 0 0 1px ${color}18` : '0 4px 18px rgba(0,0,0,0.28)'` }}>
+      <div className="rounded-2xl overflow-hidden transition-all duration-300 bg-[hsl(222,47%,8%)]" style={{ border: `1px solid ${cardBorder}`, boxShadow: cardShadow }}>
         <div className="h-[3px] transition-all duration-300" style={{ background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
         <div className="flex items-center gap-2 px-3 py-2 transition-colors duration-300 border-b border-white/5" style={{ background: `${color}09` }}>
           <GripVertical className="h-3 w-3 text-white/20 shrink-0 cursor-grab" />
