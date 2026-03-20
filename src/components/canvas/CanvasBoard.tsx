@@ -32,9 +32,10 @@ import { useCanvasHistory } from '@/hooks/useCanvasHistory';
 import { useCanvasRealtime, type CanvasOp } from '@/hooks/useCanvasRealtime';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sparkles, PanelLeftOpen, Settings2 } from 'lucide-react';
+import { Sparkles, PanelLeftOpen, Settings2, Workflow, Shapes, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 interface CanvasBoardProps {
   boardId: string;
@@ -62,15 +63,22 @@ const createEdgeMarker = (color: string) => ({
 const isEqualJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 function CanvasBoardInner({
-  boardId, boardName, initialNodes, initialEdges, initialViewport,
-  onSave, saving, readOnly = false, isFullscreen, onToggleFullscreen,
+  boardId,
+  boardName,
+  initialNodes,
+  initialEdges,
+  initialViewport,
+  onSave,
+  saving,
+  readOnly = false,
+  isFullscreen,
+  onToggleFullscreen,
 }: CanvasBoardProps) {
   const nodeTypeMap = useMemo(() => ({ canvasNode: CanvasNode }), []);
   const edgeTypeMap = useMemo(() => ({ custom: CustomEdge }), []);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // ── Refs for stable access ──
   const hasChangesRef = useRef(false);
   const [hasChanges, setHasChanges] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +94,6 @@ function CanvasBoardInner({
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
-  // ── UI state ──
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>('bezier');
   const [showPalette, setShowPalette] = useState(true);
   const [showInspector, setShowInspector] = useState(false);
@@ -102,51 +109,48 @@ function CanvasBoardInner({
 
   const userName = user?.user_metadata?.name || user?.email || 'Usuário';
 
-  // ── Handle remote operations ──
   const handleRemoteOp = useCallback((op: CanvasOp, _senderId: string) => {
     isApplyingRemoteRef.current = true;
     try {
       switch (op.type) {
         case 'node:add':
-          setNodes(nds => {
-            if (nds.find(n => n.id === op.node.id)) return nds;
+          setNodes((nds) => {
+            if (nds.find((n) => n.id === op.node.id)) return nds;
             return [...nds, op.node];
           });
           break;
         case 'node:move':
-          setNodes(nds => nds.map(n =>
-            n.id === op.nodeId ? { ...n, position: op.position } : n
-          ));
+          setNodes((nds) => nds.map((n) => (n.id === op.nodeId ? { ...n, position: op.position } : n)));
           break;
         case 'node:update':
-          setNodes(nds => nds.map(n =>
-            n.id === op.nodeId ? { ...n, data: { ...n.data, ...op.data } } : n
-          ));
+          setNodes((nds) => nds.map((n) => (n.id === op.nodeId ? { ...n, data: { ...n.data, ...op.data } } : n)));
           break;
         case 'node:remove':
-          setNodes(nds => nds.filter(n => n.id !== op.nodeId));
-          setEdges(eds => eds.filter(e => e.source !== op.nodeId && e.target !== op.nodeId));
+          setNodes((nds) => nds.filter((n) => n.id !== op.nodeId));
+          setEdges((eds) => eds.filter((e) => e.source !== op.nodeId && e.target !== op.nodeId));
           break;
         case 'edge:add':
-          setEdges(eds => {
-            if (eds.find(e => e.id === op.edge.id)) return eds;
+          setEdges((eds) => {
+            if (eds.find((e) => e.id === op.edge.id)) return eds;
             return [...eds, op.edge];
           });
           break;
         case 'edge:remove':
-          setEdges(eds => eds.filter(e => e.id !== op.edgeId));
+          setEdges((eds) => eds.filter((e) => e.id !== op.edgeId));
           break;
         case 'edge:update':
-          setEdges(eds => eds.map(e => {
-            if (e.id !== op.edgeId) return e;
-            const mergedData = { ...(e.data as CustomEdgeData), ...op.data };
-            const nextColor = typeof mergedData.color === 'string' ? mergedData.color : undefined;
-            return {
-              ...e,
-              data: mergedData,
-              markerEnd: op.markerEnd ?? (nextColor ? createEdgeMarker(nextColor) : e.markerEnd),
-            };
-          }));
+          setEdges((eds) =>
+            eds.map((e) => {
+              if (e.id !== op.edgeId) return e;
+              const mergedData = { ...(e.data as CustomEdgeData), ...op.data };
+              const nextColor = typeof mergedData.color === 'string' ? mergedData.color : undefined;
+              return {
+                ...e,
+                data: mergedData,
+                markerEnd: op.markerEnd ?? (nextColor ? createEdgeMarker(nextColor) : e.markerEnd),
+              };
+            })
+          );
           break;
         case 'full:sync':
           setNodes(op.nodes);
@@ -154,12 +158,12 @@ function CanvasBoardInner({
           break;
       }
     } finally {
-      // Use setTimeout to ensure React has flushed the state updates before resetting
-      setTimeout(() => { isApplyingRemoteRef.current = false; }, 50);
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 50);
     }
   }, [setNodes, setEdges]);
 
-  // ── Realtime collaboration ──
   const { remoteUsers, broadcastCursor, broadcastSelection, broadcastOp } = useCanvasRealtime({
     boardId,
     userId: user?.id || '',
@@ -170,7 +174,6 @@ function CanvasBoardInner({
     onRemoteOp: handleRemoteOp,
   });
 
-  // ── Sync local structural/data changes to collaborators ──
   useEffect(() => {
     if (!hasSyncedSnapshotRef.current) {
       prevNodesSnapshotRef.current = nodes;
@@ -240,7 +243,6 @@ function CanvasBoardInner({
     });
   }, [nodes, edges, readOnly, broadcastOp]);
 
-  // ── Track local changes ──
   useEffect(() => {
     if (isApplyingRemoteRef.current) return;
     localChangeCountRef.current++;
@@ -248,11 +250,9 @@ function CanvasBoardInner({
     setHasChanges(true);
   }, [nodes, edges]);
 
-  // ── Track selected nodes for broadcasting & inspector ──
   useEffect(() => {
-    const selectedIds = nodes.filter(n => n.selected).map(n => n.id);
+    const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
     broadcastSelection(selectedIds);
-    // Update inspector
     if (selectedIds.length === 1) {
       setSelectedNodeId(selectedIds[0]);
     } else {
@@ -260,7 +260,6 @@ function CanvasBoardInner({
     }
   }, [nodes, broadcastSelection]);
 
-  // ── Mouse move → broadcast cursor ──
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
     if (!reactFlowWrapper.current) return;
     const bounds = reactFlowWrapper.current.getBoundingClientRect();
@@ -271,7 +270,6 @@ function CanvasBoardInner({
     broadcastCursor(flowPos.x, flowPos.y);
   }, [screenToFlowPosition, broadcastCursor]);
 
-  // ── Postgres changes fallback (for when no broadcast channel) ──
   useEffect(() => {
     if (!currentTenantId) return;
     const channel = supabase
@@ -283,7 +281,6 @@ function CanvasBoardInner({
         if (lastSavedAtRef.current && updated.updated_at === lastSavedAtRef.current) return;
         if (isSavingRef.current) return;
         if (hasChangesRef.current) return;
-        // Only apply if no remote users (fallback mode)
         if (remoteUsers.length === 0) {
           setNodes(updated.nodes as Node[]);
           setEdges(updated.edges as Edge[]);
@@ -292,7 +289,6 @@ function CanvasBoardInner({
     return () => { supabase.removeChannel(channel); };
   }, [boardId, currentTenantId, setNodes, setEdges, remoteUsers.length]);
 
-  // ── Auto-save (debounced 2s) ──
   useEffect(() => {
     if (!hasChanges || readOnly) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -311,7 +307,6 @@ function CanvasBoardInner({
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [nodes, edges, hasChanges, getViewport, onSave, readOnly]);
 
-  // ── Keyboard shortcuts ──
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'F11') { e.preventDefault(); onToggleFullscreen?.(); return; }
@@ -329,19 +324,16 @@ function CanvasBoardInner({
     return () => window.removeEventListener('keydown', handler);
   }, [nodes, edges, readOnly, isFullscreen, onToggleFullscreen]);
 
-  // ── History ──
   const pushHistory = useCallback(() => {
     history.push(nodes, edges);
-    setUndoKey(k => k + 1);
+    setUndoKey((k) => k + 1);
   }, [nodes, edges, history]);
 
-  // ── Edge colors ──
   const edgeColor = useMemo(() => {
     const colors = ['hsl(213, 94%, 55%)', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
     return colors[edges.length % colors.length];
   }, [edges.length]);
 
-  // ── Connection handling ──
   const connectingFrom = useRef<{ nodeId: string; handleId: string | null } | null>(null);
 
   const onConnectStart = useCallback((_: any, params: { nodeId: string | null; handleId: string | null }) => {
@@ -359,11 +351,12 @@ function CanvasBoardInner({
     const preset = getPreset('idea');
     const newId = getNodeId();
     const newNode: Node = {
-      id: newId, type: 'canvasNode',
+      id: newId,
+      type: 'canvasNode',
       data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: 'idea' } satisfies CanvasNodeData,
       position,
     };
-    setNodes(nds => [...nds, newNode]);
+    setNodes((nds) => [...nds, newNode]);
     broadcastOp({ type: 'node:add', node: newNode });
 
     const sourceId = connectingFrom.current.nodeId;
@@ -379,7 +372,7 @@ function CanvasBoardInner({
       data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
       markerEnd: createEdgeMarker(edgeColor),
     };
-    setEdges(eds => addEdge(newEdge, eds));
+    setEdges((eds) => addEdge(newEdge, eds));
     broadcastOp({ type: 'edge:add', edge: newEdge });
     connectingFrom.current = null;
   }, [readOnly, screenToFlowPosition, nodes.length, setNodes, setEdges, edgeStyle, edgeColor, pushHistory, broadcastOp]);
@@ -395,22 +388,22 @@ function CanvasBoardInner({
       data: { edgeStyle, animated: true, color: edgeColor } satisfies CustomEdgeData,
       markerEnd: createEdgeMarker(edgeColor),
     };
-    setEdges(eds => addEdge(edgeToAdd, eds));
+    setEdges((eds) => addEdge(edgeToAdd, eds));
     broadcastOp({ type: 'edge:add', edge: edgeToAdd });
     connectingFrom.current = null;
   }, [setEdges, readOnly, edgeStyle, pushHistory, edgeColor, broadcastOp]);
 
-  // ── Node creation ──
   const createNode = useCallback((type: string, position: { x: number; y: number }) => {
     if (readOnly) return;
     pushHistory();
     const preset = getPreset(type);
     const newNode: Node = {
-      id: getNodeId(), type: 'canvasNode',
+      id: getNodeId(),
+      type: 'canvasNode',
       data: { label: `${preset.label} ${nodes.length + 1}`, nodeType: type } satisfies CanvasNodeData,
       position,
     };
-    setNodes(nds => [...nds, newNode]);
+    setNodes((nds) => [...nds, newNode]);
     broadcastOp({ type: 'node:add', node: newNode });
   }, [nodes.length, setNodes, readOnly, pushHistory, broadcastOp]);
 
@@ -418,13 +411,12 @@ function CanvasBoardInner({
     if (!reactFlowWrapper.current) return;
     const bounds = reactFlowWrapper.current.getBoundingClientRect();
     const center = screenToFlowPosition({
-      x: bounds.left + (bounds.width / 2),
-      y: bounds.top + (bounds.height / 2),
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2,
     });
     createNode(type, center);
   }, [createNode, screenToFlowPosition]);
 
-  // ── Drag & drop ──
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -444,26 +436,25 @@ function CanvasBoardInner({
     event.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  // ── Delete / Duplicate / Select ──
   const deleteSelected = useCallback(() => {
     if (readOnly) return;
-    const sn = nodes.filter(n => n.selected);
-    const se = edges.filter(e => e.selected);
+    const sn = nodes.filter((n) => n.selected);
+    const se = edges.filter((e) => e.selected);
     if (sn.length === 0 && se.length === 0) return;
     pushHistory();
-    sn.forEach(n => broadcastOp({ type: 'node:remove', nodeId: n.id }));
-    se.forEach(e => broadcastOp({ type: 'edge:remove', edgeId: e.id }));
-    setNodes(nds => nds.filter(n => !n.selected));
-    setEdges(eds => eds.filter(e => !e.selected));
+    sn.forEach((n) => broadcastOp({ type: 'node:remove', nodeId: n.id }));
+    se.forEach((e) => broadcastOp({ type: 'edge:remove', edgeId: e.id }));
+    setNodes((nds) => nds.filter((n) => !n.selected));
+    setEdges((eds) => eds.filter((e) => !e.selected));
     toast.success(`${sn.length + se.length} elemento(s) excluído(s)`);
   }, [nodes, edges, setNodes, setEdges, readOnly, pushHistory, broadcastOp]);
 
   const duplicateSelected = useCallback(() => {
     if (readOnly) return;
-    const selected = nodes.filter(n => n.selected);
+    const selected = nodes.filter((n) => n.selected);
     if (selected.length === 0) return;
     pushHistory();
-    const newNodes = selected.map(n => {
+    const newNodes = selected.map((n) => {
       const nn: Node = {
         ...n,
         id: getNodeId(),
@@ -474,16 +465,15 @@ function CanvasBoardInner({
       broadcastOp({ type: 'node:add', node: nn });
       return nn;
     });
-    setNodes(nds => [...nds, ...newNodes]);
+    setNodes((nds) => [...nds, ...newNodes]);
     toast.success(`${newNodes.length} nó(s) duplicado(s)`);
   }, [nodes, setNodes, readOnly, pushHistory, broadcastOp]);
 
   const selectAll = useCallback(() => {
-    setNodes(nds => nds.map(n => ({ ...n, selected: true })));
-    setEdges(eds => eds.map(e => ({ ...e, selected: true })));
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
+    setEdges((eds) => eds.map((e) => ({ ...e, selected: true })));
   }, [setNodes, setEdges]);
 
-  // ── Save ──
   const handleSave = useCallback(async () => {
     if (readOnly) return;
     isSavingRef.current = true;
@@ -494,11 +484,12 @@ function CanvasBoardInner({
     setTimeout(() => { isSavingRef.current = false; }, 2000);
   }, [getViewport, onSave, readOnly]);
 
-  // ── Undo/Redo ──
   const handleUndo = useCallback(() => {
     const snapshot = history.undo(nodes, edges);
     if (snapshot) {
-      setNodes(snapshot.nodes); setEdges(snapshot.edges); setUndoKey(k => k + 1);
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      setUndoKey((k) => k + 1);
       broadcastOp({ type: 'full:sync', nodes: snapshot.nodes, edges: snapshot.edges });
     }
   }, [nodes, edges, history, setNodes, setEdges, broadcastOp]);
@@ -506,17 +497,18 @@ function CanvasBoardInner({
   const handleRedo = useCallback(() => {
     const snapshot = history.redo(nodes, edges);
     if (snapshot) {
-      setNodes(snapshot.nodes); setEdges(snapshot.edges); setUndoKey(k => k + 1);
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      setUndoKey((k) => k + 1);
       broadcastOp({ type: 'full:sync', nodes: snapshot.nodes, edges: snapshot.edges });
     }
   }, [nodes, edges, history, setNodes, setEdges, broadcastOp]);
 
-  // ── Export ──
   const handleExport = useCallback(() => {
     const el = document.querySelector('.react-flow__viewport') as HTMLElement;
     if (!el) return;
     import('html-to-image').then(({ toPng }) => {
-      toPng(el, { backgroundColor: '#0f172a' }).then(dataUrl => {
+      toPng(el, { backgroundColor: '#0f172a' }).then((dataUrl) => {
         const a = document.createElement('a');
         a.href = dataUrl;
         a.download = `${boardName || 'canvas'}.png`;
@@ -526,11 +518,9 @@ function CanvasBoardInner({
     });
   }, [boardName]);
 
-  // ── Node changes with broadcasting ──
   const onNodesChangeWrapped = useCallback((changes: any) => {
     const hasDragEnd = changes.some((c: any) => c.type === 'position' && c.dragging === false);
     if (hasDragEnd) pushHistory();
-    // Broadcast position changes
     changes.forEach((c: any) => {
       if (c.type === 'position' && c.position && !c.dragging) {
         broadcastOp({ type: 'node:move', nodeId: c.id, position: c.position });
@@ -539,12 +529,10 @@ function CanvasBoardInner({
     onNodesChange(changes);
   }, [onNodesChange, pushHistory, broadcastOp]);
 
-  // Broadcast node drag moves (throttled via the realtime hook)
   const onNodeDrag = useCallback((_event: React.MouseEvent, node: Node) => {
     broadcastOp({ type: 'node:move', nodeId: node.id, position: node.position });
   }, [broadcastOp]);
 
-  // ── Double click → quick menu ──
   const handleDoubleClick = useCallback((event: React.MouseEvent) => {
     if (readOnly) return;
     const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -552,7 +540,10 @@ function CanvasBoardInner({
   }, [readOnly, screenToFlowPosition]);
 
   const handleQuickNodeSelect = useCallback((type: string) => {
-    if (quickMenu) { createNode(type, quickMenu.flow); setQuickMenu(null); }
+    if (quickMenu) {
+      createNode(type, quickMenu.flow);
+      setQuickMenu(null);
+    }
   }, [quickMenu, createNode]);
 
   const handleEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
@@ -564,20 +555,18 @@ function CanvasBoardInner({
     setSelectedEdge(null);
   }, []);
 
-  // ── Remote selection indicators (colored borders on nodes selected by remote users) ──
   const remoteSelections = useMemo(() => {
     const map = new Map<string, { color: string; name: string }>();
-    remoteUsers.forEach(u => {
-      u.selectedIds?.forEach(id => {
+    remoteUsers.forEach((u) => {
+      u.selectedIds?.forEach((id) => {
         if (!map.has(id)) map.set(id, { color: u.color, name: u.name });
       });
     });
     return map;
   }, [remoteUsers]);
 
-  // Apply remote selection styles to nodes
   const styledNodes = useMemo(() => {
-    return nodes.map(n => {
+    return nodes.map((n) => {
       const remote = remoteSelections.get(n.id);
       if (remote) {
         return {
@@ -594,16 +583,20 @@ function CanvasBoardInner({
     });
   }, [nodes, remoteSelections]);
 
+  const isEmpty = nodes.length === 0 && edges.length === 0;
+  const boardModeLabel = readOnly ? 'Visualização' : 'Edição colaborativa';
+  const collaboratorsCount = remoteUsers.length + 1;
+
   return (
     <div ref={reactFlowWrapper} className="w-full h-full relative" onMouseMove={handleMouseMove}>
-      {/* Left palette */}
       {!readOnly && showPalette && <NodePalette onDragStart={handleDragStart} onClose={() => setShowPalette(false)} />}
       {!readOnly && !showPalette && (
         <div className="absolute left-3 top-3 z-10">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="secondary" size="icon"
+                variant="secondary"
+                size="icon"
                 className="h-9 w-9 rounded-xl shadow-xl bg-card/95 backdrop-blur-md border border-border hover:bg-accent"
                 onClick={() => setShowPalette(true)}
               >
@@ -615,7 +608,25 @@ function CanvasBoardInner({
         </div>
       )}
 
-      {/* Right inspector */}
+      <div className="absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-1.5rem)] pr-4">
+        <div className="rounded-2xl border border-border/70 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Workflow className="h-4 w-4 text-primary" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">Canvas Board</span>
+          </div>
+          <p className="mt-1 text-sm font-semibold truncate max-w-[260px]">{boardName}</p>
+        </div>
+        <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1 text-[10px] gap-1.5">
+          <Shapes className="h-3.5 w-3.5" /> {nodes.length} nós • {edges.length} conexões
+        </Badge>
+        <Badge variant="outline" className="rounded-full bg-card/90 backdrop-blur-md shadow-md px-3 py-1 text-[10px] gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" /> {collaboratorsCount} pessoa{collaboratorsCount > 1 ? 's' : ''}
+        </Badge>
+        <Badge variant={readOnly ? 'secondary' : 'default'} className="rounded-full px-3 py-1 text-[10px]">
+          {boardModeLabel}
+        </Badge>
+      </div>
+
       {showInspector && (
         <CanvasInspector
           selectedNodeId={selectedNodeId}
@@ -626,7 +637,6 @@ function CanvasBoardInner({
         />
       )}
 
-      {/* Quick node menu on double-click */}
       {quickMenu && (
         <QuickNodeMenu
           position={quickMenu.screen}
@@ -635,8 +645,29 @@ function CanvasBoardInner({
         />
       )}
 
-      {/* Remote cursors */}
       <CanvasCursors remoteUsers={remoteUsers} />
+
+      {isEmpty && !readOnly && (
+        <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none px-6">
+          <div className="pointer-events-auto max-w-xl rounded-3xl border border-border/70 bg-card/95 p-6 shadow-2xl backdrop-blur-md text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Workflow className="h-7 w-7" />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight">Seu canvas está pronto para ganhar forma</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Arraste blocos da paleta, dê 2 cliques no quadro para criar rapidamente ou use os atalhos da barra inferior para começar com ideias, tarefas e alertas.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <Button className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('idea')}>
+                <PlusCircle className="h-4 w-4" /> Adicionar ideia
+              </Button>
+              <Button variant="outline" className="rounded-xl gap-1.5" onClick={() => createNodeAtViewportCenter('task')}>
+                <PlusCircle className="h-4 w-4" /> Adicionar tarefa
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CanvasContextMenu
         onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))}
@@ -685,25 +716,21 @@ function CanvasBoardInner({
                 return (nd?.color as string) || getPreset(nd?.nodeType || 'idea').color;
               }}
               maskColor="rgba(0,0,0,0.4)"
-              pannable zoomable
+              pannable
+              zoomable
             />
             <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="hsl(var(--muted-foreground) / 0.08)" />
 
-            {/* Presence bar */}
             <Panel position="top-right" className="mt-2 mr-2">
               <div className="flex items-center gap-2">
-                <CanvasPresenceBar
-                  remoteUsers={remoteUsers}
-                  currentUserName={userName}
-                />
-                {/* Inspector toggle */}
+                <CanvasPresenceBar remoteUsers={remoteUsers} currentUserName={userName} />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant={showInspector ? 'default' : 'secondary'}
                       size="icon"
                       className="h-8 w-8 rounded-xl shadow-xl"
-                      onClick={() => setShowInspector(p => !p)}
+                      onClick={() => setShowInspector((p) => !p)}
                     >
                       <Settings2 className="h-4 w-4" />
                     </Button>
@@ -715,7 +742,6 @@ function CanvasBoardInner({
               </div>
             </Panel>
 
-            {/* Toolbar */}
             <Panel position="bottom-center" className="mb-2">
               <CanvasToolbar
                 saving={saving}
@@ -729,18 +755,19 @@ function CanvasBoardInner({
                 canRedo={history.canRedo()}
                 onExport={handleExport}
                 showPalette={showPalette}
-                onTogglePalette={() => setShowPalette(p => !p)}
+                onTogglePalette={() => setShowPalette((p) => !p)}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={onToggleFullscreen}
                 onQuickAdd={createNodeAtViewportCenter}
               />
             </Panel>
 
-            {/* Hints */}
             <Panel position="bottom-left" className="mb-2 ml-2">
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 bg-card/70 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/50">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 bg-card/80 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/50 shadow-sm">
                 <Sparkles className="h-3 w-3" />
-                {readOnly ? 'Somente leitura' : (
+                {readOnly ? (
+                  'Somente leitura'
+                ) : (
                   <span>
                     <kbd className="px-1 py-0.5 bg-muted rounded text-[9px] font-mono">2×clique</kbd> novo bloco
                     {' • '}
@@ -752,9 +779,8 @@ function CanvasBoardInner({
               </div>
             </Panel>
 
-            {/* Remote selection labels */}
             {Array.from(remoteSelections.entries()).map(([nodeId, { color, name }]) => {
-              const node = nodes.find(n => n.id === nodeId);
+              const node = nodes.find((n) => n.id === nodeId);
               if (!node) return null;
               const screen = flowToScreenPosition(node.position);
               return (
@@ -776,7 +802,6 @@ function CanvasBoardInner({
         </div>
       </CanvasContextMenu>
 
-      {/* Edge settings panel */}
       {!readOnly && (
         <EdgeSettingsPanel
           selectedEdgeId={selectedEdge?.id || null}
