@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Node, Edge } from '@xyflow/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-// ── Colors for remote users ──
 const USER_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 function hashColor(id: string): string {
   let h = 0;
@@ -11,7 +10,6 @@ function hashColor(id: string): string {
   return USER_COLORS[Math.abs(h) % USER_COLORS.length];
 }
 
-// ── Types ──
 export interface RemoteUser {
   userId: string;
   name: string;
@@ -41,10 +39,10 @@ interface UseCanvasRealtimeOpts {
   onRemoteOp: (op: CanvasOp, senderId: string) => void;
 }
 
-export function useCanvasRealtime({
-  boardId, userId, userName, userAvatar, enabled, readOnly, onRemoteOp,
-}: UseCanvasRealtimeOpts) {
+export function useCanvasRealtime({ boardId, userId, userName, userAvatar, enabled, readOnly, onRemoteOp }: UseCanvasRealtimeOpts) {
   const [remoteUsers, setRemoteUsers] = useState<RemoteUser[]>([]);
+  const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'offline'>('connecting');
+  const [queuedOpsCount, setQueuedOpsCount] = useState(0);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const isSubscribedRef = useRef(false);
   const pendingOpsRef = useRef<CanvasOp[]>([]);
@@ -53,16 +51,15 @@ export function useCanvasRealtime({
   const onRemoteOpRef = useRef(onRemoteOp);
   onRemoteOpRef.current = onRemoteOp;
 
-  // ── Setup channel ──
   useEffect(() => {
     if (!enabled || !boardId || !userId) return;
 
+    setConnectionState('connecting');
     const channelName = `board:${boardId}`;
     const channel = supabase.channel(channelName, {
       config: { presence: { key: userId } },
     });
 
-    // Presence sync
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const users: RemoteUser[] = [];
@@ -78,36 +75,22 @@ export function useCanvasRealtime({
           });
         }
       });
-      setRemoteUsers(prev => {
-        // Merge: keep cursor/selection from prev
-        return users.map(u => {
-          const existing = prev.find(p => p.userId === u.userId);
-          return { ...u, cursor: existing?.cursor, selectedIds: existing?.selectedIds };
-        });
-      });
+      setRemoteUsers((prev) => users.map((u) => {
+        const existing = prev.find((p) => p.userId === u.userId);
+        return { ...u, cursor: existing?.cursor, selectedIds: existing?.selectedIds };
+      }));
     });
 
-    // Broadcast: cursor
     channel.on('broadcast', { event: 'cursor' }, ({ payload }) => {
       if (payload.userId === userId) return;
-      setRemoteUsers(prev => prev.map(u =>
-        u.userId === payload.userId
-          ? { ...u, cursor: { x: payload.x, y: payload.y } }
-          : u
-      ));
+      setRemoteUsers((prev) => prev.map((u) => u.userId === payload.userId ? { ...u, cursor: { x: payload.x, y: payload.y } } : u));
     });
 
-    // Broadcast: selection
     channel.on('broadcast', { event: 'selection' }, ({ payload }) => {
       if (payload.userId === userId) return;
-      setRemoteUsers(prev => prev.map(u =>
-        u.userId === payload.userId
-          ? { ...u, selectedIds: payload.selectedIds }
-          : u
-      ));
+      setRemoteUsers((prev) => prev.map((u) => u.userId === payload.userId ? { ...u, selectedIds: payload.selectedIds } : u));
     });
 
-    // Broadcast: document ops
     channel.on('broadcast', { event: 'doc:op' }, ({ payload }) => {
       if (payload.senderId === userId) return;
       onRemoteOpRef.current(payload.op as CanvasOp, payload.senderId);
@@ -116,28 +99,22 @@ export function useCanvasRealtime({
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         isSubscribedRef.current = true;
-        await channel.track({
-          user_id: userId,
-          name: userName,
-          avatar: userAvatar,
-          online_at: new Date().toISOString(),
-        });
+        setConnectionState('connected');
+        await channel.track({ user_id: userId, name: userName, avatar: userAvatar, online_at: new Date().toISOString() });
 
         if (pendingOpsRef.current.length > 0) {
           const queued = [...pendingOpsRef.current];
           pendingOpsRef.current = [];
+          setQueuedOpsCount(0);
           queued.forEach((op) => {
-            channel.send({
-              type: 'broadcast',
-              event: 'doc:op',
-              payload: { senderId: userId, op },
-            });
+            channel.send({ type: 'broadcast', event: 'doc:op', payload: { senderId: userId, op } });
           });
         }
       }
 
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         isSubscribedRef.current = false;
+        setConnectionState('offline');
       }
     });
 
@@ -145,53 +122,41 @@ export function useCanvasRealtime({
     return () => {
       isSubscribedRef.current = false;
       pendingOpsRef.current = [];
+      setQueuedOpsCount(0);
       channel.untrack();
       supabase.removeChannel(channel);
       channelRef.current = null;
+      setConnectionState('offline');
     };
   }, [boardId, userId, userName, userAvatar, enabled]);
 
-  // ── Broadcast cursor (throttled ~50ms) ──
   const broadcastCursor = useCallback((x: number, y: number) => {
     const now = Date.now();
     if (now - cursorThrottle.current < 50) return;
     cursorThrottle.current = now;
     if (!isSubscribedRef.current || !channelRef.current) return;
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'cursor',
-      payload: { userId, x, y },
-    });
+    channelRef.current.send({ type: 'broadcast', event: 'cursor', payload: { userId, x, y } });
   }, [userId]);
 
-  // ── Broadcast selection (throttled ~100ms) ──
   const broadcastSelection = useCallback((selectedIds: string[]) => {
     const now = Date.now();
     if (now - selectionThrottle.current < 100) return;
     selectionThrottle.current = now;
     if (!isSubscribedRef.current || !channelRef.current) return;
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'selection',
-      payload: { userId, selectedIds },
-    });
+    channelRef.current.send({ type: 'broadcast', event: 'selection', payload: { userId, selectedIds } });
   }, [userId]);
 
-  // ── Broadcast document op ──
   const broadcastOp = useCallback((op: CanvasOp) => {
     if (readOnly || !channelRef.current) return;
 
     if (!isSubscribedRef.current) {
       pendingOpsRef.current.push(op);
       if (pendingOpsRef.current.length > 200) pendingOpsRef.current.shift();
+      setQueuedOpsCount(pendingOpsRef.current.length);
       return;
     }
 
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'doc:op',
-      payload: { senderId: userId, op },
-    });
+    channelRef.current.send({ type: 'broadcast', event: 'doc:op', payload: { senderId: userId, op } });
   }, [userId, readOnly]);
 
   return {
@@ -199,5 +164,7 @@ export function useCanvasRealtime({
     broadcastCursor,
     broadcastSelection,
     broadcastOp,
+    connectionState,
+    queuedOpsCount,
   };
 }

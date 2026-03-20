@@ -2,17 +2,28 @@ import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import { Users, Sparkles } from 'lucide-react';
+import { Users, Sparkles, Wifi, WifiOff, Clock3 } from 'lucide-react';
 import type { RemoteUser } from '@/hooks/useCanvasRealtime';
 
 interface CanvasPresenceBarProps {
   remoteUsers: RemoteUser[];
   currentUserName: string;
+  connectionState?: 'connecting' | 'connected' | 'offline';
+  queuedOpsCount?: number;
 }
 
-function CanvasPresenceBarInner({ remoteUsers, currentUserName }: CanvasPresenceBarProps) {
+function CanvasPresenceBarInner({ remoteUsers, currentUserName, connectionState = 'connected', queuedOpsCount = 0 }: CanvasPresenceBarProps) {
   const total = remoteUsers.length + 1;
   const activeEditors = remoteUsers.filter((user) => (user.selectedIds?.length || 0) > 0).length;
+
+  const connectionBadge =
+    connectionState === 'connected'
+      ? { icon: Wifi, label: 'Sincronizado', className: 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' }
+      : connectionState === 'connecting'
+        ? { icon: Clock3, label: 'Conectando', className: 'text-amber-600 border-amber-500/20 bg-amber-500/5' }
+        : { icon: WifiOff, label: 'Offline', className: 'text-red-600 border-red-500/20 bg-red-500/5' };
+
+  const ConnectionIcon = connectionBadge.icon;
 
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-md">
@@ -70,10 +81,18 @@ function CanvasPresenceBarInner({ remoteUsers, currentUserName }: CanvasPresence
         </div>
       </div>
 
-      <div className="ml-1 flex items-center gap-1.5">
+      <div className="ml-1 flex items-center gap-1.5 flex-wrap justify-end">
+        <Badge variant="outline" className={`rounded-full text-[10px] gap-1.5 ${connectionBadge.className}`}>
+          <ConnectionIcon className="h-3 w-3" /> {connectionBadge.label}
+        </Badge>
         <Badge variant="outline" className="rounded-full text-[10px] gap-1.5 bg-background/70">
           <Sparkles className="h-3 w-3" /> {activeEditors} editando agora
         </Badge>
+        {queuedOpsCount > 0 && (
+          <Badge variant="outline" className="rounded-full text-[10px] gap-1.5 text-amber-600 border-amber-500/20 bg-amber-500/5">
+            <Clock3 className="h-3 w-3" /> {queuedOpsCount} alteração(ões) pendentes
+          </Badge>
+        )}
       </div>
     </div>
   );
