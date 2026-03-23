@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hasPermission } from '@/lib/permissions';
+import { registerStockMovement } from '@/lib/stockMovementService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,7 +117,6 @@ export default function MaintenancePage() {
   const [filterType, setFilterType] = useState<string>('all');
   const [tab, setTab] = useState('manutencoes');
 
-  // Dialogs
   const [maintenanceDialog, setMaintenanceDialog] = useState(false);
   const [componentDialog, setComponentDialog] = useState(false);
   const [detailDialog, setDetailDialog] = useState<string | null>(null);
@@ -124,7 +124,6 @@ export default function MaintenancePage() {
   const [editingMaintenance, setEditingMaintenance] = useState<any>(null);
   const [editingComponent, setEditingComponent] = useState<any>(null);
 
-  // Form states
   const [mForm, setMForm] = useState({
     asset_id: '', type: 'corretiva', status: 'agendada', title: '',
     description: '', scheduled_at: '', observations: '', cost: '', technician_id: '',
@@ -134,7 +133,6 @@ export default function MaintenancePage() {
     serial_number: '', stock_item_id: '', status: 'ativo', notes: '',
   });
 
-  /* ─── Queries ─── */
   const { data: assets = [] } = useQuery({
     queryKey: ['assets', currentTenantId],
     queryFn: async () => {
@@ -188,12 +186,10 @@ export default function MaintenancePage() {
     },
   });
 
-  /* ─── Maps ─── */
   const assetMap = useMemo(() => Object.fromEntries(assets.map((a: any) => [a.id, a])), [assets]);
   const profileMap = useMemo(() => Object.fromEntries(profiles.map((p: any) => [p.id, p])), [profiles]);
   const stockMap = useMemo(() => Object.fromEntries(stockItems.map((s: any) => [s.id, s])), [stockItems]);
 
-  /* ─── Filtered data ─── */
   const filteredMaintenances = useMemo(() => {
     return maintenances.filter((m: any) => {
       const asset = assetMap[m.asset_id];
@@ -219,7 +215,6 @@ export default function MaintenancePage() {
     });
   }, [components, debouncedSearch, assetMap]);
 
-  /* ─── Mutations ─── */
   const saveMaintenance = useMutation({
     mutationFn: async (data: any) => {
       const h = await getHeaders();
@@ -262,7 +257,6 @@ export default function MaintenancePage() {
       const body = { ...data, tenant_id: currentTenantId };
       const isNew = !editingComponent;
 
-      // Validate stock for new components
       if (isNew && body.stock_item_id) {
         const stockItem = stockItems.find((s: any) => s.id === body.stock_item_id);
         if (!stockItem || stockItem.current_level < 1) {
@@ -276,38 +270,20 @@ export default function MaintenancePage() {
         });
         if (!res.ok) throw new Error('Erro ao atualizar');
       } else {
-        // Create the component
         const res = await fetch(`${BASE_URL}/rest/v1/asset_components`, {
           method: 'POST', headers: h, body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error('Erro ao criar');
 
-        // Auto-deduct 1 unit from stock if linked
-        if (body.stock_item_id) {
-          const movementBody = {
-            stock_item_id: body.stock_item_id,
-            tenant_id: currentTenantId,
+        if (body.stock_item_id && currentTenantId) {
+          await registerStockMovement({
+            tenantId: currentTenantId,
+            stockItemId: body.stock_item_id,
             type: 'out',
             qty: 1,
+            userId: user?.id,
             reference: `Componente instalado em ativo (${assetMap[body.asset_id]?.name || 'N/A'})`,
-            created_by: user?.id,
-          };
-          const movRes = await fetch(`${BASE_URL}/rest/v1/stock_movements`, {
-            method: 'POST', headers: h, body: JSON.stringify(movementBody),
           });
-          if (!movRes.ok) {
-            console.warn('Falha ao criar movimentação de estoque');
-          }
-
-          // Update stock level
-          const stockItem = stockItems.find((s: any) => s.id === body.stock_item_id);
-          if (stockItem) {
-            await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${body.stock_item_id}`, {
-              method: 'PATCH',
-              headers: h,
-              body: JSON.stringify({ current_level: Math.max(0, stockItem.current_level - 1) }),
-            });
-          }
         }
       }
     },
@@ -325,7 +301,7 @@ export default function MaintenancePage() {
       );
     },
     onError: (err: any) => {
-      if (err.message === 'STOCK_EMPTY') {
+      if (err.message === 'STOCK_EMPTY' || err.message === 'INSUFFICIENT_STOCK') {
         toast.error('Estoque insuficiente!', {
           description: 'O item selecionado não possui quantidade disponível. Cadastre entrada no estoque primeiro.',
         });
@@ -345,7 +321,6 @@ export default function MaintenancePage() {
     onError: () => toast.error('Erro ao remover'),
   });
 
-  /* ─── Helpers ─── */
   function resetMForm() {
     setMForm({ asset_id: '', type: 'corretiva', status: 'agendada', title: '', description: '', scheduled_at: '', observations: '', cost: '', technician_id: '' });
   }
@@ -379,7 +354,6 @@ export default function MaintenancePage() {
     return ct?.icon || Package;
   };
 
-  /* ─── Stats ─── */
   const stats = useMemo(() => ({
     total: maintenances.length,
     agendadas: maintenances.filter((m: any) => m.status === 'agendada').length,
@@ -393,10 +367,8 @@ export default function MaintenancePage() {
   const selectedStockItem = cForm.stock_item_id ? stockItems.find((s: any) => s.id === cForm.stock_item_id) : null;
   const availableStock = stockItems.filter((s: any) => s.current_level > 0);
 
-  /* ─── Render ─── */
   return (
     <div className="space-y-6">
-      {/* Hero Header */}
       <div className="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card via-card to-muted/20 p-6">
         <div className="absolute top-0 right-0 w-64 h-64 opacity-[0.03]">
           <Wrench className="w-full h-full" />
@@ -422,7 +394,6 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Total Manutenções" value={stats.total} icon={BarChart3} color="text-primary" />
         <StatCard label="Agendadas" value={stats.agendadas} icon={Calendar} color="text-blue-500" sub="Aguardando execução" />
@@ -432,7 +403,6 @@ export default function MaintenancePage() {
         <StatCard label="Com Defeito" value={stats.defeitos} icon={ShieldAlert} color="text-destructive" sub="Necessitam atenção" />
       </div>
 
-      {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <TabsList className="bg-muted/50">
@@ -491,7 +461,6 @@ export default function MaintenancePage() {
           </div>
         </div>
 
-        {/* ─── Manutenções Tab ─── */}
         <TabsContent value="manutencoes" className="mt-4">
           <Card className="border-border/40 overflow-hidden">
             <CardContent className="p-0">
@@ -581,9 +550,7 @@ export default function MaintenancePage() {
           </Card>
         </TabsContent>
 
-        {/* ─── Componentes Tab ─── */}
         <TabsContent value="componentes" className="mt-4">
-          {/* Info banner */}
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm">
               <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -682,7 +649,6 @@ export default function MaintenancePage() {
         </TabsContent>
       </Tabs>
 
-      {/* ─── Maintenance Dialog ─── */}
       <Dialog open={maintenanceDialog} onOpenChange={v => { if (!v) { setMaintenanceDialog(false); setEditingMaintenance(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -789,7 +755,6 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Component Dialog ─── */}
       <Dialog open={componentDialog} onOpenChange={v => { if (!v) { setComponentDialog(false); setEditingComponent(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -854,7 +819,6 @@ export default function MaintenancePage() {
               <Input value={cForm.serial_number} onChange={e => setCForm(p => ({ ...p, serial_number: e.target.value }))} placeholder="Número de série do componente" />
             </div>
 
-            {/* Stock Link — REQUIRED for new components */}
             <div className="grid gap-2">
               <Label className="flex items-center gap-1.5">
                 <Package className="h-3.5 w-3.5 text-primary" />
@@ -875,7 +839,6 @@ export default function MaintenancePage() {
                 onValueChange={v => {
                   const selectedId = v === 'none' ? '' : v;
                   setCForm(p => ({ ...p, stock_item_id: selectedId }));
-                  // Auto-fill brand, model, type, serial from stock item
                   if (selectedId) {
                     const si = stockItems.find((s: any) => s.id === selectedId);
                     if (si) {
@@ -919,7 +882,6 @@ export default function MaintenancePage() {
                 </SelectContent>
               </Select>
 
-              {/* Stock feedback */}
               {!editingComponent && selectedStockItem && (
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10 text-xs">
                   <ArrowDownToLine className="h-3.5 w-3.5 text-primary" />
@@ -963,7 +925,6 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Maintenance Detail Dialog ─── */}
       <Dialog open={!!detailDialog} onOpenChange={() => setDetailDialog(null)}>
         <DialogContent className="max-w-lg">
           {(() => {
@@ -1059,7 +1020,6 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Component Detail Dialog ─── */}
       <Dialog open={!!componentDetailTarget} onOpenChange={() => setComponentDetailTarget(null)}>
         <DialogContent className="max-w-lg">
           {(() => {
