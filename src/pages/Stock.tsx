@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { logAudit } from '@/lib/audit';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { friendlyErrorMessage } from '@/lib/errorMessages';
+import { registerStockMovement } from '@/lib/stockMovementService';
 import { useTenantQuery, useTenantInsert, useTenantUpdate, useTenantDelete } from '@/hooks/useTenantQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,19 +227,34 @@ export default function Stock() {
       if (!currentTenantId || !movItemId) throw new Error('Dados incompletos');
       const qty = parseInt(movQty);
       if (!qty || qty <= 0) throw new Error('Quantidade inválida');
-      await (supabase.from as any)('stock_movements').insert({
-        tenant_id: currentTenantId, stock_item_id: movItemId, type: movType,
-        qty, reference: movRef || null, work_order_id: movWoId || null, created_by: user?.id,
+
+      const result = await registerStockMovement({
+        tenantId: currentTenantId,
+        stockItemId: movItemId,
+        type: movType,
+        qty,
+        userId: user?.id,
+        reference: movRef || null,
+        workOrderId: movWoId || null,
       });
+
       const item = items.find((i: any) => i.id === movItemId);
-      const currentLevel = item?.current_level || 0;
-      let newLevel = currentLevel;
-      if (movType === 'in') newLevel = currentLevel + qty;
-      else if (movType === 'out') newLevel = Math.max(0, currentLevel - qty);
-      else newLevel = qty;
-      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
       const itemName = item?.name || movItemId;
-      await logAudit({ entity: 'stock', entityId: movItemId, action: 'stock.movement', tenantId: currentTenantId, diff: { type: movType, qty, item_name: itemName, reference: movRef || null, work_order_id: movWoId || null } });
+      await logAudit({
+        entity: 'stock',
+        entityId: movItemId,
+        action: 'stock.movement',
+        tenantId: currentTenantId,
+        diff: {
+          type: movType,
+          qty,
+          item_name: itemName,
+          reference: movRef || null,
+          work_order_id: movWoId || null,
+          previous_level: result.previousLevel,
+          new_level: result.newLevel,
+        },
+      });
     },
     onSuccess: () => {
       toast({ title: 'Movimentação registrada!' });
@@ -248,7 +264,8 @@ export default function Stock() {
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      const message = err?.message === 'INSUFFICIENT_STOCK' ? 'Estoque insuficiente' : err.message;
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
     },
   });
 
@@ -267,24 +284,37 @@ export default function Stock() {
     if (!currentTenantId || !qmItem) return;
     const qty = parseInt(qmQty);
     if (!qty || qty <= 0) { toast({ title: 'Quantidade inválida', variant: 'destructive' }); return; }
-    const currentLevel = qmItem.current_level || 0;
-    if (qmType === 'out' && currentLevel < qty) { toast({ title: 'Estoque insuficiente', variant: 'destructive' }); return; }
     setQmLoading(true);
     try {
-      await (supabase.from as any)('stock_movements').insert({
-        tenant_id: currentTenantId, stock_item_id: qmItem.id, type: qmType,
-        qty, reference: qmRef || (qmType === 'in' ? `Entrada (${qty})` : `Saída (${qty})`),
-        created_by: user?.id,
+      const result = await registerStockMovement({
+        tenantId: currentTenantId,
+        stockItemId: qmItem.id,
+        type: qmType,
+        qty,
+        userId: user?.id,
+        reference: qmRef || (qmType === 'in' ? `Entrada (${qty})` : `Saída (${qty})`),
       });
-      const newLevel = qmType === 'in' ? currentLevel + qty : Math.max(0, currentLevel - qty);
-      await (supabase.from as any)('stock_items').update({ current_level: newLevel }).eq('id', qmItem.id);
       qc.invalidateQueries({ queryKey: ['stock_items'] });
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
-      await logAudit({ entity: 'stock', entityId: qmItem.id, action: 'stock.movement', tenantId: currentTenantId, diff: { type: qmType, qty, item_name: qmItem.name, reference: qmRef || null } });
+      await logAudit({
+        entity: 'stock',
+        entityId: qmItem.id,
+        action: 'stock.movement',
+        tenantId: currentTenantId,
+        diff: {
+          type: qmType,
+          qty,
+          item_name: qmItem.name,
+          reference: qmRef || null,
+          previous_level: result.previousLevel,
+          new_level: result.newLevel,
+        },
+      });
       toast({ title: qmType === 'in' ? `+${qty} entrada registrada` : `-${qty} saída registrada` });
       setQmOpen(false);
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      const message = err?.message === 'INSUFFICIENT_STOCK' ? 'Estoque insuficiente' : err.message;
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
     } finally { setQmLoading(false); }
   };
 
@@ -982,7 +1012,7 @@ export default function Stock() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className={`text-[10px] ml-1 ${detailItem.status === 'descartado' ? 'bg-muted text-muted-foreground' : detailItem.status === 'inativo' ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>{detailItem.status === 'descartado' ? 'Descartado' : detailItem.status === 'inativo' ? 'Inativo' : 'Ativo'}</Badge></div>
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className={`text-[10px] ml-1 ${detailItem.status === 'descartado' ? 'bg-muted text-muted-foreground' : detailItem.status === 'inativo' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}`}>{detailItem.status === 'descartado' ? 'Descartado' : detailItem.status === 'inativo' ? 'Inativo' : 'Ativo'}</Badge></div>
                 {detailItem.sku && <div><span className="text-muted-foreground">SKU:</span> {detailItem.sku}</div>}
                 {detailItem.patrimony_code && <div><span className="text-muted-foreground">Patrimônio:</span> <span className="font-mono">{detailItem.patrimony_code}</span></div>}
                 {detailItem.brand && <div><span className="text-muted-foreground">Marca:</span> {detailItem.brand}</div>}
