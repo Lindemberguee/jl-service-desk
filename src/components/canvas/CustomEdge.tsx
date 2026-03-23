@@ -6,7 +6,6 @@ import {
   getSmoothStepPath,
   getStraightPath,
   type EdgeProps,
-  useReactFlow,
 } from '@xyflow/react';
 import { X } from 'lucide-react';
 
@@ -19,7 +18,6 @@ export interface CustomEdgeData {
   animated?: boolean;
   strokeWidth?: number;
   neon?: boolean;
-  onDeleteEdge?: (id: string) => void;
   [key: string]: unknown;
 }
 
@@ -35,85 +33,84 @@ function CustomEdge({
   selected,
   markerEnd,
 }: EdgeProps) {
-  const { setEdges } = useReactFlow();
-  const [hovered, setHovered] = useState(false);
   const edgeData = (data || {}) as CustomEdgeData;
+  const [hovered, setHovered] = useState(false);
+
   const style = edgeData.edgeStyle || 'bezier';
-  const color = edgeData.color || 'hsl(213, 94%, 55%)';
-  const strokeWidth = edgeData.strokeWidth || 2.25;
+  const color = edgeData.color || '#3b82f6';
+  const strokeWidth = edgeData.strokeWidth || 2.3;
 
-  const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
+  const pathArgs = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
 
-  let edgePath: string;
-  let labelX: number;
-  let labelY: number;
+  let edgePath = '';
+  let labelX = 0;
+  let labelY = 0;
 
   if (style === 'smoothstep') {
-    const [path, lx, ly] = getSmoothStepPath({ ...pathParams, borderRadius: 14 });
-    edgePath = path;
-    labelX = lx;
-    labelY = ly;
+    [edgePath, labelX, labelY] = getSmoothStepPath({ ...pathArgs, borderRadius: 14 });
   } else if (style === 'straight') {
-    const [path, lx, ly] = getStraightPath(pathParams);
-    edgePath = path;
-    labelX = lx;
-    labelY = ly;
+    [edgePath, labelX, labelY] = getStraightPath(pathArgs);
   } else {
-    const [path, lx, ly] = getBezierPath(pathParams);
-    edgePath = path;
-    labelX = lx;
-    labelY = ly;
+    [edgePath, labelX, labelY] = getBezierPath(pathArgs);
   }
 
-  const onDelete = () => {
-    edgeData.onDeleteEdge?.(id);
-    setEdges((eds) => eds.filter((e) => e.id !== id));
-  };
-
-  const effectiveColor = selected ? 'hsl(213, 94%, 68%)' : color;
+  const effectiveStroke = selected || hovered ? strokeWidth + 0.7 : strokeWidth;
+  const glow = selected || hovered ? `drop-shadow(0 0 10px ${color}66)` : `drop-shadow(0 0 4px ${color}33)`;
 
   return (
     <>
       <path d={edgePath} fill="none" stroke="transparent" strokeWidth={22} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} />
+
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
         style={{
-          stroke: effectiveColor,
-          strokeWidth: selected || hovered ? strokeWidth + 0.85 : strokeWidth,
-          filter: edgeData.neon
-            ? `drop-shadow(0 0 4px ${color}) drop-shadow(0 0 10px ${color}) drop-shadow(0 0 18px ${color})`
-            : selected || hovered
-              ? `drop-shadow(0 0 8px ${color}88)`
-              : `drop-shadow(0 0 3px ${color}33)`,
+          stroke: color,
+          strokeWidth: effectiveStroke,
           opacity: hovered || selected ? 1 : 0.92,
-          transition: 'stroke-width 0.15s, stroke 0.15s, filter 0.2s, opacity 0.2s',
+          filter: edgeData.neon ? `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 14px ${color})` : glow,
+          transition: 'stroke-width 0.15s ease, opacity 0.2s ease, filter 0.2s ease',
         }}
       />
+
       {edgeData.animated && (
         <circle r="3.2" fill={color} style={{ filter: `drop-shadow(0 0 6px ${color})` }}>
-          <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} />
+          <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
+
       <EdgeLabelRenderer>
-        {edgeData.label && (
+        {edgeData.label ? (
           <div
-            style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }}
-            className="bg-card/95 backdrop-blur-md border border-border/70 rounded-full px-2.5 py-1 text-[10px] font-medium text-foreground/85 shadow-md whitespace-nowrap"
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: 'all',
+            }}
+            className="rounded-full border border-border/70 bg-card/95 px-2.5 py-1 text-[10px] font-medium text-foreground/85 shadow-md backdrop-blur-md"
           >
             {edgeData.label}
           </div>
-        )}
-        {(hovered || selected) && (
+        ) : null}
+
+        {(hovered || selected) ? (
           <div
-            style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - (edgeData.label ? 24 : 0)}px)`, pointerEvents: 'all' }}
-            className="nopan nodrag"
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - (edgeData.label ? 24 : 0)}px)`,
+              pointerEvents: 'all',
+            }}
+            className="nodrag nopan"
           >
-            <button onClick={onDelete} className="h-5.5 w-5.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+            <button
+              type="button"
+              className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-110 transition-transform"
+              title="Selecione a edge e use Delete para remover"
+            >
               <X className="h-3 w-3" />
             </button>
           </div>
-        )}
+        ) : null}
       </EdgeLabelRenderer>
     </>
   );
