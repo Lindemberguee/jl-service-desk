@@ -9,14 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-
-import { ScrollArea } from '@/components/ui/scroll-area';
-
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
+import { registerStockMovement } from '@/lib/stockMovementService';
 
 const MONTHS_TO_SHOW = 6;
 const PAGE_SIZE = 50;
@@ -62,9 +59,8 @@ function monthKey(d: Date) { return format(d, 'yyyy-MM'); }
 function monthLabel(d: Date) { return format(d, 'MMMM', { locale: ptBR }); }
 
 export default function MaterialControl() {
-  const { currentTenantId } = useAuth();
+  const { currentTenantId, user } = useAuth();
   const queryClient = useQueryClient();
-
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -72,7 +68,6 @@ export default function MaterialControl() {
   const [page, setPage] = useState(1);
   const [txFilter, setTxFilter] = useState<'all' | 'any' | 'in' | 'out'>('all');
 
-  // Movement dialog
   const [addMovOpen, setAddMovOpen] = useState(false);
   const [movItemId, setMovItemId] = useState('');
   const [movType, setMovType] = useState<'in' | 'out'>('in');
@@ -81,8 +76,6 @@ export default function MaterialControl() {
   const [movMonth, setMovMonth] = useState(() => monthKey(new Date()));
   const [saving, setSaving] = useState(false);
   const [itemComboOpen, setItemComboOpen] = useState(false);
-
-
 
   const months = useMemo(() => getMonthRange(baseDate, MONTHS_TO_SHOW), [baseDate]);
   const rangeStart = months[0];
@@ -109,7 +102,6 @@ export default function MaterialControl() {
     enabled: !!currentTenantId,
   });
 
-  // Build set of item IDs that have movements in range, by type
   const itemsWithMovements = useMemo(() => {
     const anySet = new Set<string>();
     const inSet = new Set<string>();
@@ -122,15 +114,12 @@ export default function MaterialControl() {
     return { any: anySet, in: inSet, out: outSet };
   }, [movements]);
 
-  // Filter + debounce + transaction filter
   const filteredItems = useMemo(() => {
     return items.filter(i => {
-      // Search
       if (debouncedSearch.trim()) {
         const s = debouncedSearch.toLowerCase();
         if (!i.name.toLowerCase().includes(s) && !i.sku?.toLowerCase().includes(s)) return false;
       }
-      // Transaction filter
       if (txFilter === 'any' && !itemsWithMovements.any.has(i.id)) return false;
       if (txFilter === 'in' && !itemsWithMovements.in.has(i.id)) return false;
       if (txFilter === 'out' && !itemsWithMovements.out.has(i.id)) return false;
@@ -138,17 +127,14 @@ export default function MaterialControl() {
     });
   }, [items, debouncedSearch, txFilter, itemsWithMovements]);
 
-  // Reset page on filter change
   useMemo(() => { setPage(1); }, [debouncedSearch, txFilter]);
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filteredItems.slice(start, start + PAGE_SIZE);
   }, [filteredItems, page]);
 
-  // Pivot
   const pivot = useMemo(() => {
     const map: Record<string, Record<string, { in: number; out: number; total: number }>> = {};
     for (const item of items) {
@@ -158,10 +144,10 @@ export default function MaterialControl() {
     for (const mov of movements) {
       const mk = monthKey(parseISO(mov.created_at));
       if (map[mov.stock_item_id]?.[mk]) {
-        if (mov.type === 'in') map[mov.stock_item_id][mk].in += mov.qty;
+        if (mov.type === 'in') map[mov.stock_item_id][mk].in += Math.abs(mov.qty);
         else if (mov.type === 'out') map[mov.stock_item_id][mk].out += Math.abs(mov.qty);
         else {
-          if (mov.qty >= 0) map[mov.stock_item_id][mk].in += mov.qty;
+          if (mov.qty >= 0) map[mov.stock_item_id][mk].in += Math.abs(mov.qty);
           else map[mov.stock_item_id][mk].out += Math.abs(mov.qty);
         }
         map[mov.stock_item_id][mk].total = map[mov.stock_item_id][mk].in - map[mov.stock_item_id][mk].out;
@@ -170,42 +156,59 @@ export default function MaterialControl() {
     return map;
   }, [items, movements, months]);
 
-
-  // Add movement
   const handleAddMovement = async () => {
     if (!movItemId || !movQty || !currentTenantId) return;
     setSaving(true);
     try {
       const qty = parseInt(movQty);
-      if (isNaN(qty) || qty <= 0) { toast.error('Quantidade inválida'); return; }
+      if (isNaN(qty) || qty <= 0) {
+        toast.error('Quantidade inválida');
+        return;
+      }
       const [y, m] = movMonth.split('-').map(Number);
       const movDate = new Date(y, m - 1, 15, 12, 0, 0);
-      const { error } = await supabase.from('stock_movements').insert({
-        stock_item_id: movItemId,
-        tenant_id: currentTenantId,
+
+      const result = await registerStockMovement({
+        tenantId: currentTenantId,
+        stockItemId: movItemId,
         type: movType,
-        qty: movType === 'out' ? -qty : qty,
+        qty,
+        userId: user?.id,
         reference: movRef || null,
-        created_at: movDate.toISOString(),
+        createdAt: movDate.toISOString(),
       });
-      if (error) throw error;
-      const item = items.find(i => i.id === movItemId);
-      if (item) {
-        const newLevel = (item.current_level || 0) + (movType === 'in' ? qty : -qty);
-        await supabase.from('stock_items').update({ current_level: newLevel }).eq('id', movItemId);
-      }
-      await logAudit({ entity: 'stock', entityId: movItemId, action: 'stock.movement', tenantId: currentTenantId, diff: { type: movType, qty, month: movMonth, reference: movRef || null, source: 'material_control' } });
+
+      await logAudit({
+        entity: 'stock',
+        entityId: movItemId,
+        action: 'stock.movement',
+        tenantId: currentTenantId,
+        diff: {
+          type: movType,
+          qty,
+          month: movMonth,
+          reference: movRef || null,
+          source: 'material_control',
+          previous_level: result.previousLevel,
+          new_level: result.newLevel,
+        },
+      });
+
       toast.success('Movimentação registrada');
       queryClient.invalidateQueries({ queryKey: ['stock_movements_mc'] });
       queryClient.invalidateQueries({ queryKey: ['stock_items_mc'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_items'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setAddMovOpen(false);
       setMovItemId(''); setMovQty(''); setMovRef(''); setItemComboOpen(false);
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao registrar');
-    } finally { setSaving(false); }
+      if (err?.message === 'INSUFFICIENT_STOCK') toast.error('Estoque insuficiente');
+      else toast.error(err.message || 'Erro ao registrar');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Export CSV
   const handleExportCSV = () => {
     const header = ['Item', 'SKU', ...months.flatMap(m => {
       const label = monthLabel(m).charAt(0).toUpperCase() + monthLabel(m).slice(1);
@@ -229,14 +232,11 @@ export default function MaterialControl() {
     toast.success(`${filteredItems.length} item(ns) exportado(s)`);
   };
 
-
-  // Stats
-  const totalIn = movements.filter(m => m.type === 'in').reduce((s, m) => s + m.qty, 0);
+  const totalIn = movements.filter(m => m.type === 'in').reduce((s, m) => s + Math.abs(m.qty), 0);
   const totalOut = movements.filter(m => m.type === 'out').reduce((s, m) => s + Math.abs(m.qty), 0);
 
   return (
     <div className="space-y-6 min-w-0 overflow-hidden">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Controle de Materiais</h1>
@@ -374,7 +374,6 @@ export default function MaterialControl() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="rounded-xl border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
@@ -410,7 +409,6 @@ export default function MaterialControl() {
         </Card>
       </div>
 
-      {/* Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -441,13 +439,10 @@ export default function MaterialControl() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-
       </div>
 
-      {/* Pagination top */}
       <PaginationBar page={page} totalPages={totalPages} total={filteredItems.length} setPage={setPage} />
 
-      {/* Table */}
       <Card className="rounded-xl border-border/50 overflow-hidden max-w-full">
         <div className="overflow-x-auto max-w-full">
           <table className="text-sm w-full min-w-[900px]">
@@ -507,7 +502,6 @@ export default function MaterialControl() {
         </div>
       </Card>
 
-      {/* Pagination bottom */}
       <PaginationBar page={page} totalPages={totalPages} total={filteredItems.length} setPage={setPage} />
     </div>
   );
