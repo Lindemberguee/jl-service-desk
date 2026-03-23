@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { registerStockMovement } from '@/lib/stockMovementService';
 
 export interface Disposal {
   id: string;
@@ -106,8 +107,7 @@ export function useDisposals() {
   const approveDisposal = useMutation({
     mutationFn: async ({ id, createStockMovement }: { id: string; createStockMovement?: boolean }) => {
       const headers = await getAuthHeaders();
-      
-      // First approve the disposal
+
       const res = await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
         method: 'PATCH',
         headers: { ...headers, Prefer: 'return=representation' },
@@ -121,7 +121,6 @@ export function useDisposals() {
 
       const disposal = (await res.json())[0] as Disposal;
 
-      // Update asset status to 'descartado' if origin is asset
       if (disposal.asset_id) {
         await fetch(`${BASE_URL}/rest/v1/assets?id=eq.${disposal.asset_id}`, {
           method: 'PATCH',
@@ -130,50 +129,25 @@ export function useDisposals() {
         });
       }
 
-      // If origin is stock: create movement, update current_level, and update stock item status
-      if (createStockMovement && disposal.stock_item_id) {
-        const mvRes = await fetch(`${BASE_URL}/rest/v1/stock_movements`, {
-          method: 'POST',
-          headers: { ...headers, Prefer: 'return=representation' },
-          body: JSON.stringify({
-            stock_item_id: disposal.stock_item_id,
-            tenant_id: currentTenantId,
-            type: 'out',
-            qty: disposal.quantity,
-            reference: `Descarte #${disposal.id.slice(0, 8)}`,
-            created_by: user?.id,
-          }),
+      if (createStockMovement && disposal.stock_item_id && currentTenantId) {
+        const movementResult = await registerStockMovement({
+          tenantId: currentTenantId,
+          stockItemId: disposal.stock_item_id,
+          type: 'out',
+          qty: disposal.quantity,
+          userId: user?.id,
+          reference: `Descarte #${disposal.id.slice(0, 8)}`,
         });
 
-        if (mvRes.ok) {
-          const mv = (await mvRes.json())[0];
-
-          // Fetch current stock level and decrement
-          const stockRes = await fetch(
-            `${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}&select=current_level`,
-            { headers }
-          );
-          if (stockRes.ok) {
-            const stockData = await stockRes.json();
-            const currentLevel = stockData[0]?.current_level || 0;
-            const newLevel = Math.max(0, currentLevel - disposal.quantity);
-
-            await fetch(`${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}`, {
-              method: 'PATCH',
-              headers: { ...headers, Prefer: 'return=minimal' },
-              body: JSON.stringify({ current_level: newLevel, status: newLevel === 0 ? 'descartado' : 'ativo' }),
-            });
-          }
-
-          // Link movement to disposal and mark as effected
-          await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
-            method: 'PATCH',
-            headers: { ...headers, Prefer: 'return=minimal' },
-            body: JSON.stringify({ stock_movement_id: mv.id, status: 'efetivado' }),
-          });
-        }
+        await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            stock_movement_id: movementResult.movementId,
+            status: 'efetivado',
+          }),
+        });
       } else {
-        // Mark disposal as effected for assets too
         await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
           method: 'PATCH',
           headers: { ...headers, Prefer: 'return=minimal' },
@@ -185,27 +159,27 @@ export function useDisposals() {
       qc.invalidateQueries({ queryKey: ['disposals'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
       qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
       qc.invalidateQueries({ queryKey: ['assets'] });
       toast.success('Descarte aprovado e efetivado');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err?.message === 'INSUFFICIENT_STOCK') toast.error('Estoque insuficiente para efetivar descarte');
+      else toast.error(err.message);
+    },
   });
 
   const reopenDisposal = useMutation({
     mutationFn: async (id: string) => {
       const headers = await getAuthHeaders();
 
-      // Fetch current disposal to know what to reverse
       const dRes = await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}&select=*`, { headers });
       if (!dRes.ok) throw new Error('Erro ao buscar descarte');
       const disposal = (await dRes.json())[0] as Disposal;
       if (!disposal) throw new Error('Descarte não encontrado');
 
-      // Only reverse if it was efetivado (stock/asset changes were made)
       if (disposal.status === 'efetivado') {
-        // Reverse stock changes
         if (disposal.origin_type === 'estoque' && disposal.stock_item_id) {
-          // Increment stock level back
           const stockRes = await fetch(
             `${BASE_URL}/rest/v1/stock_items?id=eq.${disposal.stock_item_id}&select=current_level`,
             { headers }
@@ -221,7 +195,6 @@ export function useDisposals() {
             });
           }
 
-          // Delete the stock movement if it exists
           if (disposal.stock_movement_id) {
             await fetch(`${BASE_URL}/rest/v1/stock_movements?id=eq.${disposal.stock_movement_id}`, {
               method: 'DELETE',
@@ -230,7 +203,6 @@ export function useDisposals() {
           }
         }
 
-        // Reverse asset status
         if (disposal.origin_type === 'ativo' && disposal.asset_id) {
           await fetch(`${BASE_URL}/rest/v1/assets?id=eq.${disposal.asset_id}`, {
             method: 'PATCH',
@@ -240,7 +212,6 @@ export function useDisposals() {
         }
       }
 
-      // Reset disposal to pendente
       const res = await fetch(`${BASE_URL}/rest/v1/disposals?id=eq.${id}`, {
         method: 'PATCH',
         headers: { ...headers, Prefer: 'return=minimal' },
@@ -258,6 +229,7 @@ export function useDisposals() {
       qc.invalidateQueries({ queryKey: ['disposals'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
       qc.invalidateQueries({ queryKey: ['stock_items'] });
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
       qc.invalidateQueries({ queryKey: ['assets'] });
       toast.success('Descarte reaberto — alterações de estoque/ativo revertidas');
     },
