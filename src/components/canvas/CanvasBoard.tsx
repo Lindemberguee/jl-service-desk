@@ -84,7 +84,7 @@ function BoardInner({
   const [hasChanges, setHasChanges] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const contextMenuPos = useRef({ x: 0, y: 0 });
+  const contextMenuPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastRemoteUpdatedAtRef = useRef<string | null>(null);
@@ -105,42 +105,41 @@ function BoardInner({
     return colors[edges.length % colors.length];
   }, [edges.length]);
 
-  const broadcastSnapshotNow = useCallback((updatedAt?: string) => {
-    const viewport = getViewport();
-    const snapshot: CanvasSnapshot = {
-      nodes: nodesRef.current,
-      edges: edgesRef.current,
-      viewport,
-      updatedAt: updatedAt || new Date().toISOString(),
-    };
-    realtime.broadcastSnapshot(snapshot);
-  }, [getViewport]);
-
-  const applyRemoteSnapshot = useCallback((snapshot: CanvasSnapshot) => {
-    if (!snapshot?.updatedAt) return;
-    if (lastLocalSavedAtRef.current && snapshot.updatedAt <= lastLocalSavedAtRef.current) return;
-    if (lastRemoteUpdatedAtRef.current && snapshot.updatedAt <= lastRemoteUpdatedAtRef.current) return;
-
-    lastRemoteUpdatedAtRef.current = snapshot.updatedAt;
-    applyingRemoteRef.current = true;
-    setNodes(snapshot.nodes || []);
-    setEdges(snapshot.edges || []);
-    setViewport(snapshot.viewport || { x: 0, y: 0, zoom: 1 }, { duration: 150 });
-    setHasChanges(false);
-    setTimeout(() => { applyingRemoteRef.current = false; }, 80);
-  }, [setEdges, setNodes, setViewport]);
-
   const realtime = useCanvasRealtime({
     boardId,
     userId: user?.id || '',
     userName,
     userAvatar: user?.user_metadata?.avatar_url,
     enabled: !!user && !!boardId,
-    onRemoteSnapshot: (snapshot) => applyRemoteSnapshot(snapshot),
+    onRemoteSnapshot: (snapshot) => {
+      if (!snapshot?.updatedAt) return;
+      if (lastLocalSavedAtRef.current && snapshot.updatedAt <= lastLocalSavedAtRef.current) return;
+      if (lastRemoteUpdatedAtRef.current && snapshot.updatedAt <= lastRemoteUpdatedAtRef.current) return;
+
+      lastRemoteUpdatedAtRef.current = snapshot.updatedAt;
+      applyingRemoteRef.current = true;
+      setNodes(snapshot.nodes || []);
+      setEdges(snapshot.edges || []);
+      setHasChanges(false);
+      setTimeout(() => {
+        applyingRemoteRef.current = false;
+      }, 80);
+    },
   });
 
+  const broadcastSnapshotNow = useCallback((updatedAt?: string) => {
+    const snapshot: CanvasSnapshot = {
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
+      updatedAt: updatedAt || new Date().toISOString(),
+    };
+    realtime.broadcastSnapshot(snapshot);
+  }, [realtime]);
+
   useEffect(() => {
-    if (initialViewport) setViewport(initialViewport, { duration: 0 });
+    if (initialViewport) {
+      setViewport(initialViewport, { duration: 0 });
+    }
   }, [initialViewport, setViewport]);
 
   useEffect(() => {
@@ -417,7 +416,7 @@ function BoardInner({
         </div>
       )}
 
-      <CanvasContextMenu onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))} onDeleteSelected={deleteSelected} onDuplicate={duplicateSelected} onSelectAll={selectAll} position={contextMenuPos}>
+      <CanvasContextMenu onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))} onDeleteSelected={deleteSelected} onDuplicate={duplicateSelected} onSelectAll={selectAll} position={contextMenuPos.current}>
         <div className="w-full h-full">
           <ReactFlow
             nodes={renderedNodes}
@@ -446,7 +445,9 @@ function BoardInner({
               markerEnd: createEdgeMarker(edgeColor),
             }}
             className="canvas-flow"
-            onContextMenu={(e) => { contextMenuPos.current = { x: e.clientX, y: e.clientY }; }}
+            onContextMenu={(e) => {
+              contextMenuPos.current = { x: e.clientX, y: e.clientY };
+            }}
             onDoubleClick={handleDoubleClick}
           >
             <MiniMap

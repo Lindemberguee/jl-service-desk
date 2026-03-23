@@ -23,7 +23,6 @@ export interface RemoteUser {
 export interface CanvasSnapshot {
   nodes: Node[];
   edges: Edge[];
-  viewport: { x: number; y: number; zoom: number };
   updatedAt: string;
 }
 
