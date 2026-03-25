@@ -20,9 +20,9 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Trash2, Plus, Search, Filter, CheckCircle2, XCircle, Clock,
+  Trash2, Plus, Search, CheckCircle2, XCircle, Clock,
   Package, Wrench, Upload, Eye, AlertTriangle, Loader2, ChevronsUpDown, Check,
-  Pencil, Save,
+  Pencil, Save, Archive, ShieldAlert, DollarSign, Workflow,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -49,7 +49,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 const originLabels: Record<string, { label: string; icon: React.ElementType }> = {
   estoque: { label: 'Estoque', icon: Package },
   ativo: { label: 'Ativo', icon: Wrench },
-  manual: { label: 'Manual', icon: Package },
+  manual: { label: 'Manual', icon: Archive },
 };
 
 const BASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -62,6 +62,26 @@ async function getAuthHeaders() {
     Authorization: `Bearer ${data.session?.access_token}`,
     'Content-Type': 'application/json',
   };
+}
+
+function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string | number; tone: 'primary' | 'success' | 'warning' | 'danger' }) {
+  const toneMap = {
+    primary: 'bg-primary/10 text-primary border-primary/15',
+    success: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/15',
+    warning: 'bg-amber-500/10 text-amber-600 border-amber-500/15',
+    danger: 'bg-destructive/10 text-destructive border-destructive/15',
+  } as const;
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={`rounded-xl border p-2.5 ${toneMap[tone]}`}><Icon className="h-5 w-5" /></div>
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+          <p className="truncate text-xl font-bold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DisposalPage() {
@@ -78,7 +98,6 @@ export default function DisposalPage() {
   const [showReject, setShowReject] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
 
-  // Form state
   const [form, setForm] = useState({
     origin_type: 'estoque' as 'estoque' | 'ativo',
     stock_item_id: null as string | null,
@@ -96,32 +115,24 @@ export default function DisposalPage() {
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
-  // Fetch stock items
   const { data: stockItems = [] } = useQuery({
     queryKey: ['stock_items_for_disposal', currentTenantId],
     queryFn: async () => {
       if (!currentTenantId) return [];
       const headers = await getAuthHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/stock_items?tenant_id=eq.${currentTenantId}&order=name&select=id,name,sku,brand,current_level,unit`,
-        { headers }
-      );
+      const res = await fetch(`${BASE_URL}/rest/v1/stock_items?tenant_id=eq.${currentTenantId}&order=name&select=id,name,sku,brand,current_level,unit`, { headers });
       if (!res.ok) return [];
       return await res.json();
     },
     enabled: !!currentTenantId,
   });
 
-  // Fetch assets
   const { data: assets = [] } = useQuery({
     queryKey: ['assets_for_disposal', currentTenantId],
     queryFn: async () => {
       if (!currentTenantId) return [];
       const headers = await getAuthHeaders();
-      const res = await fetch(
-        `${BASE_URL}/rest/v1/assets?tenant_id=eq.${currentTenantId}&order=name&select=id,name,patrimony_code,serial_number,status`,
-        { headers }
-      );
+      const res = await fetch(`${BASE_URL}/rest/v1/assets?tenant_id=eq.${currentTenantId}&order=name&select=id,name,patrimony_code,serial_number,status`, { headers });
       if (!res.ok) return [];
       return await res.json();
     },
@@ -151,38 +162,15 @@ export default function DisposalPage() {
 
   const handleSelectItem = (item: any) => {
     if (form.origin_type === 'estoque') {
-      setForm(f => ({
-        ...f,
-        stock_item_id: item.id,
-        asset_id: null,
-        item_name: item.name,
-        unit: item.unit,
-        quantity: 1,
-      }));
+      setForm(f => ({ ...f, stock_item_id: item.id, asset_id: null, item_name: item.name, unit: item.unit, quantity: 1 }));
     } else {
-      setForm(f => ({
-        ...f,
-        asset_id: item.id,
-        stock_item_id: null,
-        item_name: item.name,
-        unit: 'un',
-        quantity: 1,
-      }));
+      setForm(f => ({ ...f, asset_id: item.id, stock_item_id: null, item_name: item.name, unit: 'un', quantity: 1 }));
     }
     setItemPickerOpen(false);
   };
 
   const handleOriginChange = (v: string) => {
-    setForm(f => ({
-      ...f,
-      origin_type: v as 'estoque' | 'ativo',
-      stock_item_id: null,
-      asset_id: null,
-      item_name: '',
-      item_description: '',
-      quantity: 1,
-      unit: 'un',
-    }));
+    setForm(f => ({ ...f, origin_type: v as 'estoque' | 'ativo', stock_item_id: null, asset_id: null, item_name: '', item_description: '', quantity: 1, unit: 'un' }));
   };
 
   const filtered = useMemo(() => {
@@ -266,42 +254,20 @@ export default function DisposalPage() {
     setShowDetail(d);
     setEditingDetail(false);
     if (startEditing && d.status === 'pendente') {
-      setEditForm({
-        reason: d.reason,
-        reason_detail: d.reason_detail || '',
-        category: d.category || 'Geral',
-        residual_value: d.residual_value || 0,
-        item_description: d.item_description || '',
-        quantity: d.quantity,
-      });
+      setEditForm({ reason: d.reason, reason_detail: d.reason_detail || '', category: d.category || 'Geral', residual_value: d.residual_value || 0, item_description: d.item_description || '', quantity: d.quantity });
       setEditingDetail(true);
     }
   };
 
   const startEdit = () => {
     if (!showDetail) return;
-    setEditForm({
-      reason: showDetail.reason,
-      reason_detail: showDetail.reason_detail || '',
-      category: showDetail.category || 'Geral',
-      residual_value: showDetail.residual_value || 0,
-      item_description: showDetail.item_description || '',
-      quantity: showDetail.quantity,
-    });
+    setEditForm({ reason: showDetail.reason, reason_detail: showDetail.reason_detail || '', category: showDetail.category || 'Geral', residual_value: showDetail.residual_value || 0, item_description: showDetail.item_description || '', quantity: showDetail.quantity });
     setEditingDetail(true);
   };
 
   const handleSaveEdit = async () => {
     if (!showDetail) return;
-    await updateDisposal.mutateAsync({
-      id: showDetail.id,
-      reason: editForm.reason as any,
-      reason_detail: editForm.reason_detail,
-      category: editForm.category,
-      residual_value: editForm.residual_value,
-      item_description: editForm.item_description,
-      quantity: editForm.quantity,
-    });
+    await updateDisposal.mutateAsync({ id: showDetail.id, reason: editForm.reason as any, reason_detail: editForm.reason_detail, category: editForm.category, residual_value: editForm.residual_value, item_description: editForm.item_description, quantity: editForm.quantity });
     toast.success('Descarte atualizado');
     setShowDetail({ ...showDetail, ...editForm });
     setEditingDetail(false);
@@ -319,70 +285,75 @@ export default function DisposalPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Descarte</h1>
-          <p className="text-sm text-muted-foreground">Gestão de itens depreciados, queimados e inservíveis</p>
-        </div>
-        {canManage && (
-          <Button onClick={() => setShowCreate(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Novo Descarte
-          </Button>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total', value: stats.total, icon: Trash2, color: 'text-foreground' },
-          { label: 'Pendentes', value: stats.pendentes, icon: Clock, color: 'text-amber-500' },
-          { label: 'Efetivados', value: stats.efetivados, icon: CheckCircle2, color: 'text-green-500' },
-          { label: 'Valor Residual', value: `R$ ${stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: AlertTriangle, color: 'text-orange-500' },
-        ].map((s, i) => (
-          <Card key={i}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center bg-muted", s.color)}>
-                <s.icon className="h-5 w-5" />
+    <div className="space-y-5">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-5 shadow-sm">
+        <div className="absolute inset-y-0 right-0 w-48 bg-primary/5 blur-3xl" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                <Workflow className="h-4 w-4" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-lg font-bold">{s.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por item..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">Workflow de baixa e descarte</span>
+            </div>
+            <h1 className="mt-3 text-2xl font-bold tracking-tight">Descarte</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Formalize baixas de itens e ativos, registre justificativas, acompanhe aprovações e mantenha evidências centralizadas.
+            </p>
+          </div>
+          {canManage && (
+            <Button onClick={() => setShowCreate(true)} className="h-9 gap-2">
+              <Plus className="h-4 w-4" /> Novo Descarte
+            </Button>
+          )}
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="pendente">Pendentes</SelectItem>
-            <SelectItem value="aprovado">Aprovados</SelectItem>
-            <SelectItem value="efetivado">Efetivados</SelectItem>
-            <SelectItem value="rejeitado">Rejeitados</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Table */}
-      <Card>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricCard icon={Archive} label="Total" value={stats.total} tone="primary" />
+        <MetricCard icon={Clock} label="Pendentes" value={stats.pendentes} tone="warning" />
+        <MetricCard icon={CheckCircle2} label="Efetivados" value={stats.efetivados} tone="success" />
+        <MetricCard icon={DollarSign} label="Valor residual" value={`R$ ${stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} tone="danger" />
+      </div>
+
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por item ou justificativa..." className="h-10 pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 w-[170px] text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="aprovado">Aprovados</SelectItem>
+                  <SelectItem value="efetivado">Efetivados</SelectItem>
+                  <SelectItem value="rejeitado">Rejeitados</SelectItem>
+                </SelectContent>
+              </Select>
+              {statusFilter !== 'todos' && (
+                <Button variant="ghost" size="sm" className="h-10 gap-1.5" onClick={() => setStatusFilter('todos')}>
+                  <Check className="h-3.5 w-3.5" /> Limpar filtro
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{filtered.length} registro(s) exibido(s)</span>
+            <span>{statusFilter === 'todos' ? 'Visão completa' : `Filtrado por ${statusConfig[statusFilter]?.label || statusFilter}`}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <ScrollArea className="w-full">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>Item</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Motivo</TableHead>
@@ -397,7 +368,15 @@ export default function DisposalPage() {
                 {isLoading ? (
                   <TableRow><TableCell colSpan={8} className="text-center py-12"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum descarte encontrado</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-14 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Archive className="h-9 w-9 opacity-25" />
+                        <p className="text-sm font-medium">Nenhum descarte encontrado</p>
+                        <p className="text-xs">Ajuste os filtros ou registre uma nova solicitação de descarte.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : filtered.map(d => {
                   const sc = statusConfig[d.status];
                   const origin = originLabels[d.origin_type] || originLabels.estoque;
@@ -407,8 +386,8 @@ export default function DisposalPage() {
                     <TableRow key={d.id} className="cursor-pointer hover:bg-accent/30" onClick={() => openDetail(d)}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-sm truncate max-w-[200px]">{d.item_name}</span>
-                          {d.item_description && <span className="text-xs text-muted-foreground truncate max-w-[200px]">{d.item_description}</span>}
+                          <span className="font-medium text-sm truncate max-w-[220px]">{d.item_name}</span>
+                          {d.item_description && <span className="text-xs text-muted-foreground truncate max-w-[220px]">{d.item_description}</span>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -420,7 +399,7 @@ export default function DisposalPage() {
                       <TableCell className="text-center">{d.quantity} {d.unit}</TableCell>
                       <TableCell>R$ {(d.residual_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={cn("gap-1 text-xs", sc.color)}>
+                        <Badge variant="outline" className={cn('gap-1 text-xs', sc.color)}>
                           <StatusIcon className="h-3 w-3" /> {sc.label}
                         </Badge>
                       </TableCell>
@@ -428,32 +407,11 @@ export default function DisposalPage() {
                       <TableCell className="text-right">
                         <TooltipProvider>
                           <div className="flex items-center justify-end gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d); }}>
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Detalhes</TooltipContent>
-                            </Tooltip>
+                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d); }}><Eye className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Detalhes</TooltipContent></Tooltip>
                             {canManage && (
                               <>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d, true); }}>
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Editar</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); deleteDisposal.mutate(d.id); }}>
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Excluir</TooltipContent>
-                                </Tooltip>
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(d, true); }}><Pencil className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); deleteDisposal.mutate(d.id); }}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Excluir</TooltipContent></Tooltip>
                               </>
                             )}
                           </div>
@@ -468,27 +426,21 @@ export default function DisposalPage() {
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={v => { if (!v) resetForm(); setShowCreate(v); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" /> Registrar Descarte</DialogTitle>
-            <DialogDescription>Selecione o item do estoque ou ativo a ser descartado</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> Registrar Descarte</DialogTitle>
+            <DialogDescription>Selecione o item do estoque ou ativo a ser baixado do fluxo operacional.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* Origin + Reason */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Origem *</Label>
                 <Select value={form.origin_type} onValueChange={handleOriginChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="estoque">
-                      <span className="flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Estoque</span>
-                    </SelectItem>
-                    <SelectItem value="ativo">
-                      <span className="flex items-center gap-2"><Wrench className="h-3.5 w-3.5" /> Ativo / Patrimônio</span>
-                    </SelectItem>
+                    <SelectItem value="estoque"><span className="flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Estoque</span></SelectItem>
+                    <SelectItem value="ativo"><span className="flex items-center gap-2"><Wrench className="h-3.5 w-3.5" /> Ativo / Patrimônio</span></SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -497,27 +449,18 @@ export default function DisposalPage() {
                 <Select value={form.reason} onValueChange={v => setForm(f => ({ ...f, reason: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(reasonLabels).map(([k, l]) => (
-                      <SelectItem key={k} value={k}>{l}</SelectItem>
-                    ))}
+                    {Object.entries(reasonLabels).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Item Picker (Combobox) */}
             <div className="space-y-2">
               <Label>{form.origin_type === 'estoque' ? 'Item de Estoque *' : 'Ativo / Patrimônio *'}</Label>
               <Popover open={itemPickerOpen} onOpenChange={setItemPickerOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                    {selectedItem ? (
-                      <span className="truncate">{selectedItem.label}</span>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {form.origin_type === 'estoque' ? 'Selecionar item de estoque...' : 'Selecionar ativo...'}
-                      </span>
-                    )}
+                    {selectedItem ? <span className="truncate">{selectedItem.label}</span> : <span className="text-muted-foreground">{form.origin_type === 'estoque' ? 'Selecionar item de estoque...' : 'Selecionar ativo...'}</span>}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -528,15 +471,8 @@ export default function DisposalPage() {
                       <CommandEmpty>Nenhum item encontrado</CommandEmpty>
                       <CommandGroup>
                         {currentItems.map((item: any) => (
-                          <CommandItem
-                            key={item.id}
-                            value={item.label}
-                            onSelect={() => handleSelectItem(item)}
-                            className="flex items-center gap-3 py-2.5"
-                          >
-                            <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center bg-muted shrink-0",
-                              form.origin_type === 'estoque' ? 'text-primary' : 'text-amber-500'
-                            )}>
+                          <CommandItem key={item.id} value={item.label} onSelect={() => handleSelectItem(item)} className="flex items-center gap-3 py-2.5">
+                            <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center bg-muted shrink-0', form.origin_type === 'estoque' ? 'text-primary' : 'text-amber-500')}>
                               {form.origin_type === 'estoque' ? <Package className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
                             </div>
                             <div className="flex flex-col flex-1 min-w-0">
@@ -551,31 +487,19 @@ export default function DisposalPage() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              {selectedItem && (
-                <p className="text-xs text-muted-foreground mt-1">{selectedItem.sublabel}</p>
-              )}
+              {selectedItem && <p className="text-xs text-muted-foreground mt-1">{selectedItem.sublabel}</p>}
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
               <Label>Descrição / Observações</Label>
               <Textarea value={form.item_description} onChange={e => setForm(f => ({ ...f, item_description: e.target.value }))} placeholder="Estado do item, detalhes visuais..." rows={2} />
             </div>
 
-            {/* Qty, Unit, Residual Value */}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Quantidade</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={selectedItem?.maxQty || 9999}
-                  value={form.quantity}
-                  onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))}
-                />
-                {form.origin_type === 'estoque' && selectedItem && (
-                  <p className="text-[10px] text-muted-foreground">Máx: {selectedItem.maxQty}</p>
-                )}
+                <Input type="number" min={1} max={selectedItem?.maxQty || 9999} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} />
+                {form.origin_type === 'estoque' && selectedItem && <p className="text-[10px] text-muted-foreground">Máx: {selectedItem.maxQty}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Unidade</Label>
@@ -587,27 +511,21 @@ export default function DisposalPage() {
               </div>
             </div>
 
-            {/* Category */}
             <div className="space-y-2">
               <Label>Categoria</Label>
               <Input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Ex: Eletrônicos, Móveis..." />
             </div>
 
-            {/* Reason Detail */}
             <div className="space-y-2">
               <Label>Justificativa</Label>
               <Textarea value={form.reason_detail} onChange={e => setForm(f => ({ ...f, reason_detail: e.target.value }))} placeholder="Descreva o motivo do descarte..." rows={2} />
             </div>
 
-            {/* Attachments */}
             <div className="space-y-2">
               <Label>Fotos / Laudos</Label>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="gap-2" asChild>
-                  <label className="cursor-pointer">
-                    <Upload className="h-4 w-4" /> Enviar Arquivo
-                    <input type="file" className="hidden" multiple accept="image/*,.pdf,.doc,.docx" onChange={handleUpload} />
-                  </label>
+                  <label className="cursor-pointer"><Upload className="h-4 w-4" /> Enviar Arquivo<input type="file" className="hidden" multiple accept="image/*,.pdf,.doc,.docx" onChange={handleUpload} /></label>
                 </Button>
                 {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {attachmentUrls.length > 0 && <span className="text-xs text-muted-foreground">{attachmentUrls.length} arquivo(s)</span>}
@@ -617,14 +535,12 @@ export default function DisposalPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setShowCreate(false); }}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createDisposal.isPending || !selectedItemId} className="gap-2">
-              {createDisposal.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Registrar
+              {createDisposal.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Registrar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Detail / Edit Dialog */}
       <Dialog open={!!showDetail} onOpenChange={v => { if (!v) { setShowDetail(null); setEditingDetail(false); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {showDetail && (() => {
@@ -632,24 +548,18 @@ export default function DisposalPage() {
             const sc = statusConfig[d.status];
             const StatusIcon = sc.icon;
             const origin = originLabels[d.origin_type] || originLabels.estoque;
+            const OriginIcon = origin.icon;
             return (
               <>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Trash2 className="h-5 w-5" /> {d.item_name}
-                  </DialogTitle>
+                  <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" /> {d.item_name}</DialogTitle>
                   <DialogDescription>Detalhes do descarte</DialogDescription>
                 </DialogHeader>
-
                 {!editingDetail ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className={cn("gap-1", sc.color)}>
-                        <StatusIcon className="h-3 w-3" /> {sc.label}
-                      </Badge>
-                      <Badge variant="outline" className="gap-1">
-                        <origin.icon className="h-3 w-3" /> {origin.label}
-                      </Badge>
+                      <Badge variant="outline" className={cn('gap-1', sc.color)}><StatusIcon className="h-3 w-3" /> {sc.label}</Badge>
+                      <Badge variant="outline" className="gap-1"><OriginIcon className="h-3 w-3" /> {origin.label}</Badge>
                       <Badge variant="outline">{reasonLabels[d.reason]}</Badge>
                     </div>
                     <Separator />
@@ -659,108 +569,43 @@ export default function DisposalPage() {
                       <div><span className="text-muted-foreground">Valor Residual:</span> <strong>R$ {(d.residual_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></div>
                       <div><span className="text-muted-foreground">Data:</span> <strong>{format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</strong></div>
                     </div>
-                    {d.item_description && (
-                      <div className="text-sm"><span className="text-muted-foreground">Descrição:</span><p className="mt-1">{d.item_description}</p></div>
-                    )}
-                    {d.reason_detail && (
-                      <div className="text-sm"><span className="text-muted-foreground">Justificativa:</span><p className="mt-1">{d.reason_detail}</p></div>
-                    )}
-                    {d.rejection_note && (
-                      <div className="text-sm p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                        <span className="text-destructive font-medium">Motivo da rejeição:</span>
-                        <p className="mt-1">{d.rejection_note}</p>
-                      </div>
-                    )}
+                    {d.item_description && <div className="text-sm"><span className="text-muted-foreground">Descrição:</span><p className="mt-1">{d.item_description}</p></div>}
+                    {d.reason_detail && <div className="text-sm"><span className="text-muted-foreground">Justificativa:</span><p className="mt-1">{d.reason_detail}</p></div>}
+                    {d.rejection_note && <div className="text-sm p-3 rounded-lg bg-destructive/5 border border-destructive/20"><span className="text-destructive font-medium">Motivo da rejeição:</span><p className="mt-1">{d.rejection_note}</p></div>}
                     {Array.isArray(d.attachments) && d.attachments.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-sm text-muted-foreground">Anexos:</span>
-                        <div className="flex gap-2 flex-wrap">
-                          {d.attachments.map((a: any, i: number) => (
-                            <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
-                              Arquivo {i + 1}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
+                      <div className="space-y-2"><span className="text-sm text-muted-foreground">Anexos:</span><div className="flex gap-2 flex-wrap">{d.attachments.map((a: any, i: number) => <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Arquivo {i + 1}</a>)}</div></div>
                     )}
-
-                    {/* Action buttons */}
                     <Separator />
                     <div className="flex gap-2 flex-wrap">
                       {canManage && (
                         <>
-                          <Button variant="outline" size="sm" className="gap-1.5" onClick={startEdit}>
-                            <Pencil className="h-3.5 w-3.5" /> Editar
-                          </Button>
-                          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleteDisposal.isPending}>
-                            {deleteDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir
-                          </Button>
+                          <Button variant="outline" size="sm" className="gap-1.5" onClick={startEdit}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+                          <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleteDisposal.isPending}>{deleteDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir</Button>
                           <div className="flex-1" />
                           {d.status === 'pendente' && (
                             <>
-                              <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setShowReject(d.id)}>
-                                <XCircle className="h-3.5 w-3.5" /> Rejeitar
-                              </Button>
-                              <Button size="sm" className="gap-1.5" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>
-                                {approveDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                                Aprovar{d.origin_type === 'estoque' ? ' & Baixar' : ''}
-                              </Button>
+                              <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setShowReject(d.id)}><XCircle className="h-3.5 w-3.5" /> Rejeitar</Button>
+                              <Button size="sm" className="gap-1.5" onClick={() => handleApprove(d)} disabled={approveDisposal.isPending}>{approveDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Aprovar{d.origin_type === 'estoque' ? ' & Baixar' : ''}</Button>
                             </>
                           )}
-                          {(d.status === 'efetivado' || d.status === 'aprovado' || d.status === 'rejeitado') && (
-                            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleReopen(d)}>
-                              <Clock className="h-3.5 w-3.5" /> Reabrir
-                            </Button>
-                          )}
+                          {(d.status === 'efetivado' || d.status === 'aprovado' || d.status === 'rejeitado') && <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleReopen(d)}><Clock className="h-3.5 w-3.5" /> Reabrir</Button>}
                         </>
                       )}
                     </div>
                   </div>
                 ) : (
-                  /* Edit mode */
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Motivo</Label>
-                        <Select value={editForm.reason} onValueChange={v => setEditForm(f => ({ ...f, reason: v }))}>
-                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(reasonLabels).map(([k, l]) => (
-                              <SelectItem key={k} value={k}>{l}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Categoria</Label>
-                        <Input value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="h-9" />
-                      </div>
+                      <div className="space-y-2"><Label className="text-xs">Motivo</Label><Select value={editForm.reason} onValueChange={v => setEditForm(f => ({ ...f, reason: v }))}><SelectTrigger className="h-9"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(reasonLabels).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="space-y-2"><Label className="text-xs">Categoria</Label><Input value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="h-9" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Quantidade</Label>
-                        <Input type="number" min={1} value={editForm.quantity} onChange={e => setEditForm(f => ({ ...f, quantity: Number(e.target.value) }))} className="h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Valor Residual</Label>
-                        <CurrencyInput value={String(editForm.residual_value || '')} onValueChange={v => setEditForm(f => ({ ...f, residual_value: v ? Number(v) : 0 }))} />
-                      </div>
+                      <div className="space-y-2"><Label className="text-xs">Quantidade</Label><Input type="number" min={1} value={editForm.quantity} onChange={e => setEditForm(f => ({ ...f, quantity: Number(e.target.value) }))} className="h-9" /></div>
+                      <div className="space-y-2"><Label className="text-xs">Valor Residual</Label><CurrencyInput value={String(editForm.residual_value || '')} onValueChange={v => setEditForm(f => ({ ...f, residual_value: v ? Number(v) : 0 }))} /></div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Descrição</Label>
-                      <Textarea value={editForm.item_description} onChange={e => setEditForm(f => ({ ...f, item_description: e.target.value }))} rows={2} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Justificativa</Label>
-                      <Textarea value={editForm.reason_detail} onChange={e => setEditForm(f => ({ ...f, reason_detail: e.target.value }))} rows={2} />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1" onClick={() => setEditingDetail(false)}>Cancelar</Button>
-                      <Button className="flex-1 gap-1.5" onClick={handleSaveEdit} disabled={updateDisposal.isPending}>
-                        {updateDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                        Salvar
-                      </Button>
-                    </div>
+                    <div className="space-y-2"><Label className="text-xs">Descrição</Label><Textarea value={editForm.item_description} onChange={e => setEditForm(f => ({ ...f, item_description: e.target.value }))} rows={2} /></div>
+                    <div className="space-y-2"><Label className="text-xs">Justificativa</Label><Textarea value={editForm.reason_detail} onChange={e => setEditForm(f => ({ ...f, reason_detail: e.target.value }))} rows={2} /></div>
+                    <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setEditingDetail(false)}>Cancelar</Button><Button className="flex-1 gap-1.5" onClick={handleSaveEdit} disabled={updateDisposal.isPending}>{updateDisposal.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Salvar</Button></div>
                   </div>
                 )}
               </>
@@ -769,7 +614,6 @@ export default function DisposalPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reject Dialog */}
       <Dialog open={!!showReject} onOpenChange={() => setShowReject(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
