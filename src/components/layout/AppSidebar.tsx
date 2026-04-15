@@ -223,8 +223,13 @@ export function AppSidebar() {
   ];
 
   const visibleSections = sections
-    .map(s => ({ ...s, visible: getVisibleItems(s.items) }))
+    .map(s => ({ ...s, visible: getVisibleItems(s.items).filter(i => !hiddenPaths.includes(i.path)) }))
     .filter(s => s.visible.length > 0);
+
+  // For the customize dialog we need all permission-visible items (before hiding)
+  const allPermissionSections = sections
+    .map(s => ({ label: s.label, items: getVisibleItems(s.items).map(i => ({ label: i.label, path: i.path, icon: i.icon })) }))
+    .filter(s => s.items.length > 0);
 
   return (
     <Sidebar>
