@@ -66,6 +66,7 @@ function CrudSection({
   const deleteMutation = useTenantDelete(table, [queryKey]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
