@@ -1002,6 +1002,7 @@ export default function Cadastros() {
             readOnly={readOnly}
             tenantId={currentTenantId}
             searchKeys={['name', 'address', 'city']}
+            showImportExport
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Bloco A, Sede, Filial Centro', required: true },
               { key: 'address', label: 'Endereço', placeholder: 'Rua, número, bairro' },
@@ -1021,6 +1022,9 @@ export default function Cadastros() {
             tenantId={currentTenantId}
             renderCell={locationRenderCell}
             searchKeys={['name', 'description']}
+            showImportExport
+            lookupMaps={{ unit_id: unitMap }}
+            reverseLookupMaps={{ unit_id: Object.fromEntries(Object.entries(unitMap).map(([id, name]) => [name, id]).concat(Object.entries(unitMap).map(([id, name]) => [name.toLowerCase(), id]))) }}
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Sala 101, Pátio, Recepção', required: true },
               { key: 'description', label: 'Descrição', placeholder: 'Ex: 2º andar, ala norte' },
@@ -1038,6 +1042,7 @@ export default function Cadastros() {
             readOnly={readOnly}
             tenantId={currentTenantId}
             searchKeys={['name']}
+            showImportExport
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Elétrica, Hidráulica, TI', required: true },
             ]}
