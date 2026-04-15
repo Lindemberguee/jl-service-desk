@@ -29,6 +29,7 @@ import {
   Plus, Trash2, Building2, Tag, Users as UsersIcon, MapPin, Loader2,
   Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff, CheckSquare,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ChecklistTemplatesSection } from '@/components/cadastros/ChecklistTemplatesSection';
 import { CadastroImportExport } from '@/components/cadastros/CadastroImportExport';
 
@@ -65,6 +66,7 @@ function CrudSection({
   const deleteMutation = useTenantDelete(table, [queryKey]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const qc = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -73,6 +75,9 @@ function CrudSection({
   const [form, setForm] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const tableFields = useMemo(() => fields.filter(f => !f.hideInTable), [fields]);
 
@@ -136,6 +141,41 @@ function CrudSection({
     setDeleteTarget(null);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((item: any) => item.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await (supabase.from as any)(table).delete().in('id', ids);
+      if (error) throw error;
+      await logAudit({ entity: table, entityId: ids[0], action: `${table}.bulk_deleted`, tenantId, diff: { count: ids.length } });
+      toast({ title: `${ids.length} registro(s) excluído(s)!` });
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: [queryKey] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir registros.'), variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteOpen(false);
+    }
+  };
+
   const getCellValue = (field: FieldDef, item: any) => {
     if (renderCell) {
       const custom = renderCell(field, item);
@@ -188,6 +228,11 @@ function CrudSection({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {!readOnly && selectedIds.size > 0 && (
+            <Button size="sm" variant="destructive" className="h-8 gap-1.5 text-xs" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Excluir {selectedIds.size} selecionado(s)
+            </Button>
+          )}
           {showImportExport && !readOnly && (
             <CadastroImportExport
               title={title}
@@ -267,16 +312,26 @@ function CrudSection({
           {filtered.map((item: any) => (
             <div
               key={item.id}
-              className="bg-card border border-border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-accent/30 transition-colors"
+              className={`bg-card border border-border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-accent/30 transition-colors ${selectedIds.has(item.id) ? 'bg-accent/20 border-primary/30' : ''}`}
               onClick={() => setDetailTarget(item)}
             >
-              <div className="min-w-0 flex-1">
-                {tableFields.map((f, i) => (
-                  <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
-                    {i > 0 && <span className="font-medium">{f.label}: </span>}
-                    {getCellValue(f, item)}
-                  </p>
-                ))}
+              <div className="flex items-start gap-2">
+                {!readOnly && (
+                  <div className="pt-0.5" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={() => toggleSelect(item.id)}
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  {tableFields.map((f, i) => (
+                    <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
+                      {i > 0 && <span className="font-medium">{f.label}: </span>}
+                      {getCellValue(f, item)}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
@@ -286,6 +341,15 @@ function CrudSection({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                {!readOnly && (
+                  <TableHead className="w-10 h-9">
+                    <Checkbox
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
+                )}
                 {tableFields.map(f => (
                   <TableHead key={f.key} className="text-[11px] font-semibold uppercase text-muted-foreground h-9">
                     {f.label}
@@ -297,9 +361,18 @@ function CrudSection({
               {filtered.map((item: any) => (
                 <TableRow
                   key={item.id}
-                  className="cursor-pointer hover:bg-accent/30 transition-colors"
+                  className={`cursor-pointer hover:bg-accent/30 transition-colors ${selectedIds.has(item.id) ? 'bg-accent/20' : ''}`}
                   onClick={() => setDetailTarget(item)}
                 >
+                  {!readOnly && (
+                    <TableCell className="w-10" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={() => toggleSelect(item.id)}
+                        aria-label={`Selecionar ${item[fields[0]?.key]}`}
+                      />
+                    </TableCell>
+                  )}
                   {tableFields.map((f, i) => (
                     <TableCell key={f.key} className={i === 0 ? 'text-sm font-medium' : 'text-xs text-muted-foreground'}>
                       {getCellValue(f, item)}
@@ -388,6 +461,25 @@ function CrudSection({
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleteMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(v) => { if (!v) setBulkDeleteOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} registro(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{selectedIds.size}</strong> registro(s) selecionado(s)? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkDeleting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
+              Excluir Todos
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
