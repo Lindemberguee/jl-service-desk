@@ -121,7 +121,13 @@ export function CadastroImportExport({ title, table, queryKey, fields, data, loo
     setImportOpen(true);
 
     try {
-      const text = await file.text();
+      // Try UTF-8 first; if it contains replacement chars, fall back to Latin-1
+      let text = await file.text();
+      if (text.includes('\uFFFD')) {
+        const buffer = await file.arrayBuffer();
+        const decoder = new TextDecoder('iso-8859-1');
+        text = decoder.decode(buffer);
+      }
       console.log('[Import] File text length:', text.length, 'first 200 chars:', text.substring(0, 200));
       const parsed = parseCSV(text);
       console.log('[Import] Parsed rows:', parsed.length, 'first row:', parsed[0]);
