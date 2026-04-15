@@ -140,6 +140,41 @@ function CrudSection({
     setDeleteTarget(null);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((item: any) => item.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await (supabase.from as any)(table).delete().in('id', ids);
+      if (error) throw error;
+      await logAudit({ entity: table, entityId: ids[0], action: `${table}.bulk_deleted`, tenantId, diff: { count: ids.length } });
+      toast({ title: `${ids.length} registro(s) excluído(s)!` });
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: [queryKey] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: friendlyErrorMessage(err, 'Erro ao excluir registros.'), variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteOpen(false);
+    }
+  };
+
   const getCellValue = (field: FieldDef, item: any) => {
     if (renderCell) {
       const custom = renderCell(field, item);
