@@ -492,7 +492,7 @@ export default function Assets() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-2">
-          {filtered.map((a: any) => (
+          {paginatedAssets.map((a: any) => (
             <Card key={a.id} className="overflow-hidden border-border/60 shadow-sm transition-colors hover:border-border" onClick={() => setDetailTarget(a)}>
               <CardContent className="p-4 space-y-3 cursor-pointer">
                 <div className="flex items-start justify-between gap-3">
