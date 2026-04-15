@@ -22,6 +22,9 @@ import type { Permission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebarPreferences } from '@/hooks/useSidebarPreferences';
+import { SidebarCustomizeDialog } from '@/components/layout/SidebarCustomizeDialog';
+import { useState } from 'react';
 
 // Map sidebar items to module keys for gating
 const permissionToModule: Record<string, string> = {
