@@ -228,6 +228,11 @@ function CrudSection({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {!readOnly && selectedIds.size > 0 && (
+            <Button size="sm" variant="destructive" className="h-8 gap-1.5 text-xs" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Excluir {selectedIds.size} selecionado(s)
+            </Button>
+          )}
           {showImportExport && !readOnly && (
             <CadastroImportExport
               title={title}
