@@ -89,6 +89,7 @@ export default function Assets() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterUnit, setFilterUnit] = useState('all');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
   const unitMap = useMemo(() => Object.fromEntries(units.map((u: any) => [u.id, u.name])), [units]);
