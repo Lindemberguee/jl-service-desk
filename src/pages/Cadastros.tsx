@@ -29,6 +29,7 @@ import {
   Plus, Trash2, Building2, Tag, Users as UsersIcon, MapPin, Loader2,
   Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff, CheckSquare,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ChecklistTemplatesSection } from '@/components/cadastros/ChecklistTemplatesSection';
 import { CadastroImportExport } from '@/components/cadastros/CadastroImportExport';
 
