@@ -28,7 +28,7 @@ export function WorkOrderRowV2({ wo, onClick }: Props) {
       <div className="text-sm text-muted-foreground">{wo.status}</div>
 
       <div className="text-sm text-muted-foreground">
-        {wo.assignee || 'Não atribuído'}
+        {(wo as any).assignee || 'Não atribuído'}
       </div>
     </div>
   );
