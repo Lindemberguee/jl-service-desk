@@ -453,6 +453,118 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── 12. KNOWLEDGE ARTICLES ──
+    const kbArticles = [
+      { title: "Procedimento de Partida da Extrusora", category: "Procedimentos", tags: ["extrusao","startup","seguranca"], content: "## Procedimento de Partida — Extrusora de PE Reciclado\n\n### 1. Verificações Pré-Partida\n- Verificar nível de óleo do redutor\n- Confirmar limpeza da tremonha e do canhão\n- Checar conexões elétricas do painel\n- Verificar temperatura ambiente (mín. 15°C)\n\n### 2. Aquecimento\n1. Ligar zonas de aquecimento na sequência: Z1 → Z5\n2. Temperaturas recomendadas:\n   - Z1: 170°C | Z2: 185°C | Z3: 195°C | Z4: 200°C | Z5/Cabeçote: 210°C\n3. Aguardar estabilização por **45 minutos**\n\n### 3. Partida do Motor\n- Iniciar em velocidade mínima (15 RPM)\n- Alimentar material gradualmente\n- Monitorar amperagem (máx. 85% da nominal)\n- Aumentar RPM progressivamente até parâmetro de produção\n\n### 4. Monitoramento\n- Verificar pressão do cabeçote a cada 30 min\n- Registrar parâmetros no log de produção\n- Comunicar anomalias ao coordenador imediatamente", is_published: true },
+      { title: "Guia de Manutenção Preventiva — Moinho de Facas", category: "Manutenção", tags: ["moinho","preventiva","facas"], content: "## Manutenção Preventiva — Moinho de Facas\n\n### Frequência: Semanal\n- Inspecionar desgaste das facas rotativas e fixas\n- Verificar folga entre facas (tolerância: 0.3-0.5mm)\n- Lubrificar rolamentos do eixo principal\n- Limpar peneira classificadora\n\n### Frequência: Mensal\n- Trocar óleo do redutor (ISO VG 320)\n- Verificar alinhamento de polias e correias\n- Inspecionar câmara de moagem por trincas\n- Testar sensor de vibração\n\n### Frequência: Trimestral\n- Afiar ou substituir jogo de facas\n- Verificar isolamento do motor\n- Calibrar sensor de temperatura do motor\n- Inspecionar estrutura de suporte anti-vibração\n\n### Registro\nToda intervenção deve ser registrada no sistema com:\n- Data/hora | Técnico responsável | Peças substituídas | Próxima manutenção", is_published: true },
+      { title: "Política de Segurança — Área de Reciclagem", category: "Segurança", tags: ["seguranca","epi","normas"], content: "## Política de Segurança — Galpão de Reciclagem\n\n### EPIs Obrigatórios\n- Capacete com jugular\n- Óculos de proteção anti-impacto\n- Protetor auricular (NRRsf 18dB mín.)\n- Luvas anticorte nível 5\n- Botina com biqueira de composite\n- Avental PVC (área de lavagem)\n\n### Procedimentos de Emergência\n1. **Incêndio**: Acionar alarme → Evacuar pela rota A → Ponto de encontro estacionamento\n2. **Acidente com máquina**: Pressionar botão E-STOP → Isolar área → Chamar CIPA\n3. **Vazamento químico**: Usar kit de contenção → Ventilar área → Notificar coordenador\n\n### Regras Gerais\n- Proibido operar máquinas sem treinamento documentado\n- Bloqueio/etiquetagem (LOTO) obrigatório em toda manutenção\n- Máximo 2 operadores por moinho simultaneamente\n- Pausas obrigatórias: 15 min a cada 2h de operação contínua", is_published: true },
+      { title: "Controle de Qualidade — Testes de MFI", category: "Qualidade", tags: ["qualidade","mfi","laboratorio"], content: "## Teste de Índice de Fluidez (MFI) — PE Reciclado\n\n### Objetivo\nGarantir que o MFI do granulado reciclado esteja dentro das especificações do cliente.\n\n### Equipamento\n- Plastômetro de extrusão (ASTM D1238)\n- Temperatura: 190°C | Carga: 2.16 kg\n\n### Procedimento\n1. Pré-aquecer equipamento por 15 min\n2. Inserir 5g de amostra no cilindro\n3. Aplicar carga e aguardar estabilização (4 min)\n4. Coletar extrudado em intervalos de 30s (3 cortes)\n5. Pesar amostras em balança analítica (0.001g)\n\n### Critérios de Aceitação\n| Grade | MFI Alvo | Tolerância |\n|-------|----------|------------|\n| PEAD Sopro | 0.3 g/10min | ±0.05 |\n| PEBD Filme | 2.0 g/10min | ±0.3 |\n| PEAD Injeção | 8.0 g/10min | ±1.0 |\n\n### Ações Corretivas\n- MFI acima: Adicionar PEAD virgem (até 20%)\n- MFI abaixo: Reprocessar com ajuste de temperatura (+5°C)", is_published: true },
+      { title: "Manual de Operação — Sistema de Lavagem", category: "Operação", tags: ["lavagem","operacao","agua"], content: "## Sistema de Lavagem e Flotação\n\n### Descrição\nSistema contínuo de lavagem por fricção + tanque de flotação para separação PE/PP de contaminantes.\n\n### Parâmetros Operacionais\n- Vazão de água: 15-20 m³/h\n- Temperatura: Ambiente (verão) / 35°C (inverno)\n- Concentração detergente: 2-3% vol.\n- Tempo de residência tanque: 8-12 min\n\n### Checklist Diário\n- [ ] Nível de água nos tanques\n- [ ] Funcionamento das bombas de recirculação\n- [ ] Limpeza das telas filtrantes\n- [ ] pH da água (6.5 - 8.0)\n- [ ] Concentração de sólidos suspensos\n\n### Manutenção Semanal\n- Limpar fundo dos tanques de decantação\n- Inspecionar pás do lavador de fricção\n- Verificar vedações das bombas\n- Substituir telas com >30% de obstrução", is_published: true },
+      { title: "Plano de Descarte — Resíduos Industriais", category: "Meio Ambiente", tags: ["descarte","residuos","meio-ambiente"], content: "## Plano de Gerenciamento de Resíduos\n\n### Classificação\n| Resíduo | Classe | Destinação |\n|---------|--------|------------|\n| Borra de PE | II-A | Coprocessamento |\n| Óleo usado | I | Rerrefino |\n| Embalagens contaminadas | I | Incineração |\n| Efluente de lavagem | II-A | ETE própria |\n| Sucata metálica | II-B | Reciclagem |\n\n### Armazenamento\n- Área coberta com piso impermeável\n- Contenção para líquidos (110% do maior volume)\n- Sinalização conforme NBR 7500\n- Tempo máximo: 180 dias\n\n### Documentação\n- MTR (Manifesto de Transporte de Resíduos) para cada retirada\n- CDF (Certificado de Destinação Final) arquivado por 5 anos\n- CADRI atualizado para todos os transportadores", is_published: true },
+    ];
+    for (const art of kbArticles) {
+      const { data: ex } = await sb.from("knowledge_articles").select("id").eq("tenant_id", T).eq("title", art.title).maybeSingle();
+      if (ex) continue;
+      await sb.from("knowledge_articles").insert({ tenant_id: T, author_id: adminId, ...art });
+    }
+
+    // ── 13. DOCUMENTS (metadata only, no real files) ──
+    const docsSpec = [
+      { title: "Manual da Extrusora EX-2200", folder: "Manuais Técnicos", category: "Manuais", tags: ["extrusora","manual"], file_name: "manual_extrusora_ex2200.pdf", mime_type: "application/pdf", file_size: 4520000, description: "Manual completo de operação e manutenção da extrusora modelo EX-2200" },
+      { title: "Planta Baixa — Galpão Reciclagem", folder: "Projetos", category: "Engenharia", tags: ["planta","projeto","layout"], file_name: "planta_galpao_reciclagem_v3.dwg", mime_type: "application/octet-stream", file_size: 8900000, description: "Planta baixa atualizada do galpão de reciclagem com novas linhas" },
+      { title: "Certificado ISO 14001:2015", folder: "Certificações", category: "Qualidade", tags: ["iso","certificado","meio-ambiente"], file_name: "certificado_iso14001_2025.pdf", mime_type: "application/pdf", file_size: 1230000, description: "Certificação ambiental válida até 12/2026" },
+      { title: "Procedimento LOTO — Bloqueio e Etiquetagem", folder: "Segurança", category: "Segurança", tags: ["loto","seguranca","nr10"], file_name: "procedimento_loto_rev04.pdf", mime_type: "application/pdf", file_size: 2100000, description: "Procedimento padrão de bloqueio e etiquetagem para manutenção" },
+      { title: "Relatório Mensal — Março 2026", folder: "Relatórios", category: "Relatórios", tags: ["relatorio","mensal","producao"], file_name: "relatorio_mar2026.xlsx", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file_size: 890000, description: "Relatório consolidado de produção, manutenção e indicadores" },
+      { title: "Ficha Técnica — PEAD Reciclado Grade Sopro", folder: "Fichas Técnicas", category: "Qualidade", tags: ["ficha-tecnica","pead","sopro"], file_name: "ft_pead_sopro_v2.pdf", mime_type: "application/pdf", file_size: 560000, description: "Especificações técnicas do PEAD reciclado para sopro" },
+      { title: "Contrato Fornecedor — Lubrificantes Shell", folder: "Contratos", category: "Compras", tags: ["contrato","fornecedor","lubrificante"], file_name: "contrato_shell_2026.pdf", mime_type: "application/pdf", file_size: 3400000, description: "Contrato de fornecimento de lubrificantes industriais" },
+      { title: "Treinamento NR-12 — Apresentação", folder: "Treinamentos", category: "Segurança", tags: ["nr12","treinamento","seguranca"], file_name: "treinamento_nr12_2026.pptx", mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", file_size: 15200000, description: "Material de treinamento sobre segurança em máquinas e equipamentos" },
+      { title: "Diagrama Elétrico — Painel Extrusora 01", folder: "Projetos", category: "Engenharia", tags: ["eletrico","diagrama","extrusora"], file_name: "diagrama_painel_ext01.pdf", mime_type: "application/pdf", file_size: 6700000, description: "Diagrama unifilar e de comando do painel da extrusora 01" },
+      { title: "PPRA 2026 — Programa de Riscos Ambientais", folder: "Segurança", category: "Segurança", tags: ["ppra","seguranca","riscos"], file_name: "ppra_2026.pdf", mime_type: "application/pdf", file_size: 4100000, description: "Programa de prevenção de riscos ambientais atualizado" },
+    ];
+    let docsCreated = 0;
+    for (const doc of docsSpec) {
+      const { data: ex } = await sb.from("documents").select("id").eq("tenant_id", T).eq("title", doc.title).maybeSingle();
+      if (ex) continue;
+      const storageKey = `${T}/demo_${doc.file_name}`;
+      await sb.from("documents").insert({
+        tenant_id: T, user_id: adminId, storage_key: storageKey, ...doc,
+      });
+      docsCreated++;
+    }
+
+    // ── 14. VAULT ENTRIES (via direct insert, no encryption for demo) ──
+    const vaultSpec = [
+      { title: "SCADA — Sistema Supervisório", service_name: "Elipse E3", url: "https://scada.polietileno.local:8443", category: "Sistemas Industriais", tags: ["scada","supervisorio","elipse"] },
+      { title: "ERP — SAP Business One", service_name: "SAP B1", url: "https://sap.polietileno.com.br", category: "ERP", tags: ["sap","erp","financeiro"] },
+      { title: "CLP Siemens — Extrusora 01", service_name: "TIA Portal", url: "https://192.168.10.50", category: "Automação", tags: ["clp","siemens","extrusora"] },
+      { title: "Câmeras CFTV — Hikvision", service_name: "iVMS-4200", url: "https://cftv.polietileno.local", category: "Segurança", tags: ["cftv","cameras","hikvision"] },
+      { title: "Wi-Fi Corporativo — UniFi", service_name: "UniFi Controller", url: "https://unifi.polietileno.local:8443", category: "TI", tags: ["wifi","unifi","rede"] },
+      { title: "Fornecedor — Portal Shell", service_name: "Shell LubeMatch", url: "https://portal.shell.com.br", category: "Fornecedores", tags: ["shell","lubrificante","fornecedor"] },
+      { title: "Backup Server — Veeam", service_name: "Veeam B&R", url: "https://backup.polietileno.local:9392", category: "TI", tags: ["backup","veeam","servidor"] },
+      { title: "Balança Rodoviária — Toledo", service_name: "MGR Web", url: "https://balanca.polietileno.local", category: "Sistemas Industriais", tags: ["balanca","toledo","pesagem"] },
+    ];
+    let vaultCreated = 0;
+    for (const v of vaultSpec) {
+      const { data: ex } = await sb.from("vault_entries").select("id").eq("tenant_id", T).eq("title", v.title).maybeSingle();
+      if (ex) continue;
+      await sb.from("vault_entries").insert({
+        tenant_id: T, created_by: adminId, encrypted_username: "demo_encrypted", encrypted_password: "demo_encrypted", encrypted_notes: "demo_encrypted", ...v,
+      });
+      vaultCreated++;
+    }
+
+    // ── 15. NOTES ──
+    const notesSpec = [
+      { title: "Checklist Diário — Extrusão", folder: "Operação", tags: ["checklist","extrusao","diario"], content: "## Checklist Matinal\n\n- [ ] Verificar temperaturas das zonas\n- [ ] Checar nível de material na tremonha\n- [ ] Inspecionar rolos puxadores\n- [ ] Confirmar limpeza da área\n- [ ] Verificar funcionamento do corte\n- [ ] Registrar leitura do horímetro\n\n## Observações\nAnotar qualquer anomalia detectada durante a inspeção." },
+      { title: "Contatos de Emergência", folder: "Importante", tags: ["emergencia","contatos"], content: "## Contatos de Emergência\n\n| Serviço | Telefone |\n|---------|----------|\n| Bombeiros | 193 |\n| SAMU | 192 |\n| CIPA — Ricardo | (81) 99999-1234 |\n| Manutenção 24h | (81) 99888-5678 |\n| Gerente de Planta | (81) 99777-4321 |\n| Fornecedor Elétrico | (81) 3333-4444 |", is_pinned: true },
+      { title: "Ideias de Melhoria — Linha de Reciclagem", folder: "Projetos", tags: ["melhoria","reciclagem","ideias"], content: "## Melhorias Propostas\n\n1. **Sensor de metal antes do moinho** — Evitar quebra de facas por contaminação metálica\n2. **Esteira com separação óptica** — Aumentar pureza do material triado\n3. **Reuso de água** — Instalar sistema de tratamento para recirculação 80%\n4. **Painel fotovoltaico** — Cobrir telhado do galpão para reduzir custo energético\n\n### Prioridade\nSensor de metal é o mais urgente — 3 quebras de facas no último mês." },
+      { title: "Ata de Reunião — Planejamento Q2", folder: "Reuniões", tags: ["reuniao","planejamento","q2"], content: "## Reunião de Planejamento Q2 2026\n**Data:** 02/04/2026 | **Participantes:** Ricardo, Marcos, Camila, Juliana\n\n### Pautas\n1. Meta de produção: 450 ton/mês\n2. Parada programada extrusora 02: semana 15-19/abril\n3. Contratação de mais 1 técnico\n4. Treinamento NR-12 obrigatório até maio\n\n### Decisões\n- Aprovar compra de 2 jogos de facas reserva\n- Agendar calibração dos instrumentos Lab\n- Ricardo ficará responsável pelo cronograma de parada" },
+    ];
+    let notesCreated = 0;
+    for (const n of notesSpec) {
+      const { data: ex } = await sb.from("notes").select("id").eq("tenant_id", T).eq("title", n.title).maybeSingle();
+      if (ex) continue;
+      await sb.from("notes").insert({ tenant_id: T, user_id: adminId, ...n });
+      notesCreated++;
+    }
+
+    // ── 16. PLANNER ──
+    let planId: string;
+    const { data: exPlan } = await sb.from("planner_plans").select("id").eq("tenant_id", T).eq("name", "Plano de Manutenção Q2 2026").maybeSingle();
+    if (exPlan) { planId = exPlan.id; }
+    else {
+      const { data: planRow } = await sb.from("planner_plans").insert({ tenant_id: T, created_by: adminId, name: "Plano de Manutenção Q2 2026", description: "Plano trimestral de manutenções programadas e melhorias" }).select("id").single();
+      planId = planRow!.id;
+
+      const buckets = ["A Fazer", "Em Progresso", "Concluído"];
+      const bucketIds: Record<string, string> = {};
+      for (let i = 0; i < buckets.length; i++) {
+        const { data: b } = await sb.from("planner_buckets").insert({ tenant_id: T, plan_id: planId, name: buckets[i], sort_order: i }).select("id").single();
+        bucketIds[buckets[i]] = b!.id;
+      }
+
+      const tasks = [
+        { bucket: "A Fazer", title: "Trocar rolamentos extrusora 01", priority: "high", due: "2026-04-25" },
+        { bucket: "A Fazer", title: "Calibrar sensores de temperatura", priority: "medium", due: "2026-04-28" },
+        { bucket: "A Fazer", title: "Instalar sensor de metal no moinho", priority: "high", due: "2026-05-05" },
+        { bucket: "A Fazer", title: "Revisar sistema de ventilação", priority: "low", due: "2026-05-10" },
+        { bucket: "Em Progresso", title: "Parada programada extrusora 02", priority: "high", due: "2026-04-19" },
+        { bucket: "Em Progresso", title: "Treinamento NR-12 equipe", priority: "medium", due: "2026-04-30" },
+        { bucket: "Em Progresso", title: "Reparo bomba recirculação", priority: "high", due: "2026-04-18" },
+        { bucket: "Concluído", title: "Troca de óleo redutor moinho", priority: "medium", due: "2026-04-10" },
+        { bucket: "Concluído", title: "Inspeção correias transportadoras", priority: "low", due: "2026-04-08" },
+        { bucket: "Concluído", title: "Limpeza tanques de decantação", priority: "medium", due: "2026-04-05" },
+      ];
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        await sb.from("planner_tasks").insert({
+          tenant_id: T, plan_id: planId, bucket_id: bucketIds[t.bucket],
+          title: t.title, priority: t.priority, due_date: t.due,
+          sort_order: i, status: t.bucket === "Concluído" ? "done" : t.bucket === "Em Progresso" ? "in_progress" : "todo",
+        });
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       tenant: "Demo - Polietileno Reciclavel",
@@ -462,6 +574,11 @@ Deno.serve(async (req) => {
         kpi_entries: `${kpisSpec.length * months} datapoints`,
         okr_cycle: 1, okr_objectives: objectivesSpec.length,
         okr_key_results: objectivesSpec.reduce((s, o) => s + o.keyResults.length, 0),
+        knowledge_articles: kbArticles.length,
+        documents: docsCreated,
+        vault_entries: vaultCreated,
+        notes: notesCreated,
+        planner_plan: 1,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
