@@ -58,7 +58,7 @@ function parseCSV(text: string): string[][] {
         else { current += ch; }
       } else {
         if (ch === '"') { inQuotes = true; }
-        else if (ch === ';' || ch === ',') { cells.push(current.trim()); current = ''; }
+        else if (ch === ';' || ch === ',' || ch === '\t') { cells.push(current.trim()); current = ''; }
         else { current += ch; }
       }
     }
