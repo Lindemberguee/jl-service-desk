@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
         await sb.from("planner_tasks").insert({
           tenant_id: T, plan_id: planId, bucket_id: bucketIds[t.bucket],
           title: t.title, priority: t.priority, due_date: t.due,
-          sort_order: i, status: t.bucket === "Concluído" ? "done" : t.bucket === "Em Progresso" ? "in_progress" : "todo",
+          sort_order: i, created_by: adminId,
         });
       }
     }
