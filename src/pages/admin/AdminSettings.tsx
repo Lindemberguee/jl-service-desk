@@ -377,6 +377,119 @@ export default function AdminSettings() {
             </Button>
           </div>
 
+          {/* SLA Guide */}
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Card className="border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors shadow-none">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <HelpCircle className="h-4.5 w-4.5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">O que é SLA e como funciona?</p>
+                    <p className="text-[11px] text-muted-foreground">Clique para expandir o guia completo</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
+                </CardContent>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <Card className="border-border/50 shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)]">
+                <CardContent className="p-5 space-y-5">
+                  {/* What is SLA */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      O que é SLA?
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <strong>SLA (Service Level Agreement)</strong> é um acordo de nível de serviço que define os prazos máximos para
+                      atendimento das ordens de serviço. Ele garante que sua equipe responda e resolva as demandas dentro do tempo esperado,
+                      aumentando a qualidade e a previsibilidade do atendimento.
+                    </p>
+                  </div>
+
+                  {/* Two deadlines */}
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Timer className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs font-semibold text-foreground">Tempo de Resposta</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Prazo máximo para o primeiro atendimento (triagem ou início da execução) após a abertura da OS.
+                        Exemplo: 4 horas.
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-semibold text-foreground">Tempo de Resolução</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Prazo máximo para a conclusão total da OS desde sua abertura.
+                        Exemplo: 24 horas.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status indicators */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-primary" />
+                      Indicadores de SLA
+                    </h3>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {[
+                        { icon: CheckCircle2, label: 'No prazo', desc: 'A OS está dentro do prazo estipulado.', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                        { icon: Clock, label: 'SLA Próximo', desc: 'Menos de 1 hora para o vencimento do prazo.', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+                        { icon: PauseCircle, label: 'SLA Pausado', desc: 'O relógio do SLA é pausado quando a OS aguarda peças, solicitante ou terceiros.', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+                        { icon: AlertTriangle, label: 'SLA Atrasado', desc: 'O prazo foi excedido. A OS precisa de atenção imediata.', color: 'text-destructive', bg: 'bg-destructive/10' },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-start gap-2.5 rounded-lg border border-border/40 p-2.5">
+                          <div className={`h-7 w-7 rounded-md ${item.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                            <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-foreground">{item.label}</p>
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* How pause works */}
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5">
+                    <h4 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+                      <PauseCircle className="h-3.5 w-3.5 text-yellow-500" />
+                      Como funciona a pausa do SLA?
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Quando uma OS entra nos status <strong>"Aguardando Peça"</strong>, <strong>"Aguardando Solicitante"</strong> ou{' '}
+                      <strong>"Aguardando Terceiro"</strong>, o cronômetro do SLA é automaticamente pausado. O tempo pausado é descontado
+                      do cálculo final, garantindo que a medição reflita apenas o tempo efetivo de trabalho da sua equipe.
+                    </p>
+                  </div>
+
+                  {/* Tips */}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5">
+                    <h4 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+                      <Star className="h-3.5 w-3.5 text-primary" />
+                      Dicas para um bom uso do SLA
+                    </h4>
+                    <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside leading-relaxed">
+                      <li>Crie políticas diferentes por prioridade (ex: Crítica = 2h resposta, Baixa = 8h resposta).</li>
+                      <li>Monitore os indicadores no dashboard para identificar gargalos.</li>
+                      <li>Ative as notificações de SLA para alertar a equipe antes do vencimento.</li>
+                      <li>Revise periodicamente os prazos com base nos relatórios de desempenho.</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+
           <Card className="shadow-[0_2px_8px_0_hsl(var(--foreground)/0.04)] border-border/50">
             <CardContent className="p-0">
               {slaLoading ? (
