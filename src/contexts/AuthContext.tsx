@@ -107,19 +107,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Load role permissions from DB
     let rolePermissions: RolePermMap = {};
     try {
-      const rpRes = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/role_permissions?select=role,permission,granted`,
-        {
-          headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          },
-        }
-      );
+      const accessToken = (await supabase.auth.getSession()).data.session?.access_token;
+      const baseHeaders = {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      };
+      const [rpRes, upRes] = await Promise.all([
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/role_permissions?select=role,permission,granted`,
+          { headers: baseHeaders }
+        ),
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_permissions?select=permission,granted&user_id=eq.${user.id}`,
+          { headers: baseHeaders }
+        ),
+      ]);
       if (rpRes.ok) {
         const rows: { role: string; permission: string; granted: boolean }[] = await rpRes.json();
         for (const r of rows) {
           rolePermissions[`${r.role}:${r.permission}`] = r.granted;
+        }
+      }
+      // User-level overrides take highest priority
+      if (upRes.ok) {
+        const userRows: { permission: string; granted: boolean }[] = await upRes.json();
+        for (const r of userRows) {
+          rolePermissions[`user_override:${r.permission}`] = r.granted;
         }
       }
     } catch {
