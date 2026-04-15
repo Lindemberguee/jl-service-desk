@@ -14,6 +14,17 @@ import { krProgress, fmtDate as fmtDateShort } from './helpers';
 function fmtDate(d: string | null) {
   return fmtDateShort(d, 'dd/MM/yyyy');
 }
+interface OkrReportExportProps {
+  cycles: OkrCycle[];
+  objectives: OkrObjective[];
+  keyResults: OkrKeyResult[];
+  checkins: OkrCheckin[];
+  kpis: Kpi[];
+  selectedCycleId: string | null;
+  tenantName?: string;
+}
+
+const STATUSES = STATUS_LABELS;
 
 export function OkrReportExport({ cycles, objectives, keyResults, checkins, kpis, selectedCycleId, tenantName }: OkrReportExportProps) {
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
