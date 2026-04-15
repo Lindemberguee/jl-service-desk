@@ -110,15 +110,21 @@ export function CadastroImportExport({ title, table, queryKey, fields, data, loo
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentTenantId) return;
+    if (!file || !currentTenantId) {
+      console.log('[Import] No file or tenant', { file: !!file, tenant: currentTenantId });
+      return;
+    }
     
+    console.log('[Import] Starting import of:', file.name, 'size:', file.size);
     setImporting(true);
     setImportResult(null);
     setImportOpen(true);
 
     try {
       const text = await file.text();
+      console.log('[Import] File text length:', text.length, 'first 200 chars:', text.substring(0, 200));
       const parsed = parseCSV(text);
+      console.log('[Import] Parsed rows:', parsed.length, 'first row:', parsed[0]);
       if (parsed.length < 2) {
         setImportResult({ success: 0, errors: ['Arquivo vazio ou sem dados (precisa de cabeçalho + linhas).'] });
         setImporting(false);
@@ -126,6 +132,8 @@ export function CadastroImportExport({ title, table, queryKey, fields, data, loo
       }
 
       const headerRow = parsed[0].map(h => normalizeStr(h));
+      console.log('[Import] Normalized headers:', headerRow);
+      console.log('[Import] Expected fields:', exportableFields.map(f => ({ key: f.key, label: f.label, normalizedLabel: normalizeStr(f.label), normalizedKey: normalizeStr(f.key) })));
       const fieldMap: Record<number, typeof exportableFields[0]> = {};
       
       exportableFields.forEach(f => {
