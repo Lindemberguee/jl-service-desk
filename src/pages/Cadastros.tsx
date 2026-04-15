@@ -30,6 +30,7 @@ import {
   Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff, CheckSquare,
 } from 'lucide-react';
 import { ChecklistTemplatesSection } from '@/components/cadastros/ChecklistTemplatesSection';
+import { CadastroImportExport } from '@/components/cadastros/CadastroImportExport';
 
 type FieldDef = {
   key: string;
