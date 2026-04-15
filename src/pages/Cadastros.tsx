@@ -30,6 +30,7 @@ import {
   Lock, Pencil, Search, X, Mail, Phone, Shield, Eye, EyeOff, CheckSquare,
 } from 'lucide-react';
 import { ChecklistTemplatesSection } from '@/components/cadastros/ChecklistTemplatesSection';
+import { CadastroImportExport } from '@/components/cadastros/CadastroImportExport';
 
 type FieldDef = {
   key: string;
@@ -43,6 +44,7 @@ type FieldDef = {
 
 function CrudSection({
   title, icon: Icon, queryKey, table, fields, readOnly, renderCell, searchKeys, tenantId,
+  lookupMaps, reverseLookupMaps, showImportExport,
 }: {
   title: string;
   icon: any;
@@ -53,6 +55,9 @@ function CrudSection({
   renderCell?: (field: FieldDef, item: any) => React.ReactNode;
   searchKeys?: string[];
   tenantId?: string | null;
+  lookupMaps?: Record<string, Record<string, string>>;
+  reverseLookupMaps?: Record<string, Record<string, string>>;
+  showImportExport?: boolean;
 }) {
   const { data = [], isLoading } = useTenantQuery<any>(queryKey, table);
   const insertMutation = useTenantInsert(table, [queryKey]);
@@ -182,33 +187,46 @@ function CrudSection({
             <p className="text-[11px] text-muted-foreground mt-0.5">{data.length} registro(s)</p>
           </div>
         </div>
-        {!readOnly && (
-          <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 text-xs">
-                <Plus className="h-3.5 w-3.5" /> Novo
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo {title}</DialogTitle>
-                <DialogDescription>Preencha os dados para criar um novo registro.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-3">
-                {renderFormFields()}
-                <DialogFooter>
-                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreateOpen(false); resetForm(); }}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" size="sm" disabled={insertMutation.isPending}>
-                    {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                    Salvar
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {showImportExport && !readOnly && (
+            <CadastroImportExport
+              title={title}
+              table={table}
+              queryKey={queryKey}
+              fields={fields}
+              data={data}
+              lookupMaps={lookupMaps}
+              reverseLookupMaps={reverseLookupMaps}
+            />
+          )}
+          {!readOnly && (
+            <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 gap-1.5 text-xs">
+                  <Plus className="h-3.5 w-3.5" /> Novo
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo {title}</DialogTitle>
+                  <DialogDescription>Preencha os dados para criar um novo registro.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  {renderFormFields()}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setCreateOpen(false); resetForm(); }}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" size="sm" disabled={insertMutation.isPending}>
+                      {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                      Salvar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -984,6 +1002,7 @@ export default function Cadastros() {
             readOnly={readOnly}
             tenantId={currentTenantId}
             searchKeys={['name', 'address', 'city']}
+            showImportExport
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Bloco A, Sede, Filial Centro', required: true },
               { key: 'address', label: 'Endereço', placeholder: 'Rua, número, bairro' },
@@ -1003,6 +1022,9 @@ export default function Cadastros() {
             tenantId={currentTenantId}
             renderCell={locationRenderCell}
             searchKeys={['name', 'description']}
+            showImportExport
+            lookupMaps={{ unit_id: unitMap }}
+            reverseLookupMaps={{ unit_id: Object.fromEntries(Object.entries(unitMap).map(([id, name]) => [String(name), id]).concat(Object.entries(unitMap).map(([id, name]) => [String(name).toLowerCase(), id]))) }}
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Sala 101, Pátio, Recepção', required: true },
               { key: 'description', label: 'Descrição', placeholder: 'Ex: 2º andar, ala norte' },
@@ -1020,6 +1042,7 @@ export default function Cadastros() {
             readOnly={readOnly}
             tenantId={currentTenantId}
             searchKeys={['name']}
+            showImportExport
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Elétrica, Hidráulica, TI', required: true },
             ]}

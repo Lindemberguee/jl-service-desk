@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { Mail, Phone, FileText, Settings2, MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link, Paperclip, Upload, Trash2, Building2, Calendar } from 'lucide-react';
+import { Mail, Phone, FileText, Settings2, MapPin, Wrench, User, Eye, Tag, X, Plus, AlertCircle, Link, Paperclip, Upload, Trash2, Building2, Calendar, Loader2 } from 'lucide-react';
 import { WorkOrderCreateHeader } from '../components/WorkOrderCreateHeader';
 import { WorkOrderCreateSection } from '../components/WorkOrderCreateSection';
 import { WorkOrderCreateSidebar } from '../components/WorkOrderCreateSidebar';

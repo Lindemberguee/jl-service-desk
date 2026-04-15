@@ -416,7 +416,7 @@ function BoardInner({
         </div>
       )}
 
-      <CanvasContextMenu onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))} onDeleteSelected={deleteSelected} onDuplicate={duplicateSelected} onSelectAll={selectAll} position={contextMenuPos.current}>
+      <CanvasContextMenu onAddNode={(type, pos) => createNode(type, screenToFlowPosition(pos))} onDeleteSelected={deleteSelected} onDuplicate={duplicateSelected} onSelectAll={selectAll} position={contextMenuPos}>
         <div className="w-full h-full">
           <ReactFlow
             nodes={renderedNodes}

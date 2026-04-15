@@ -183,9 +183,9 @@ export function useCanvasBoards() {
       return now;
     }
 
-    const mergedNodes = mergeNodes((serverBoard?.nodes || []) as Node[], nodes, removedNodeIds);
+    const mergedNodes = mergeNodes((serverBoard?.nodes || []) as unknown as Node[], nodes, removedNodeIds);
     const validNodeIds = new Set(mergedNodes.map((node) => node.id));
-    const mergedEdges = mergeEdges((serverBoard?.edges || []) as Edge[], edges, removedEdgeIds, validNodeIds);
+    const mergedEdges = mergeEdges((serverBoard?.edges || []) as unknown as Edge[], edges, removedEdgeIds, validNodeIds);
 
     const { error } = await supabase
       .from('canvas_boards')
