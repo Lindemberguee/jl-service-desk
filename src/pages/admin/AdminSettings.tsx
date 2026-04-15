@@ -19,9 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Plus, Settings2, Tag, Clock, Star, Shield, ScrollText, Palette, Key,
   Building2, Layers, ChevronRight, Pencil, Trash2, Search, X, Loader2,
-  AlertTriangle,
+  AlertTriangle, HelpCircle, Timer, CheckCircle2, PauseCircle, BarChart3,
 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AuditSettingsTab from '@/components/admin/audit/AuditSettingsTab';
 import BrandingSettingsTab from '@/components/admin/BrandingSettingsTab';
