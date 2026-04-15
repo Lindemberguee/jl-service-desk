@@ -39,8 +39,13 @@ function downloadCSV(filename: string, headers: string[], rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
+function normalizeStr(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 function parseCSV(text: string): string[][] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const cleanText = text.replace(/^\uFEFF/, '');
+  const lines = cleanText.split(/\r?\n/).filter(l => l.trim());
   return lines.map(line => {
     const cells: string[] = [];
     let current = '';
@@ -120,11 +125,11 @@ export function CadastroImportExport({ title, table, queryKey, fields, data, loo
         return;
       }
 
-      const headerRow = parsed[0].map(h => h.toLowerCase().trim());
+      const headerRow = parsed[0].map(h => normalizeStr(h));
       const fieldMap: Record<number, typeof exportableFields[0]> = {};
       
       exportableFields.forEach(f => {
-        const idx = headerRow.findIndex(h => h === f.label.toLowerCase() || h === f.key.toLowerCase());
+        const idx = headerRow.findIndex(h => h === normalizeStr(f.label) || h === normalizeStr(f.key));
         if (idx >= 0) fieldMap[idx] = f;
       });
 
