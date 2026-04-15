@@ -331,6 +331,15 @@ function CrudSection({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                {!readOnly && (
+                  <TableHead className="w-10 h-9">
+                    <Checkbox
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
+                )}
                 {tableFields.map(f => (
                   <TableHead key={f.key} className="text-[11px] font-semibold uppercase text-muted-foreground h-9">
                     {f.label}
@@ -342,9 +351,18 @@ function CrudSection({
               {filtered.map((item: any) => (
                 <TableRow
                   key={item.id}
-                  className="cursor-pointer hover:bg-accent/30 transition-colors"
+                  className={`cursor-pointer hover:bg-accent/30 transition-colors ${selectedIds.has(item.id) ? 'bg-accent/20' : ''}`}
                   onClick={() => setDetailTarget(item)}
                 >
+                  {!readOnly && (
+                    <TableCell className="w-10" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={() => toggleSelect(item.id)}
+                        aria-label={`Selecionar ${item[fields[0]?.key]}`}
+                      />
+                    </TableCell>
+                  )}
                   {tableFields.map((f, i) => (
                     <TableCell key={f.key} className={i === 0 ? 'text-sm font-medium' : 'text-xs text-muted-foreground'}>
                       {getCellValue(f, item)}
