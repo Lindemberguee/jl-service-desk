@@ -312,16 +312,26 @@ function CrudSection({
           {filtered.map((item: any) => (
             <div
               key={item.id}
-              className="bg-card border border-border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-accent/30 transition-colors"
+              className={`bg-card border border-border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-accent/30 transition-colors ${selectedIds.has(item.id) ? 'bg-accent/20 border-primary/30' : ''}`}
               onClick={() => setDetailTarget(item)}
             >
-              <div className="min-w-0 flex-1">
-                {tableFields.map((f, i) => (
-                  <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
-                    {i > 0 && <span className="font-medium">{f.label}: </span>}
-                    {getCellValue(f, item)}
-                  </p>
-                ))}
+              <div className="flex items-start gap-2">
+                {!readOnly && (
+                  <div className="pt-0.5" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={() => toggleSelect(item.id)}
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  {tableFields.map((f, i) => (
+                    <p key={f.key} className={i === 0 ? 'text-sm font-medium truncate' : 'text-[11px] text-muted-foreground'}>
+                      {i > 0 && <span className="font-medium">{f.label}: </span>}
+                      {getCellValue(f, item)}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
