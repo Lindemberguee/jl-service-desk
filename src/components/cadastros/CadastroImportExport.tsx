@@ -125,11 +125,11 @@ export function CadastroImportExport({ title, table, queryKey, fields, data, loo
         return;
       }
 
-      const headerRow = parsed[0].map(h => h.toLowerCase().trim());
+      const headerRow = parsed[0].map(h => normalizeStr(h));
       const fieldMap: Record<number, typeof exportableFields[0]> = {};
       
       exportableFields.forEach(f => {
-        const idx = headerRow.findIndex(h => h === f.label.toLowerCase() || h === f.key.toLowerCase());
+        const idx = headerRow.findIndex(h => h === normalizeStr(f.label) || h === normalizeStr(f.key));
         if (idx >= 0) fieldMap[idx] = f;
       });
 
