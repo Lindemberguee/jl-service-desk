@@ -85,6 +85,13 @@ export function hasPermission(
   rolePermMap?: Record<string, boolean>,
 ): boolean {
   if (overrides?.includes(permission)) return true;
+  // Check user-level override first (highest priority)
+  if (rolePermMap) {
+    const userKey = `user_override:${permission}`;
+    if (userKey in rolePermMap) {
+      return rolePermMap[userKey];
+    }
+  }
   const key = `${role}:${permission}`;
   if (rolePermMap && key in rolePermMap) {
     return rolePermMap[key];
