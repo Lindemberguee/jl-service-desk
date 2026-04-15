@@ -508,7 +508,7 @@ Deno.serve(async (req) => {
       const { data: ex } = await sb.from("vault_entries").select("id").eq("tenant_id", T).eq("title", v.title).maybeSingle();
       if (ex) continue;
       await sb.from("vault_entries").insert({
-        tenant_id: T, created_by: adminId, encrypted_username: "demo_encrypted", encrypted_password: "demo_encrypted", encrypted_notes: "demo_encrypted", ...v,
+        tenant_id: T, created_by: adminId, username_encrypted: "demo_user", password_encrypted: "demo_pass", notes_encrypted: "Credencial demo", ...v,
       });
       vaultCreated++;
     }
