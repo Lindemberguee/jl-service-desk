@@ -530,7 +530,7 @@ export default function Assets() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((a: any) => (
+              {paginatedAssets.map((a: any) => (
                 <TableRow key={a.id} className="cursor-pointer hover:bg-accent/30" onClick={() => setDetailTarget(a)}>
                   <TableCell className="max-w-[240px] text-sm font-medium truncate whitespace-nowrap">{a.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.patrimony_code || '-'}</TableCell>
