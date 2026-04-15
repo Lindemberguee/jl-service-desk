@@ -13,7 +13,7 @@ import {
   BarChart3, Users, LogOut, Wrench, ShieldCheck, Settings2,
   Gauge, ScrollText, ChevronRight, CircleDot, Activity,
   UserCircle, Contact, Target, FileText, Trash2, Crown, Lock,
-  MessageCircle, PenTool, StickyNote, Bell, Plug, LayoutGrid, CalendarDays,
+  MessageCircle, PenTool, StickyNote, Bell, Plug, LayoutGrid, CalendarDays, SlidersHorizontal,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,9 @@ import type { Permission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebarPreferences } from '@/hooks/useSidebarPreferences';
+import { SidebarCustomizeDialog } from '@/components/layout/SidebarCustomizeDialog';
+import { useState } from 'react';
 
 // Map sidebar items to module keys for gating
 const permissionToModule: Record<string, string> = {
@@ -180,6 +183,8 @@ export function AppSidebar() {
   const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions, isModuleEnabled, isSubscriptionActive, subscription } = useAuth();
   const { tenantName, tenantLogo } = useTenantBranding();
   const { data: whatsappEnabled } = usePlatformSetting('whatsapp_button_enabled');
+  const { hiddenPaths, setHiddenPaths, isSaving } = useSidebarPreferences();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
@@ -218,8 +223,13 @@ export function AppSidebar() {
   ];
 
   const visibleSections = sections
-    .map(s => ({ ...s, visible: getVisibleItems(s.items) }))
+    .map(s => ({ ...s, visible: getVisibleItems(s.items).filter(i => !hiddenPaths.includes(i.path)) }))
     .filter(s => s.visible.length > 0);
+
+  // For the customize dialog we need all permission-visible items (before hiding)
+  const allPermissionSections = sections
+    .map(s => ({ label: s.label, items: getVisibleItems(s.items).map(i => ({ label: i.label, path: i.path, icon: i.icon })) }))
+    .filter(s => s.items.length > 0);
 
   return (
     <Sidebar>
@@ -338,6 +348,13 @@ export function AppSidebar() {
           <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground/20 group-hover:text-sidebar-foreground/50 group-hover:translate-x-0.5 transition-all duration-200" />
         </button>
         <button
+          className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 hover:bg-sidebar-accent text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
+          onClick={() => setCustomizeOpen(true)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>Personalizar Menu</span>
+        </button>
+        <button
           className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 hover:bg-destructive/10 text-sidebar-foreground/40 hover:text-destructive"
           onClick={signOut}
         >
@@ -364,6 +381,15 @@ export function AppSidebar() {
           </p>
         </div>
       </SidebarFooter>
+
+      <SidebarCustomizeDialog
+        open={customizeOpen}
+        onOpenChange={setCustomizeOpen}
+        sections={allPermissionSections}
+        hiddenPaths={hiddenPaths}
+        onSave={setHiddenPaths}
+        isSaving={isSaving}
+      />
     </Sidebar>
   );
 }

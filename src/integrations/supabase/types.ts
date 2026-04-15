@@ -2270,6 +2270,41 @@ export type Database = {
         }
         Relationships: []
       }
+      sidebar_preferences: {
+        Row: {
+          created_at: string
+          hidden_paths: string[]
+          id: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hidden_paths?: string[]
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hidden_paths?: string[]
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sidebar_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sla_policies: {
         Row: {
           created_at: string
