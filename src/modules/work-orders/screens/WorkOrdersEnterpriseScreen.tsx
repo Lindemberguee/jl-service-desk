@@ -37,6 +37,8 @@ export default function WorkOrdersEnterpriseScreen() {
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showPrintGuide, setShowPrintGuide] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: workOrders = [], isLoading } = useAllTenantsQuery<any>(
     "work_orders_all",
