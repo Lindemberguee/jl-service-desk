@@ -381,6 +381,15 @@ export function AppSidebar() {
           </p>
         </div>
       </SidebarFooter>
+
+      <SidebarCustomizeDialog
+        open={customizeOpen}
+        onOpenChange={setCustomizeOpen}
+        sections={allPermissionSections}
+        hiddenPaths={hiddenPaths}
+        onSave={setHiddenPaths}
+        isSaving={isSaving}
+      />
     </Sidebar>
   );
 }
