@@ -1024,7 +1024,7 @@ export default function Cadastros() {
             searchKeys={['name', 'description']}
             showImportExport
             lookupMaps={{ unit_id: unitMap }}
-            reverseLookupMaps={{ unit_id: Object.fromEntries(Object.entries(unitMap).map(([id, name]) => [name, id]).concat(Object.entries(unitMap).map(([id, name]) => [name.toLowerCase(), id]))) }}
+            reverseLookupMaps={{ unit_id: Object.fromEntries(Object.entries(unitMap).map(([id, name]) => [String(name), id]).concat(Object.entries(unitMap).map(([id, name]) => [String(name).toLowerCase(), id]))) }}
             fields={[
               { key: 'name', label: 'Nome', placeholder: 'Ex: Sala 101, Pátio, Recepção', required: true },
               { key: 'description', label: 'Descrição', placeholder: 'Ex: 2º andar, ala norte' },
