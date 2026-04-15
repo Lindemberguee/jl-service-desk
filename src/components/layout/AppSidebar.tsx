@@ -348,6 +348,13 @@ export function AppSidebar() {
           <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground/20 group-hover:text-sidebar-foreground/50 group-hover:translate-x-0.5 transition-all duration-200" />
         </button>
         <button
+          className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 hover:bg-sidebar-accent text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
+          onClick={() => setCustomizeOpen(true)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>Personalizar Menu</span>
+        </button>
+        <button
           className="flex items-center gap-2.5 w-full rounded-xl p-2.5 text-[13px] transition-all duration-200 hover:bg-destructive/10 text-sidebar-foreground/40 hover:text-destructive"
           onClick={signOut}
         >
