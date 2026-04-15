@@ -19,21 +19,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
-const categories = ['Operacional', 'Financeiro', 'Qualidade', 'Satisfação', 'Produtividade', 'SLA'];
+import { KPI_CATEGORIES, KPI_DIRECTIONS, KPI_DATA_SOURCES } from './constants';
 
-const directions = [
-  { value: 'higher_is_better', label: 'Maior é melhor' },
-  { value: 'lower_is_better', label: 'Menor é melhor' },
-  { value: 'target_is_best', label: 'Meta exata' },
-];
-
-const dataSources = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'auto_os', label: 'Automático (OS)' },
-  { value: 'auto_stock', label: 'Automático (Estoque)' },
-  { value: 'auto_maintenance', label: 'Automático (Manutenção)' },
-  { value: 'auto_sla', label: 'Automático (SLA)' },
-];
+const categories = KPI_CATEGORIES;
+const directions = KPI_DIRECTIONS;
+const dataSources = KPI_DATA_SOURCES;
 
 const defaultKpi: Partial<Kpi> = {
   name: '',

@@ -8,7 +8,12 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OkrCycle, OkrObjective, OkrKeyResult, OkrCheckin } from '@/hooks/useOkrs';
 import type { Kpi } from '@/hooks/useKpis';
+import { STATUS_LABELS } from './constants';
+import { krProgress, fmtDate as fmtDateShort } from './helpers';
 
+function fmtDate(d: string | null) {
+  return fmtDateShort(d, 'dd/MM/yyyy');
+}
 interface OkrReportExportProps {
   cycles: OkrCycle[];
   objectives: OkrObjective[];
@@ -19,28 +24,7 @@ interface OkrReportExportProps {
   tenantName?: string;
 }
 
-const STATUSES: Record<string, string> = {
-  a_iniciar: 'Pendente',
-  em_andamento: 'Em andamento',
-  no_prazo: 'No prazo',
-  fora_do_prazo: 'Fora do Prazo',
-  atrasado: 'Fora do Prazo',
-  finalizado: 'Concluído',
-  finalizado_com_atraso: 'Concluído c/ atraso',
-  pausado: 'Pausado',
-  cancelado: 'Cancelado',
-};
-
-function krProgress(kr: OkrKeyResult) {
-  const range = kr.target_value - kr.start_value;
-  if (range === 0) return 100;
-  return Math.max(0, Math.min(Math.round(((kr.current_value - kr.start_value) / range) * 100), 100));
-}
-
-function fmtDate(d: string | null) {
-  if (!d) return '—';
-  return format(parseISO(d), 'dd/MM/yyyy', { locale: ptBR });
-}
+const STATUSES = STATUS_LABELS;
 
 export function OkrReportExport({ cycles, objectives, keyResults, checkins, kpis, selectedCycleId, tenantName }: OkrReportExportProps) {
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
