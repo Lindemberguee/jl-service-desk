@@ -26,7 +26,10 @@ import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Wrench, Loader2, Search, Pencil, X, Download, Upload,
   Building2, MapPin, FolderOpen, DollarSign, AlertTriangle, ShieldCheck, Boxes,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
+
+const PAGE_SIZE = 25;
 
 const statusLabelsMap: Record<string, string> = {
   ativo: 'Ativo',
