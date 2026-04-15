@@ -26,7 +26,10 @@ import { useDebounce } from '@/hooks/useDebounce';
 import {
   Plus, Trash2, Wrench, Loader2, Search, Pencil, X, Download, Upload,
   Building2, MapPin, FolderOpen, DollarSign, AlertTriangle, ShieldCheck, Boxes,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
+
+const PAGE_SIZE = 25;
 
 const statusLabelsMap: Record<string, string> = {
   ativo: 'Ativo',
@@ -86,6 +89,7 @@ export default function Assets() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterUnit, setFilterUnit] = useState('all');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
   const unitMap = useMemo(() => Object.fromEntries(units.map((u: any) => [u.id, u.name])), [units]);
@@ -110,6 +114,10 @@ export default function Assets() {
       return true;
     });
   }, [assets, filterStatus, filterUnit, debouncedSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedAssets = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+  useMemo(() => { setPage(1); }, [debouncedSearch, filterStatus, filterUnit]);
 
   const resetForm = useCallback(() => setForm({ ...emptyForm }), []);
 
@@ -484,7 +492,7 @@ export default function Assets() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-2">
-          {filtered.map((a: any) => (
+          {paginatedAssets.map((a: any) => (
             <Card key={a.id} className="overflow-hidden border-border/60 shadow-sm transition-colors hover:border-border" onClick={() => setDetailTarget(a)}>
               <CardContent className="p-4 space-y-3 cursor-pointer">
                 <div className="flex items-start justify-between gap-3">
@@ -522,7 +530,7 @@ export default function Assets() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((a: any) => (
+              {paginatedAssets.map((a: any) => (
                 <TableRow key={a.id} className="cursor-pointer hover:bg-accent/30" onClick={() => setDetailTarget(a)}>
                   <TableCell className="max-w-[240px] text-sm font-medium truncate whitespace-nowrap">{a.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.patrimony_code || '-'}</TableCell>
@@ -544,6 +552,21 @@ export default function Assets() {
             </TableBody>
           </Table>
         </Card>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+          <span className="text-xs text-muted-foreground">
+            {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(1)}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+            <span className="min-w-[60px] text-center text-xs text-muted-foreground">{page} / {totalPages}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+          </div>
+        </div>
       )}
 
       <Dialog open={!!detailTarget} onOpenChange={v => { if (!v) setDetailTarget(null); }}>

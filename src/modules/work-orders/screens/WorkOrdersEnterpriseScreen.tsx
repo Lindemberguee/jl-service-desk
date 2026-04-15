@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Filter } from "lucide-react";
+import { Filter, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllTenantsQuery } from "@/hooks/useAllTenantsQuery";
 import { useTenantBranding } from "@/hooks/useTenantBranding";
@@ -24,6 +26,7 @@ import {
 } from "../constants/workOrder.constants";
 
 type TabFilter = "all" | "open" | "in_progress" | "overdue" | "closed";
+const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function WorkOrdersEnterpriseScreen() {
   const navigate = useNavigate();
@@ -34,6 +37,8 @@ export default function WorkOrdersEnterpriseScreen() {
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showPrintGuide, setShowPrintGuide] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: workOrders = [], isLoading } = useAllTenantsQuery<any>(
     "work_orders_all",
@@ -106,6 +111,10 @@ export default function WorkOrdersEnterpriseScreen() {
     setPriority,
     filtered,
   } = useWorkOrderFilters(tabFiltered as WorkOrder[]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedData = useMemo(() => filtered.slice((page - 1) * pageSize, page * pageSize), [filtered, page, pageSize]);
+  useMemo(() => { setPage(1); }, [activeTab, search, status, priority]);
 
   const overdueCount = useMemo(() => {
     return allActive.filter((wo: any) => {
@@ -236,13 +245,33 @@ export default function WorkOrdersEnterpriseScreen() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-          <WorkOrdersProductTable
-            data={filtered}
-            profiles={profiles}
-            units={units}
-            onRowClick={(wo) => navigate(`/os/${wo.id}`)}
-          />
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+            <WorkOrdersProductTable
+              data={paginatedData}
+              profiles={profiles}
+              units={units}
+              onRowClick={(wo) => navigate(`/os/${wo.id}`)}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+            <span className="text-xs text-muted-foreground">
+              {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filtered.length)} de {filtered.length}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
+                <SelectTrigger className="h-8 w-[70px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map(s => <SelectItem key={s} value={String(s)}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(1)}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+              <span className="min-w-[60px] text-center text-xs text-muted-foreground">{page} / {totalPages}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+            </div>
+          </div>
         </div>
       )}
 
