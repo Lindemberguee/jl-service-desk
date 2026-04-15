@@ -187,33 +187,46 @@ function CrudSection({
             <p className="text-[11px] text-muted-foreground mt-0.5">{data.length} registro(s)</p>
           </div>
         </div>
-        {!readOnly && (
-          <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 text-xs">
-                <Plus className="h-3.5 w-3.5" /> Novo
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo {title}</DialogTitle>
-                <DialogDescription>Preencha os dados para criar um novo registro.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-3">
-                {renderFormFields()}
-                <DialogFooter>
-                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreateOpen(false); resetForm(); }}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" size="sm" disabled={insertMutation.isPending}>
-                    {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                    Salvar
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {showImportExport && !readOnly && (
+            <CadastroImportExport
+              title={title}
+              table={table}
+              queryKey={queryKey}
+              fields={fields}
+              data={data}
+              lookupMaps={lookupMaps}
+              reverseLookupMaps={reverseLookupMaps}
+            />
+          )}
+          {!readOnly && (
+            <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 gap-1.5 text-xs">
+                  <Plus className="h-3.5 w-3.5" /> Novo
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo {title}</DialogTitle>
+                  <DialogDescription>Preencha os dados para criar um novo registro.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  {renderFormFields()}
+                  <DialogFooter>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setCreateOpen(false); resetForm(); }}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" size="sm" disabled={insertMutation.isPending}>
+                      {insertMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                      Salvar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       {/* Search */}
