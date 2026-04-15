@@ -39,8 +39,13 @@ function downloadCSV(filename: string, headers: string[], rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
+function normalizeStr(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 function parseCSV(text: string): string[][] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const cleanText = text.replace(/^\uFEFF/, '');
+  const lines = cleanText.split(/\r?\n/).filter(l => l.trim());
   return lines.map(line => {
     const cells: string[] = [];
     let current = '';
