@@ -112,6 +112,10 @@ export default function WorkOrdersEnterpriseScreen() {
     filtered,
   } = useWorkOrderFilters(tabFiltered as WorkOrder[]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedData = useMemo(() => filtered.slice((page - 1) * pageSize, page * pageSize), [filtered, page, pageSize]);
+  useMemo(() => { setPage(1); }, [activeTab, search, status, priority]);
+
   const overdueCount = useMemo(() => {
     return allActive.filter((wo: any) => {
       const sla = calculateSlaStatus(wo);
