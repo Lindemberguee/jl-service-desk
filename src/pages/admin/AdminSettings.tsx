@@ -452,6 +452,13 @@ export default function AdminSettings() {
           </Suspense>
         </TabsContent>
 
+        {/* ─── Permissões por Usuário ─── */}
+        <TabsContent value="permissoes_usuario" className="mt-4">
+          <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+            <UserPermissionsManager />
+          </Suspense>
+        </TabsContent>
+
         {/* ─── Departamento ─── */}
         <TabsContent value="departamento" className="mt-4">
           {tenants.length === 0 ? (
