@@ -44,6 +44,7 @@ type FieldDef = {
 
 function CrudSection({
   title, icon: Icon, queryKey, table, fields, readOnly, renderCell, searchKeys, tenantId,
+  lookupMaps, reverseLookupMaps, showImportExport,
 }: {
   title: string;
   icon: any;
@@ -54,6 +55,9 @@ function CrudSection({
   renderCell?: (field: FieldDef, item: any) => React.ReactNode;
   searchKeys?: string[];
   tenantId?: string | null;
+  lookupMaps?: Record<string, Record<string, string>>;
+  reverseLookupMaps?: Record<string, Record<string, string>>;
+  showImportExport?: boolean;
 }) {
   const { data = [], isLoading } = useTenantQuery<any>(queryKey, table);
   const insertMutation = useTenantInsert(table, [queryKey]);
