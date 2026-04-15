@@ -8,45 +8,30 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   UserCog, Search, X, Check, Minus, ChevronDown, ChevronRight,
-  Lock, Shield, ClipboardList, Wrench, Package, Users, BarChart3,
+  Shield, ClipboardList, Wrench, Package, Users, BarChart3,
   Settings, LayoutDashboard, BookOpen, HardHat, Contact, Target,
-  Hammer, Plug, FileText, Vault, Trash2, Eye, KeyRound, Calendar,
-  StickyNote, Timer, Kanban,
+  Hammer, Plug, FileText, Vault, Trash2, Eye, KeyRound,
 } from 'lucide-react';
 import type { Permission } from '@/lib/permissions';
 import { roleLabels, type AppRole } from '@/lib/permissions';
 
-interface PermissionDef {
-  key: Permission;
-  label: string;
-}
-
-interface PermGroup {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  permissions: PermissionDef[];
-}
+interface PermissionDef { key: Permission; label: string; }
+interface PermGroup { id: string; label: string; icon: React.ElementType; permissions: PermissionDef[]; }
 
 const permissionGroups: PermGroup[] = [
   { id: 'dashboard', label: 'Painel', icon: LayoutDashboard, permissions: [
     { key: 'dashboard:read', label: 'Acessar Dashboard' },
   ]},
   { id: 'os', label: 'Ordens de Serviço', icon: ClipboardList, permissions: [
-    { key: 'os:read', label: 'Visualizar OS' },
-    { key: 'os:create', label: 'Criar OS' },
-    { key: 'os:update', label: 'Editar OS' },
-    { key: 'os:assign', label: 'Atribuir OS' },
-    { key: 'os:close', label: 'Encerrar OS' },
-    { key: 'os:manage', label: 'Gerenciar OS' },
-    { key: 'os:comment', label: 'Comentar OS' },
-    { key: 'os:view_technical_note', label: 'Ver Nota Técnica' },
+    { key: 'os:read', label: 'Visualizar OS' }, { key: 'os:create', label: 'Criar OS' },
+    { key: 'os:update', label: 'Editar OS' }, { key: 'os:assign', label: 'Atribuir OS' },
+    { key: 'os:close', label: 'Encerrar OS' }, { key: 'os:manage', label: 'Gerenciar OS' },
+    { key: 'os:comment', label: 'Comentar OS' }, { key: 'os:view_technical_note', label: 'Ver Nota Técnica' },
   ]},
   { id: 'my_os', label: 'Minhas OS', icon: Eye, permissions: [
     { key: 'my_os:read', label: 'Acessar Minhas OS' },
@@ -79,12 +64,9 @@ const permissionGroups: PermGroup[] = [
     { key: 'kpis:read', label: 'Visualizar' }, { key: 'kpis:manage', label: 'Gerenciar' },
   ]},
   { id: 'tools', label: 'Ferramentas', icon: Hammer, permissions: [
-    { key: 'tools:read', label: 'Acesso Geral' },
-    { key: 'tools:canvas', label: 'Canvas' },
-    { key: 'tools:notes', label: 'Anotações' },
-    { key: 'tools:reminders', label: 'Lembretes' },
-    { key: 'tools:calendar', label: 'Calendário' },
-    { key: 'tools:planner', label: 'Planner' },
+    { key: 'tools:read', label: 'Acesso Geral' }, { key: 'tools:canvas', label: 'Canvas' },
+    { key: 'tools:notes', label: 'Anotações' }, { key: 'tools:reminders', label: 'Lembretes' },
+    { key: 'tools:calendar', label: 'Calendário' }, { key: 'tools:planner', label: 'Planner' },
   ]},
   { id: 'docs', label: 'Documentos', icon: FileText, permissions: [
     { key: 'docs:read', label: 'Visualizar' }, { key: 'docs:manage', label: 'Gerenciar' },
@@ -116,6 +98,31 @@ const roleColors: Record<string, string> = {
   leitura: 'bg-muted text-muted-foreground border-border',
 };
 
+function PermToggleButton({ hasOverride, granted, onClick }: { hasOverride: boolean; granted: boolean; onClick: () => void }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border shrink-0",
+              !hasOverride && "bg-muted/30 border-border/50 text-muted-foreground/30 hover:bg-primary/10 hover:border-primary/30 hover:text-primary",
+              hasOverride && granted && "bg-emerald-500/15 border-emerald-500/30 text-emerald-500 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive",
+              hasOverride && !granted && "bg-destructive/15 border-destructive/30 text-destructive hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-500",
+            )}
+          >
+            {!hasOverride ? <Minus className="h-3 w-3" /> : granted ? <Check className="h-3 w-3 stroke-[2.5]" /> : <X className="h-3 w-3 stroke-[2.5]" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="text-xs">
+          {!hasOverride ? 'Conceder permissão' : granted ? 'Negar permissão' : 'Conceder permissão'}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export default function UserPermissionsManager() {
   const { currentTenantId, currentRole, memberships } = useAuth();
   const isSuperAdmin = currentRole === 'super_admin';
@@ -123,14 +130,7 @@ export default function UserPermissionsManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Get all tenant ids for current user
-  const tenantIds = useMemo(() => {
-    if (isSuperAdmin) return undefined; // will load from all accessible tenants
-    return memberships.map(m => m.tenant_id);
-  }, [memberships, isSuperAdmin]);
-
-  // Load users from current tenant memberships
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [] } = useQuery({
     queryKey: ['tenant_users_for_perms', currentTenantId],
     queryFn: async () => {
       if (!currentTenantId) return [];
@@ -171,39 +171,15 @@ export default function UserPermissionsManager() {
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
+      next.has(groupId) ? next.delete(groupId) : next.add(groupId);
       return next;
     });
   };
 
-  const canEditUser = useCallback((userId: string) => {
-    if (!selectedUser) return false;
-    // Can't edit own permissions
-    if (userId === (supabase as any).auth?.user?.()?.id) return false;
-    // Super admin can edit all, admin can edit non-admin/non-super_admin
-    if (isSuperAdmin) return true;
-    if (currentRole === 'admin') {
-      return !['super_admin', 'admin'].includes(selectedUser.role);
-    }
-    return false;
-  }, [selectedUser, isSuperAdmin, currentRole]);
-
   const handleToggle = useCallback((permission: Permission) => {
     if (!selectedUserId || !currentTenantId) return;
     const current = getUserPermission(selectedUserId, permission);
-    // Cycle: undefined (herda cargo) → true (concedido) → false (negado) → undefined (herda)
-    let newGranted: boolean;
-    if (current === undefined) {
-      newGranted = true;
-    } else if (current === true) {
-      newGranted = false;
-    } else {
-      // Remove the override (delete)
-      // For simplicity, we'll set to true which effectively removes override behavior
-      // Actually let's just toggle between granted states
-      newGranted = true;
-    }
+    const newGranted = current === undefined ? true : !current;
 
     togglePermission.mutate(
       { user_id: selectedUserId, tenant_id: currentTenantId, permission, granted: newGranted },
@@ -219,35 +195,46 @@ export default function UserPermissionsManager() {
     return permissions.filter(p => p.user_id === selectedUserId).length;
   }, [permissions, selectedUserId]);
 
+  const totalPerms = permissionGroups.reduce((sum, g) => sum + g.permissions.length, 0);
+
   if (!currentTenantId) return null;
 
   return (
     <Card className="overflow-hidden border-border/50 shadow-[0_2px_12px_0_hsl(var(--foreground)/0.04)]">
       <CardHeader className="pb-3 space-y-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
-            <UserCog className="h-4.5 w-4.5 text-violet-500" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <UserCog className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold">Permissões por Usuário</CardTitle>
+              <CardDescription className="text-[11px]">
+                Sobrescreva permissões do cargo para usuários específicos
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-sm font-bold">Permissões por Usuário</CardTitle>
-            <CardDescription className="text-[11px]">
-              Sobrescreva permissões do cargo para usuários específicos
-            </CardDescription>
-          </div>
+          {selectedUser && overrideCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <Shield className="h-3 w-3" />
+              {overrideCount} override{overrideCount > 1 ? 's' : ''}
+            </Badge>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* User selector + search */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[300px] h-9 text-xs">
-              <Users className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="sm:w-[280px] h-9 text-xs">
+              <Users className="h-3.5 w-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue placeholder="Selecione um usuário..." />
             </SelectTrigger>
             <SelectContent>
               {users.map(u => (
                 <SelectItem key={u.id} value={u.id}>
                   <div className="flex items-center gap-2">
-                    <span>{u.name}</span>
-                    <Badge variant="outline" className={cn("text-[9px] ml-1", roleColors[u.role])}>
+                    <span className="truncate">{u.name}</span>
+                    <Badge variant="outline" className={cn("text-[9px] shrink-0", roleColors[u.role])}>
                       {roleLabels[u.role] || u.role}
                     </Badge>
                   </div>
@@ -257,7 +244,7 @@ export default function UserPermissionsManager() {
           </Select>
 
           {selectedUserId && (
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -274,22 +261,16 @@ export default function UserPermissionsManager() {
           )}
         </div>
 
+        {/* User info bar */}
         {selectedUser && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-            <Shield className="h-4 w-4 text-muted-foreground/60" />
-            <div>
-              <span className="font-medium text-foreground">{selectedUser.name}</span>
-              <span className="mx-1.5">·</span>
-              <span>{selectedUser.email}</span>
-              <span className="mx-1.5">·</span>
-              <span>Cargo: <Badge variant="outline" className={cn("text-[9px]", roleColors[selectedUser.role])}>{roleLabels[selectedUser.role] || selectedUser.role}</Badge></span>
-              {overrideCount > 0 && (
-                <>
-                  <span className="mx-1.5">·</span>
-                  <Badge variant="secondary" className="text-[9px]">{overrideCount} override{overrideCount > 1 ? 's' : ''}</Badge>
-                </>
-              )}
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+            <span className="font-medium text-foreground">{selectedUser.name}</span>
+            <span className="hidden sm:inline text-muted-foreground/40">·</span>
+            <span className="hidden sm:inline text-muted-foreground">{selectedUser.email}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <Badge variant="outline" className={cn("text-[9px]", roleColors[selectedUser.role])}>
+              {roleLabels[selectedUser.role] || selectedUser.role}
+            </Badge>
           </div>
         )}
       </CardHeader>
@@ -297,90 +278,76 @@ export default function UserPermissionsManager() {
       <CardContent className="p-0">
         {!selectedUserId ? (
           <div className="py-16 text-center">
-            <UserCog className="mx-auto h-10 w-10 text-muted-foreground/20 mb-3" />
-            <p className="text-sm text-muted-foreground">Selecione um usuário para configurar suas permissões individuais</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">As permissões do usuário sobrescrevem as do cargo</p>
+            <UserCog className="mx-auto h-10 w-10 text-muted-foreground/15 mb-3" />
+            <p className="text-sm text-muted-foreground">Selecione um usuário para configurar permissões individuais</p>
+            <p className="text-xs text-muted-foreground/50 mt-1">Overrides têm prioridade sobre permissões do cargo</p>
           </div>
         ) : permsLoading ? (
           <div className="p-6"><Skeleton className="h-[300px] w-full" /></div>
         ) : (
-          <ScrollArea className="w-full max-h-[600px]">
-            <div className="divide-y divide-border/50">
+          <div className="overflow-y-auto max-h-[calc(100vh-380px)] min-h-[300px]">
+            <div className="divide-y divide-border/40">
               {filteredGroups.map(group => {
                 const isCollapsed = collapsedGroups.has(group.id);
                 const Icon = group.icon;
+                const groupOverrides = group.permissions.filter(p => getUserPermission(selectedUserId, p.key) !== undefined).length;
 
                 return (
                   <div key={group.id}>
-                    {/* Group header */}
                     <button
                       onClick={() => toggleGroup(group.id)}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 bg-muted/15 hover:bg-muted/30 transition-colors sticky top-0 z-10"
                     >
-                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      {isCollapsed
+                        ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+                        : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      }
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground/70" />
                       <span className="text-xs font-semibold">{group.label}</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">{group.permissions.length} permissões</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        {groupOverrides > 0 && (
+                          <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/20 px-1.5">
+                            {groupOverrides} custom
+                          </Badge>
+                        )}
+                        <span className="text-[10px] text-muted-foreground/50">{group.permissions.length}</span>
+                      </div>
                     </button>
 
                     {!isCollapsed && (
-                      <div className="divide-y divide-border/30">
-                        {group.permissions.map(perm => {
+                      <div>
+                        {group.permissions.map((perm, idx) => {
                           const override = getUserPermission(selectedUserId, perm.key);
                           const hasOverride = override !== undefined;
 
                           return (
                             <div
                               key={perm.key}
-                              className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-muted/10 transition-colors"
+                              className={cn(
+                                "flex items-center justify-between px-4 py-1.5 pl-11 hover:bg-muted/10 transition-colors",
+                                idx < group.permissions.length - 1 && "border-b border-border/20"
+                              )}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">{perm.label}</span>
-                                {hasOverride && (
-                                  <Badge variant="outline" className={cn(
-                                    "text-[9px] px-1.5",
-                                    override ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
-                                  )}>
-                                    {override ? 'Concedido' : 'Negado'}
-                                  </Badge>
-                                )}
-                                {!hasOverride && (
-                                  <Badge variant="outline" className="text-[9px] px-1.5 bg-muted/30 text-muted-foreground border-border">
-                                    Herda do cargo
-                                  </Badge>
-                                )}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs truncate">{perm.label}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[9px] px-1.5 shrink-0",
+                                    !hasOverride && "bg-muted/30 text-muted-foreground/60 border-border/50",
+                                    hasOverride && override && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                                    hasOverride && !override && "bg-destructive/10 text-destructive border-destructive/20",
+                                  )}
+                                >
+                                  {!hasOverride ? 'Cargo' : override ? 'Concedido' : 'Negado'}
+                                </Badge>
                               </div>
 
-                              <TooltipProvider delayDuration={200}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button
-                                      onClick={() => handleToggle(perm.key)}
-                                      className={cn(
-                                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all border",
-                                        !hasOverride && "bg-muted/20 border-muted-foreground/10 text-muted-foreground/40 hover:bg-primary/10 hover:border-primary/30",
-                                        hasOverride && override && "bg-emerald-500/15 border-emerald-500/30 text-emerald-500 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive",
-                                        hasOverride && !override && "bg-destructive/15 border-destructive/30 text-destructive hover:bg-muted/20 hover:border-muted-foreground/10 hover:text-muted-foreground",
-                                      )}
-                                    >
-                                      {!hasOverride ? (
-                                        <Minus className="h-3 w-3" />
-                                      ) : override ? (
-                                        <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                                      ) : (
-                                        <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                                      )}
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="text-xs max-w-[250px]">
-                                    {!hasOverride
-                                      ? 'Clique para adicionar override — conceder permissão'
-                                      : override
-                                        ? 'Clique para negar esta permissão'
-                                        : 'Clique para conceder esta permissão'}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <PermToggleButton
+                                hasOverride={hasOverride}
+                                granted={override ?? false}
+                                onClick={() => handleToggle(perm.key)}
+                              />
                             </div>
                           );
                         })}
@@ -390,8 +357,13 @@ export default function UserPermissionsManager() {
                 );
               })}
             </div>
-            <ScrollBar orientation="vertical" />
-          </ScrollArea>
+
+            {/* Footer summary */}
+            <div className="sticky bottom-0 bg-background border-t border-border/40 px-4 py-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>{filteredGroups.length} módulos · {totalPerms} permissões</span>
+              <span>{overrideCount} override{overrideCount !== 1 ? 's' : ''} configurado{overrideCount !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
