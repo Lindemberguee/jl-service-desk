@@ -115,6 +115,10 @@ export default function Assets() {
     });
   }, [assets, filterStatus, filterUnit, debouncedSearch]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedAssets = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+  useMemo(() => { setPage(1); }, [debouncedSearch, filterStatus, filterUnit]);
+
   const resetForm = useCallback(() => setForm({ ...emptyForm }), []);
 
   const setField = (key: keyof AssetForm, value: string) => {
