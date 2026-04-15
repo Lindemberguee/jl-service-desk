@@ -28,6 +28,7 @@ import BrandingSettingsTab from '@/components/admin/BrandingSettingsTab';
 import ApiKeyTab from '@/components/admin/ApiKeyTab';
 
 const RolePermissionsMatrix = lazy(() => import('@/components/admin/RolePermissionsMatrix'));
+const UserPermissionsManager = lazy(() => import('@/components/admin/UserPermissionsManager'));
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -251,7 +252,10 @@ export default function AdminSettings() {
             <Clock className="h-3 w-3" />SLA
           </TabsTrigger>
           <TabsTrigger value="permissoes" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md text-xs gap-1.5 px-3 py-1.5">
-            <Shield className="h-3 w-3" />Permissões
+            <Shield className="h-3 w-3" />Permissões (Cargo)
+          </TabsTrigger>
+          <TabsTrigger value="permissoes_usuario" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md text-xs gap-1.5 px-3 py-1.5">
+            <Shield className="h-3 w-3" />Permissões (Usuário)
           </TabsTrigger>
           <TabsTrigger value="departamento" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md text-xs gap-1.5 px-3 py-1.5">
             <Settings2 className="h-3 w-3" />Departamento
