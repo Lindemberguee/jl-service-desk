@@ -183,6 +183,8 @@ export function AppSidebar() {
   const { currentRole, profile, signOut, memberships, currentTenantId, rolePermissions, isModuleEnabled, isSubscriptionActive, subscription } = useAuth();
   const { tenantName, tenantLogo } = useTenantBranding();
   const { data: whatsappEnabled } = usePlatformSetting('whatsapp_button_enabled');
+  const { hiddenPaths, setHiddenPaths, isSaving } = useSidebarPreferences();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const currentTenant = memberships.find(m => m.tenant_id === currentTenantId);
