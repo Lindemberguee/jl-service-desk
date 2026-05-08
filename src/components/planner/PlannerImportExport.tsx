@@ -31,7 +31,7 @@ const PRIORITY_REVERSE: Record<string, string> = {
   baixa: 'low',
 };
 
-export function PlannerExportButton({ plans, selectedPlan }: Props) {
+export function PlannerExportButton({ plans, selectedPlan, id }: Props) {
   const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
