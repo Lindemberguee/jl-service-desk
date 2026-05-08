@@ -173,7 +173,7 @@ export function PlannerExportButton({ plans, selectedPlan, id }: Props) {
   );
 }
 
-export function PlannerImportButton({ onImportComplete }: Pick<Props, 'onImportComplete'>) {
+export function PlannerImportButton({ onImportComplete, id }: Pick<Props, 'onImportComplete' | 'id'>) {
   const { currentTenantId, user } = useAuth();
   const [importing, setImporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
