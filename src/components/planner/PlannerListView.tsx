@@ -59,9 +59,9 @@ export function PlannerListView({ buckets, tasks, assignments, onTaskClick, onTo
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: taskIdx * 0.02 }}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer group transition-all duration-150",
-                      "hover:bg-muted/40 hover:translate-x-0.5",
-                      isCompleted && "opacity-50"
+                      "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer group transition-all duration-150",
+                      "hover:bg-muted/50 border border-transparent hover:border-border/50",
+                      isCompleted && "opacity-50 grayscale-[0.3]"
                     )}
                     onClick={() => onTaskClick(task.id)}
                   >
