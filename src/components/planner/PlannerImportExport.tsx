@@ -323,6 +323,7 @@ export function PlannerImportButton({ onImportComplete, id }: Pick<Props, 'onImp
     <>
       <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={handleFileChange} />
       <Button
+        id={id}
         size="sm"
         variant="outline"
         className="h-8 text-xs gap-1.5"
