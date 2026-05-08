@@ -13,6 +13,7 @@ interface Props {
   plans: PlannerPlan[];
   selectedPlan: PlannerPlan | null;
   onImportComplete: () => void;
+  id?: string;
 }
 
 const PRIORITY_MAP: Record<string, string> = {
