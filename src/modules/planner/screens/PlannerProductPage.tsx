@@ -114,8 +114,8 @@ export default function PlannerProductPage() {
         ]}
       />
 
-      <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-2xl border border-border/70 bg-card p-2 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-1">
           {[
             { value: 'all', label: 'Todos', icon: FolderOpen },
             { value: 'personal', label: 'Pessoal', icon: User },
@@ -125,16 +125,19 @@ export default function PlannerProductPage() {
               key={value}
               onClick={() => setScopeFilter(value as any)}
               className={cn(
-                'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all',
+                'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all',
                 scopeFilter === value
-                  ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                  : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground'
+                  ? 'border-primary/20 bg-primary/10 text-primary shadow-sm'
+                  : 'border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               )}
             >
               <Icon className="h-4 w-4" />
               {label}
             </button>
           ))}
+        </div>
+        <div className="text-[11px] font-medium text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
+          <span className="text-foreground font-bold">{visiblePlans}</span> planos encontrados
         </div>
       </div>
 

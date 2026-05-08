@@ -80,38 +80,38 @@ export function PlannerBoard({ planId }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Tarefas
+            <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-hover:text-primary transition-colors">
+                Total
               </p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
+              <p className="mt-1 text-2xl font-bold text-foreground">
                 {totalTasks}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-emerald-500/10 group">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600/70 group-hover:text-emerald-600 transition-colors">
                 Concluídas
               </p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
+              <p className="mt-1 text-2xl font-bold text-emerald-600">
                 {completedTasks}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-amber-500/10 group">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600/70 group-hover:text-amber-600 transition-colors">
                 Em aberto
               </p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
+              <p className="mt-1 text-2xl font-bold text-amber-600">
                 {openTasks}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-red-500/10 group">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-600/70 group-hover:text-red-600 transition-colors">
                 Atrasadas
               </p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
+              <p className="mt-1 text-2xl font-bold text-red-600">
                 {overdueTasks}
               </p>
             </div>

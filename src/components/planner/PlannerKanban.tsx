@@ -191,8 +191,8 @@ export function PlannerKanban({
                         className={cn(
                           "group rounded-lg bg-card/80 backdrop-blur-sm p-3 cursor-pointer transition-all duration-200",
                           "border border-border/30 hover:border-primary/25 hover:shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.12)]",
-                          "hover:translate-y-[-1px]",
-                          isCompleted && "opacity-50",
+                          "hover:translate-y-[-1px] select-none active:cursor-grabbing",
+                          isCompleted && "opacity-50 grayscale-[0.3]",
                           draggedTaskId === task.id && "opacity-30 rotate-1 scale-95"
                         )}
                       >
