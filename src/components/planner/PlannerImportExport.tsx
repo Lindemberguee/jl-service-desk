@@ -160,6 +160,7 @@ export function PlannerExportButton({ plans, selectedPlan, id }: Props) {
 
   return (
     <Button
+      id={id}
       size="sm"
       variant="outline"
       className="h-8 text-xs gap-1.5"
