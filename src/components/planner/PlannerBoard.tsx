@@ -10,6 +10,8 @@ import {
   BarChart3,
   Loader2,
   LayoutPanelTop,
+  Settings2,
+  Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,7 @@ interface Props {
 export function PlannerBoard({ planId }: Props) {
   const board = usePlannerBoard(planId);
   const [view, setView] = useState<"kanban" | "list" | "charts">("kanban");
+  const [isAdvanced, setIsAdvanced] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const buckets = board.bucketsQuery.data || [];
@@ -63,93 +66,146 @@ export function PlannerBoard({ planId }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border/60 bg-card/80 px-5 py-4 backdrop-blur-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-              <LayoutPanelTop className="h-3.5 w-3.5" />
-              Workspace ativo
-            </div>
-            <h2 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
-              Execução do plano
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Acompanhe progresso, riscos, atrasos e capacidade de execução com
-              uma visão operacional moderna.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-hover:text-primary transition-colors">
-                Total
-              </p>
-              <p className="mt-1 text-2xl font-bold text-foreground">
-                {totalTasks}
+      {isAdvanced && (
+        <div className="border-b border-border/60 bg-card/80 px-5 py-4 backdrop-blur-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                <LayoutPanelTop className="h-3.5 w-3.5" />
+                Workspace ativo
+              </div>
+              <h2 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
+                Execução do plano
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Acompanhe progresso, riscos, atrasos e capacidade de execução com
+                uma visão operacional moderna.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-emerald-500/10 group">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600/70 group-hover:text-emerald-600 transition-colors">
-                Concluídas
-              </p>
-              <p className="mt-1 text-2xl font-bold text-emerald-600">
-                {completedTasks}
-              </p>
-            </div>
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-hover:text-primary transition-colors">
+                  Total
+                </p>
+                <p className="mt-1 text-2xl font-bold text-foreground">
+                  {totalTasks}
+                </p>
+              </div>
 
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-amber-500/10 group">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600/70 group-hover:text-amber-600 transition-colors">
-                Em aberto
-              </p>
-              <p className="mt-1 text-2xl font-bold text-amber-600">
-                {openTasks}
-              </p>
-            </div>
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-emerald-500/10 group">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600/70 group-hover:text-emerald-600 transition-colors">
+                  Concluídas
+                </p>
+                <p className="mt-1 text-2xl font-bold text-emerald-600">
+                  {completedTasks}
+                </p>
+              </div>
 
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-red-500/10 group">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-600/70 group-hover:text-red-600 transition-colors">
-                Atrasadas
-              </p>
-              <p className="mt-1 text-2xl font-bold text-red-600">
-                {overdueTasks}
-              </p>
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-amber-500/10 group">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600/70 group-hover:text-amber-600 transition-colors">
+                  Em aberto
+                </p>
+                <p className="mt-1 text-2xl font-bold text-amber-600">
+                  {openTasks}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 shadow-sm transition-all hover:shadow-md hover:bg-red-500/10 group">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-600/70 group-hover:text-red-600 transition-colors">
+                  Atrasadas
+                </p>
+                <p className="mt-1 text-2xl font-bold text-red-600">
+                  {overdueTasks}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-b border-border/50 bg-background px-5 py-4">
-        <PlannerOverviewPanel tasks={tasks} />
-      </div>
+      {isAdvanced && (
+        <div className="border-b border-border/50 bg-background px-5 py-4">
+          <PlannerOverviewPanel tasks={tasks} />
+        </div>
+      )}
 
       <div className="border-b border-border/50 bg-card/40 px-5 py-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
-            {views.map(({ key, label, icon: Icon }) => (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
+              {views.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={cn(
+                    "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                    view === key
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {view === key && (
+                    <motion.div
+                      layoutId="planner-view-pill-product"
+                      className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+
+            <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
               <button
-                key={key}
-                onClick={() => setView(key)}
+                onClick={() => setIsAdvanced(false)}
                 className={cn(
                   "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
-                  view === key
-                    ? "text-foreground"
+                  !isAdvanced
+                    ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {view === key && (
+                {!isAdvanced && (
                   <motion.div
-                    layoutId="planner-view-pill-product"
+                    layoutId="planner-mode-pill"
                     className="absolute inset-0 rounded-lg bg-background shadow-sm"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-2">
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
+                  <Zap className="h-3.5 w-3.5" />
+                  Simples
                 </span>
               </button>
-            ))}
+              <button
+                onClick={() => setIsAdvanced(true)}
+                className={cn(
+                  "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                  isAdvanced
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isAdvanced && (
+                  <motion.div
+                    layoutId="planner-mode-pill"
+                    className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Avançado
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
