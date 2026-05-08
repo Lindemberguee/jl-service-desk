@@ -13,6 +13,7 @@ interface Props {
   plans: PlannerPlan[];
   selectedPlan: PlannerPlan | null;
   onImportComplete: () => void;
+  id?: string;
 }
 
 const PRIORITY_MAP: Record<string, string> = {
@@ -30,7 +31,7 @@ const PRIORITY_REVERSE: Record<string, string> = {
   baixa: 'low',
 };
 
-export function PlannerExportButton({ plans, selectedPlan }: Props) {
+export function PlannerExportButton({ plans, selectedPlan, id }: Props) {
   const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
@@ -159,6 +160,7 @@ export function PlannerExportButton({ plans, selectedPlan }: Props) {
 
   return (
     <Button
+      id={id}
       size="sm"
       variant="outline"
       className="h-8 text-xs gap-1.5"
@@ -171,7 +173,7 @@ export function PlannerExportButton({ plans, selectedPlan }: Props) {
   );
 }
 
-export function PlannerImportButton({ onImportComplete }: Pick<Props, 'onImportComplete'>) {
+export function PlannerImportButton({ onImportComplete, id }: Pick<Props, 'onImportComplete' | 'id'>) {
   const { currentTenantId, user } = useAuth();
   const [importing, setImporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -321,6 +323,7 @@ export function PlannerImportButton({ onImportComplete }: Pick<Props, 'onImportC
     <>
       <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={handleFileChange} />
       <Button
+        id={id}
         size="sm"
         variant="outline"
         className="h-8 text-xs gap-1.5"

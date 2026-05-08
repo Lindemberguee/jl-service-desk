@@ -87,22 +87,26 @@ export default function PlannerProductPage() {
         onSearchChange={setSearch}
         onCreatePlan={() => setCreateOpen(true)}
         onImport={() => {
-          const trigger = document.getElementById('planner-import-trigger');
+          const trigger = document.getElementById('planner-import-trigger-btn');
           trigger?.click();
         }}
         onExport={() => {
-          const trigger = document.getElementById('planner-export-trigger');
+          const trigger = document.getElementById('planner-export-trigger-btn');
           trigger?.click();
         }}
       />
 
       <div className="hidden">
-        <div id="planner-export-trigger">
-          <PlannerExportButton plans={plans} selectedPlan={selectedPlan} onImportComplete={() => {}} />
-        </div>
-        <div id="planner-import-trigger">
-          <PlannerImportButton onImportComplete={() => plansQuery.refetch()} />
-        </div>
+        <PlannerExportButton 
+          plans={plans} 
+          selectedPlan={selectedPlan} 
+          onImportComplete={() => {}} 
+          id="planner-export-trigger-btn"
+        />
+        <PlannerImportButton 
+          onImportComplete={() => plansQuery.refetch()} 
+          id="planner-import-trigger-btn"
+        />
       </div>
 
       <PlannerKpiStrip
