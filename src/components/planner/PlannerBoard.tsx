@@ -129,32 +129,81 @@ export function PlannerBoard({ planId }: Props) {
       )}
 
       <div className="border-b border-border/50 bg-card/40 px-5 py-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
-            {views.map(({ key, label, icon: Icon }) => (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
+              {views.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={cn(
+                    "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                    view === key
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {view === key && (
+                    <motion.div
+                      layoutId="planner-view-pill-product"
+                      className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+
+            <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/30 p-1">
               <button
-                key={key}
-                onClick={() => setView(key)}
+                onClick={() => setIsAdvanced(false)}
                 className={cn(
                   "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
-                  view === key
-                    ? "text-foreground"
+                  !isAdvanced
+                    ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {view === key && (
+                {!isAdvanced && (
                   <motion.div
-                    layoutId="planner-view-pill-product"
+                    layoutId="planner-mode-pill"
                     className="absolute inset-0 rounded-lg bg-background shadow-sm"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-2">
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
+                  <Zap className="h-3.5 w-3.5" />
+                  Simples
                 </span>
               </button>
-            ))}
+              <button
+                onClick={() => setIsAdvanced(true)}
+                className={cn(
+                  "relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
+                  isAdvanced
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isAdvanced && (
+                  <motion.div
+                    layoutId="planner-mode-pill"
+                    className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Avançado
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
