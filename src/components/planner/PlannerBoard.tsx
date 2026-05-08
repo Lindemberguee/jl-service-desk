@@ -121,7 +121,7 @@ export function PlannerBoard({ planId }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {isAdvanced && (
         <div className="border-b border-border/50 bg-background px-5 py-4">
