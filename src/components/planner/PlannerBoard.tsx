@@ -10,6 +10,8 @@ import {
   BarChart3,
   Loader2,
   LayoutPanelTop,
+  Settings2,
+  Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,7 @@ interface Props {
 export function PlannerBoard({ planId }: Props) {
   const board = usePlannerBoard(planId);
   const [view, setView] = useState<"kanban" | "list" | "charts">("kanban");
+  const [isAdvanced, setIsAdvanced] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const buckets = board.bucketsQuery.data || [];
