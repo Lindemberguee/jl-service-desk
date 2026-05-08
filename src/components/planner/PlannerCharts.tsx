@@ -1,9 +1,34 @@
 import { useMemo } from 'react';
 import { type PlannerTask, type PlannerBucket, type TaskAssignment } from '@/hooks/usePlanner';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Clock, AlertTriangle, BarChart3, Users, Layers, Zap, TrendingUp } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  Users, 
+  Layers, 
+  Zap, 
+  TrendingUp, 
+  PieChart, 
+  Activity,
+  Calendar,
+  BarChart2
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Cell,
+  PieChart as RePieChart,
+  Pie,
+  Legend
+} from 'recharts';
 
 interface Props {
   buckets: PlannerBucket[];
@@ -25,203 +50,211 @@ export function PlannerCharts({ buckets, tasks, assignments }: Props) {
   const inProgressTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const byBucket = useMemo(() =>
+  const bucketData = useMemo(() =>
     buckets.map(b => ({
       name: b.name,
-      count: tasks.filter(t => t.bucket_id === b.id).length,
+      total: tasks.filter(t => t.bucket_id === b.id).length,
       completed: tasks.filter(t => t.bucket_id === b.id && t.completed_at).length,
-    })),
+      pending: tasks.filter(t => t.bucket_id === b.id && !t.completed_at).length,
+    })).filter(d => d.total > 0),
   [buckets, tasks]);
 
-  const byPriority = useMemo(() =>
+  const priorityData = useMemo(() =>
     Object.entries(priorityConfig).map(([key, cfg]) => ({
-      key,
-      label: cfg.label,
+      name: cfg.label,
+      value: tasks.filter(t => t.priority === key).length,
       color: cfg.color,
-      count: tasks.filter(t => t.priority === key).length,
-    })).filter(p => p.count > 0),
+    })).filter(p => p.value > 0),
   [tasks]);
 
-  const byAssignee = useMemo(() => {
-    const map: Record<string, number> = {};
-    assignments.forEach(a => { map[a.user_id] = (map[a.user_id] || 0) + 1; });
-    const unassigned = tasks.filter(t => !assignments.some(a => a.task_id === t.id)).length;
-    return { assigned: Object.entries(map).map(([id, count]) => ({ id, count })), unassigned };
-  }, [tasks, assignments]);
+  const statusData = useMemo(() => [
+    { name: 'Concluídas', value: completedTasks, color: '#10b981' },
+    { name: 'Em Aberto', value: inProgressTasks, color: '#3b82f6' },
+    { name: 'Atrasadas', value: overdueTasks, color: '#ef4444' },
+  ].filter(d => d.value > 0), [completedTasks, inProgressTasks, overdueTasks]);
 
   if (totalTasks === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Crie tarefas para ver os gráficos.
+      <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground gap-3">
+        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+          <Activity className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-medium">Crie tarefas para visualizar as métricas de desempenho.</p>
       </div>
     );
   }
 
-  const statCards = [
-    { label: 'Total', value: totalTasks, icon: Layers, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Concluídas', value: completedTasks, icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' },
-    { label: 'Em andamento', value: inProgressTasks, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { label: 'Atrasadas', value: overdueTasks, icon: AlertTriangle, color: overdueTasks > 0 ? 'text-destructive' : 'text-muted-foreground', bg: overdueTasks > 0 ? 'bg-destructive/10' : 'bg-muted' },
-  ];
-
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {statCards.map((stat, i) => (
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-muted/5">
+      {/* Header Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total de Tarefas', value: totalTasks, icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Conclusão', value: `${completionRate}%`, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Em Execução', value: inProgressTasks, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+          { label: 'Atrasos Críticos', value: overdueTasks, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10' },
+        ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm p-4"
+            transition={{ delay: i * 0.1 }}
+            className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", stat.bg)}>
-                <stat.icon className={cn("h-4 w-4", stat.color)} />
+            <div className="flex items-center justify-between mb-3">
+              <div className={cn("p-2 rounded-xl", stat.bg)}>
+                <stat.icon className={cn("h-5 w-5", stat.color)} />
               </div>
             </div>
-            <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
-            <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+            <div className="space-y-1">
+              <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Progress ring + bucket breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Overall progress */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm p-5"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribuição por Status */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-bold tracking-tight">Progresso Geral</h3>
+          <div className="flex items-center gap-2 mb-6">
+            <PieChart className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Distribuição por Status</h3>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="relative h-24 w-24 shrink-0">
-              <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
-                <circle
-                  cx="50" cy="50" r="42" fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${completionRate * 2.64} 264`}
-                  className="transition-all duration-700"
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <RePieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }}
                 />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold">{completionRate}%</span>
-              </div>
-            </div>
-            <div className="space-y-2 flex-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Feitas</span>
-                <span className="font-semibold text-green-500">{completedTasks}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Pendentes</span>
-                <span className="font-semibold">{inProgressTasks}</span>
-              </div>
-              {overdueTasks > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Atrasadas</span>
-                  <span className="font-semibold text-destructive">{overdueTasks}</span>
-                </div>
-              )}
-            </div>
+                <Legend verticalAlign="bottom" height={36}/>
+              </RePieChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
 
-        {/* By Bucket */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm p-5"
+        {/* Carga por Coluna */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Layers className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-bold tracking-tight">Por Coluna</h3>
+          <div className="flex items-center gap-2 mb-6">
+            <BarChart2 className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Carga por Coluna</h3>
           </div>
-          <div className="space-y-3">
-            {byBucket.map(b => {
-              const pct = b.count > 0 ? Math.round((b.completed / b.count) * 100) : 0;
-              return (
-                <div key={b.name}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium truncate">{b.name}</span>
-                    <span className="text-muted-foreground">{b.completed}/{b.count}</span>
-                  </div>
-                  <Progress value={pct} className="h-1.5" />
-                </div>
-              );
-            })}
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={bucketData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  width={100}
+                  style={{ fontSize: '12px', fontWeight: 500 }}
+                />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))' }}
+                />
+                <Bar dataKey="pending" name="Pendente" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="completed" name="Concluída" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
-      </div>
 
-      {/* Priority + Assignees */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm p-5"
+        {/* Análise de Prioridade */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-6">
             <Zap className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-bold tracking-tight">Por Prioridade</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Volume por Prioridade</h3>
           </div>
-          <div className="space-y-2.5">
-            {byPriority.map(p => {
-              const pct = totalTasks > 0 ? Math.round((p.count / totalTasks) * 100) : 0;
+          <div className="space-y-4">
+            {priorityData.map((p) => {
+              const pct = totalTasks > 0 ? Math.round((p.value / totalTasks) * 100) : 0;
               return (
-                <div key={p.key} className="flex items-center gap-3">
-                  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                  <span className="text-xs flex-1 font-medium">{p.label}</span>
-                  <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: p.color }} />
+                <div key={p.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
+                      {p.name}
+                    </span>
+                    <span>{p.value} tarefas ({pct}%)</span>
                   </div>
-                  <span className="text-xs font-bold w-6 text-right">{p.count}</span>
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="rounded-xl border border-border/40 bg-card/80 backdrop-blur-sm p-5"
+        {/* Resumo de Operação */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
+          className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-bold tracking-tight">Distribuição</h3>
+          <div className="flex items-center gap-2 mb-6">
+            <Activity className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Resumo de Operação</h3>
           </div>
-          <div className="space-y-2.5">
-            {byAssignee.assigned.slice(0, 8).map(a => (
-              <div key={a.id} className="flex items-center gap-3">
-                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
-                  {a.id.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <Progress value={(a.count / totalTasks) * 100} className="h-1.5" />
-                </div>
-                <span className="text-xs font-bold">{a.count}</span>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Colaboração</span>
               </div>
-            ))}
-            {byAssignee.unassigned > 0 && (
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[9px] text-muted-foreground shrink-0">—</div>
-                <span className="text-xs text-muted-foreground flex-1">Sem atribuição</span>
-                <span className="text-xs font-bold">{byAssignee.unassigned}</span>
+              <p className="text-xl font-bold">{assignments.length}</p>
+              <p className="text-[11px] text-muted-foreground">Atribuições ativas</p>
+            </div>
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Prazos</span>
               </div>
-            )}
+              <p className="text-xl font-bold">{tasks.filter(t => t.due_date).length}</p>
+              <p className="text-[11px] text-muted-foreground">Com data definida</p>
+            </div>
+          </div>
+          <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <p className="text-xs font-medium text-primary leading-relaxed">
+              Dica: Foque nas <span className="font-bold underline">tarefas atrasadas</span> para manter o cronograma do projeto saudável e evitar gargalos nas próximas colunas.
+            </p>
           </div>
         </motion.div>
       </div>
