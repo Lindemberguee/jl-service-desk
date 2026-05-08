@@ -89,10 +89,10 @@ export function PlannerCharts({ buckets, tasks, assignments }: Props) {
       {/* Header Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total de Tarefas', value: totalTasks, icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Conclusão', value: `${completionRate}%`, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Em Execução', value: inProgressTasks, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-          { label: 'Atrasos Críticos', value: overdueTasks, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10' },
+          { label: 'Total de Tarefas', value: totalTasks, percentage: null, icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Conclusão', value: completedTasks, percentage: completionRate, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Em Execução', value: inProgressTasks, percentage: totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+          { label: 'Atrasos Críticos', value: overdueTasks, percentage: totalTasks > 0 ? Math.round((overdueTasks / totalTasks) * 100) : 0, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
