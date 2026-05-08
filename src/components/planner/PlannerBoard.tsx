@@ -66,8 +66,9 @@ export function PlannerBoard({ planId }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border/60 bg-card/80 px-5 py-4 backdrop-blur-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      {isAdvanced && (
+        <div className="border-b border-border/60 bg-card/80 px-5 py-4 backdrop-blur-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
               <LayoutPanelTop className="h-3.5 w-3.5" />
