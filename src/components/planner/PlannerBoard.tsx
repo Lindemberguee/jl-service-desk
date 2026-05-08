@@ -122,9 +122,11 @@ export function PlannerBoard({ planId }: Props) {
         </div>
       </div>
 
-      <div className="border-b border-border/50 bg-background px-5 py-4">
-        <PlannerOverviewPanel tasks={tasks} />
-      </div>
+      {isAdvanced && (
+        <div className="border-b border-border/50 bg-background px-5 py-4">
+          <PlannerOverviewPanel tasks={tasks} />
+        </div>
+      )}
 
       <div className="border-b border-border/50 bg-card/40 px-5 py-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
