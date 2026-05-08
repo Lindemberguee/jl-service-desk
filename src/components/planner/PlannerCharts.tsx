@@ -99,12 +99,20 @@ export function PlannerCharts({ buckets, tasks, assignments }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm"
+            className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-3">
               <div className={cn("p-2 rounded-xl", stat.bg)}>
                 <stat.icon className={cn("h-5 w-5", stat.color)} />
               </div>
+              {stat.percentage !== null && (
+                <div className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                  stat.percentage > 50 ? "bg-emerald-500/10 text-emerald-600" : "bg-blue-500/10 text-blue-600"
+                )}>
+                  {stat.percentage}%
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
